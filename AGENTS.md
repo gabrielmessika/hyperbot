@@ -64,6 +64,15 @@ agents de développement.
 - Les preuves historiques TRIDENT restent dans `/workspaces/trident`. Si elles
   deviennent nécessaires au nouveau dépôt, copier un snapshot et son checksum,
   pas un lien mutable implicite.
+- Classer chaque dataset : `A` pour le nouveau collector HyperBot, `B` pour les
+  archives HIP-4, `C` pour les snapshots/replays A/C et GBOT.
+- Les données B/C servent à la pré-recherche, aux markouts, fixtures et replays
+  optimistes. Elles ne peuvent jamais valider seules la position de file, un
+  fill maker central/pessimiste ou une promotion canary.
+- Tout import legacy doit enregistrer chemin source, SHA-256, période, nombre de
+  lignes, schéma, fréquence, trous, transformations et version d'adaptateur.
+- Ne jamais copier en masse les archives TRIDENT dans Git. Versionner seulement
+  manifestes, petits fixtures et rapports de qualité.
 
 ## Commandes usuelles
 

@@ -17,8 +17,19 @@ Le statut d'implémentation et les prochains lots sont suivis dans
 - phase : instrumentation locale, lot M1 terminé ;
 - trading live : désactivé ;
 - livré : contrats d'événements, configuration fail-closed et event store ;
-- prochaine priorité : catalogue de marchés et collector public ;
+- prochaine priorité : import contrôlé des archives TRIDENT, puis catalogue de
+  marchés et collector public ;
 - dépôt TRIDENT : référence historique uniquement.
+
+## Données historiques
+
+HyperBot peut utiliser les archives TRIDENT en lecture seule pour démarrer les
+replays de fair value, spreads, markouts et benchmarks. Chaque import conserve
+sa provenance et son checksum. Ces archives ne remplacent pas les données du
+nouveau collector pour simuler la position de file ou autoriser un canary.
+
+La politique complète et le lot d'import `M1L` sont décrits dans
+[`FOLLOW_UP.md`](FOLLOW_UP.md).
 
 ## Démarrage
 

@@ -211,6 +211,75 @@ devenir utile plus tard pour la reconstruction fine des carnets et des TWAP,
 mais ne doit pas être une dépendance de la phase initiale. [Dépôt officiel du
 node](https://github.com/hyperliquid-dex/node)
 
+### 4.4 Réutilisation contrôlée des données TRIDENT
+
+Les archives accumulées par TRIDENT depuis avril 2026 permettent de démarrer la
+recherche HyperBot sans attendre trente jours, mais elles ne sont pas toutes des
+données de replay d'exécution. Elles sont classées en trois niveaux :
+
+| Niveau | Données | Utilisation autorisée | Promotion canary |
+|---|---|---|---|
+| A | nouveau collector HyperBot | replay de file central/pessimiste, validation officielle | oui, après toutes les gates |
+| B | archives outcomes HIP-4 | fair value, spreads, markouts, settlements, replay optimiste | non, pas seules |
+| C | snapshots/replays A/C et GBOT | fixtures, features, scanner HIP-3, benchmarks historiques | non |
+
+Inventaire de référence au 10 août 2026 :
+
+- [book snapshots HIP-4](/workspaces/trident/server-data/hip4/logs/hip4_nautilus_shadow/book_snapshots.jsonl)
+  contient environ 892 000 snapshots outcomes entre le 27 mai et le 6 juillet,
+  mais avec des interruptions et des carnets parfois stale ;
+- [logs HIP-4 mainnet paper](/workspaces/trident/server-data/hip4/logs/hip4_outcome_mainnet_paper/)
+  contient environ 118 000 observations, 145 000 quotes maker shadow, 102 trades
+  paper et 99 settlements ;
+- [archive GBOT](/workspaces/trident/data/gbot_archive/) contient environ 68 Mo
+  de BBO/profondeur agrégée et de trades sur douze cryptos, principalement
+  pendant quelques heures du 1er avril ;
+- [replay inputs TRIDENT](/workspaces/trident/server-data/replay_inputs/)
+  contient environ 11 Go de snapshots et features agrégées utilisables pour le
+  contexte et les anciens replays directionnels ;
+- [live snapshots TRIDENT](/workspaces/trident/data/live_snapshots/) ne contient
+  que 111 snapshots dispersés et ne constitue pas une série continue.
+
+Ces données permettent immédiatement de tester :
+
+- fair value et calibration des probabilités outcomes ;
+- distributions de spread et incohérences YES/NO ;
+- markouts après une quote théorique ;
+- choix des marchés et régimes de données stale ;
+- reproduction des décisions, trades et settlements de l'ancien bot ;
+- mécanique déterministe du replay et compatibilité des schémas.
+
+Elles ne suffisent généralement pas à reconstruire :
+
+- le volume exact devant une quote hypothétique ;
+- toutes les insertions, annulations et modifications de la file ;
+- les fills partiels qu'aurait reçus HyperBot ;
+- une continuité de trente jours avec séquences vérifiables ;
+- les frais effectifs et changements de spécification à chaque instant.
+
+La taille d'un fichier ou son nombre de lignes ne prouve donc ni sa continuité,
+ni sa qualité d'exécution. Les archives B/C peuvent produire une borne
+optimiste et accélérer le développement, mais seuls les événements A du nouveau
+collector peuvent valider les modèles de fill central et pessimiste.
+
+L'import se fait par adaptateurs explicites et jamais par dépendance runtime :
+
+```text
+archives TRIDENT en lecture seule
+             │
+             ▼
+     LegacyDataImporter
+             │
+             ├── manifest source + checksum + période + qualité
+             ▼
+ événements normalisés HyperBot, versionnés et reproductibles
+```
+
+Les 11 Go de données ne sont pas copiés dans Git. Seuls les manifestes, petits
+fixtures et rapports de qualité sont versionnés. Toute transformation conserve
+le chemin source, le SHA-256, la période, le nombre de lignes, la fréquence
+estimée, les trous détectés et la version de l'adaptateur.
+
 ## 5. Architecture proposée : la suite HyperBot
 
 ```text
@@ -265,6 +334,12 @@ Le nouveau replay doit au minimum proposer trois modèles :
 2. **central :** file reconstruite avec latence mesurée et fills partiels ;
 3. **optimiste borné :** touch fill, affiché uniquement comme plafond et jamais
    utilisé pour une promotion.
+
+Les archives TRIDENT B/C pourront alimenter le modèle optimiste, les markouts et
+les tests de logique. Elles ne seront jamais artificiellement enrichies pour
+faire croire qu'une position de file inconnue est connue. Les modèles central
+et pessimiste destinés à une promotion utiliseront exclusivement des périodes
+de niveau A, collectées avec le schéma HyperBot.
 
 Le PnL doit être marqué 100 ms, 1 s, 5 s et 30 s après chaque fill. La dérive
 post-fill mesure directement la sélection adverse.
@@ -603,6 +678,11 @@ src/hyperbot/
 ├── models.py
 ├── market_catalog.py
 ├── event_store.py
+├── legacy/
+│   ├── manifest.py
+│   ├── gbot.py
+│   ├── trident_snapshots.py
+│   └── hip4.py
 ├── fair_value/
 │   ├── outcomes.py
 │   └── hip3.py
@@ -623,6 +703,8 @@ src/hyperbot/
 src/hyperbot/services/collector.py
 src/hyperbot/services/shadow_runner.py
 scripts/run_hyperbot_replay.py
+scripts/inventory_legacy_data.py
+scripts/import_legacy_data.py
 scripts/fetch_hyperbot_data.sh
 config/hyperbot_research.toml
 tests/hyperbot/
@@ -660,11 +742,21 @@ FillAttribution(
 OutcomeSettlement(
     market, expiry_ts_ms, strike, result, payout, settlement_fee,
 )
+
+LegacyProvenance(
+    dataset_tier, source_path, source_sha256, source_record_number,
+    adapter_name, adapter_version, quality_flags,
+)
 ```
 
 Chaque record contient `run_id`, version du code, hash de configuration et
 source de temps. Les données brutes sont append-only ; les features dérivées
 sont reproductibles et versionnées.
+
+`LegacyProvenance` est obligatoire dans l'enveloppe de tout événement importé.
+Il ne modifie pas artificiellement le payload de marché et permet au replay de
+refuser automatiquement un dataset B/C lorsqu'un modèle de fill de niveau A est
+requis.
 
 ### 11.3 Interfaces
 
@@ -747,6 +839,9 @@ signée/reviewée et une autorisation explicite.
 ### Phase 0 — instrumentation locale
 
 - implémenter modèles, event store et collector ;
+- inventorier les archives TRIDENT par format, période, checksum et qualité ;
+- importer des fixtures et les données HIP-4 utiles via des adaptateurs
+  versionnés, sans dépendance runtime vers TRIDENT ;
 - capturer outcomes et HIP-3 sans envoyer d'ordre ;
 - produire quotidiennement complétude, trous de séquence et statistiques de
   spreads ;
@@ -754,6 +849,10 @@ signée/reviewée et une autorisation explicite.
 
 **Sortie :** sept jours sans trou opérationnel majeur, puis poursuite jusqu'au
 minimum statistique de 30 jours.
+
+Les replays legacy peuvent démarrer avant la fin de cette collecte, mais leurs
+résultats restent étiquetés `legacy_research_only` et ne comptent pas dans les
+gates de promotion relatives aux fills.
 
 ### Phase 1 — replays falsifiables
 
