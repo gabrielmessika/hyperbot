@@ -3,11 +3,13 @@
 Ces instructions constituent le contexte persistant du projet HyperBot pour les
 agents de développement.
 
-## Source de vérité
+## Sources de vérité
 
-- La spécification fondatrice est `HYPERBOT_FOUNDATION.md`.
-- En cas de contradiction avec une note, un ancien rapport ou du code importé,
-  cette spécification gagne jusqu'à l'adoption d'un plan actif plus récent.
+- La spécification stratégique est `HYPERBOT_FOUNDATION.md`.
+- Le plan d'exécution et statut de développement courant est `FOLLOW_UP.md`.
+- En cas de contradiction, la fondation gagne sur la thèse, les limites de
+  risque et les gates de promotion ; `FOLLOW_UP.md` gagne sur l'ordre des tâches
+  et leur statut.
 - Le dossier `../trident` présent dans le workspace est une référence historique
   en lecture seule. Ne jamais le modifier depuis une tâche HyperBot sans demande
   explicite de l'utilisateur.
@@ -17,6 +19,8 @@ agents de développement.
 - HyperBot est un nouveau projet indépendant de TRIDENT.
 - La phase initiale couvre le collector, l'event store, le replay avec modèle de
   file, les stratégies shadow et le superviseur de risque.
+- Le lot courant est indiqué dans `FOLLOW_UP.md`; le mettre à jour avec toute
+  livraison matérielle ou nouvelle décision technique.
 - Le trading live est désactivé. Aucun changement de configuration, refactor ou
   test ne doit pouvoir envoyer un ordre réel sans autorisation explicite.
 - Ne pas importer les stratégies, planners ou paramètres directionnels des pods
