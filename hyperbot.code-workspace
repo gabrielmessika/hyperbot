@@ -1,0 +1,48 @@
+{
+    "folders": [
+        {
+            "name": "HyperBot",
+            "path": "."
+        },
+        {
+            "name": "TRIDENT (reference)",
+            "path": "../trident"
+        }
+    ],
+    "settings": {
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": true,
+        "files.encoding": "utf8",
+        "files.eol": "\n",
+        "files.exclude": {
+            "**/__pycache__": true,
+            "**/.pytest_cache": true,
+            "**/.ruff_cache": true,
+            "**/.mypy_cache": true
+        },
+        "python.defaultInterpreterPath": "${workspaceFolder:HyperBot}/.venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "python.testing.cwd": "${workspaceFolder:HyperBot}",
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "python.testing.pytestArgs": [
+            "tests"
+        ],
+        "chat.tools.terminal.autoApprove": {
+            "uv sync": true,
+            "uv run pytest": true,
+            "uv run ruff check": true,
+            "uv run ruff format": true,
+            "uv run mypy": true
+        }
+    },
+    "extensions": {
+        "recommendations": [
+            "ms-python.python",
+            "ms-python.vscode-pylance",
+            "charliermarsh.ruff",
+            "tamasfe.even-better-toml"
+        ]
+    }
+}
