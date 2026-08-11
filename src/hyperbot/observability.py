@@ -423,11 +423,18 @@ class ObservabilityReader:
                     "detail": maintenance.get("error"),
                 }
             )
+
+        quality_anomalies: list[dict[str, object]] = []
         latest = self.quality_latest()
         report = latest.get("report")
         if isinstance(report, dict) and report.get("qualified_day") is not True:
-            for reason in report.get("qualification_reasons", []):
-                incidents.append(
+            reasons = report.get("qualification_reasons", [])
+            if not isinstance(reasons, list):
+                reasons = []
+            for reason in reasons:
+                if not isinstance(reason, str):
+                    continue
+                quality_anomalies.append(
                     {
                         "severity": "warning",
                         "source": "quality",
@@ -435,7 +442,23 @@ class ObservabilityReader:
                         "report_date": report.get("report_date"),
                     }
                 )
-        return {"count": len(incidents), "incidents": incidents[:100]}
+        quality_report = {
+            "available": isinstance(report, dict),
+            "report_date": (
+                report.get("report_date") if isinstance(report, dict) else None
+            ),
+            "qualified_day": (
+                report.get("qualified_day") if isinstance(report, dict) else None
+            ),
+            "count": len(quality_anomalies),
+            "anomalies": quality_anomalies[:100],
+        }
+        return {
+            "count": len(incidents),
+            "active_count": len(incidents),
+            "incidents": incidents[:100],
+            "quality_anomalies": quality_report,
+        }
 
     def shadow(self) -> dict[str, object]:
         roots = (

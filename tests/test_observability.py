@@ -261,6 +261,65 @@ def test_observability_reader_combines_only_verified_bounded_snapshots(
     assert shadow["canary_authorized"] is False
 
 
+def test_incidents_separate_active_failures_from_quality_anomalies(
+    tmp_path: Path,
+) -> None:
+    settings = _settings_with_snapshots(tmp_path)
+    _write_checksummed_json(
+        settings.ops.review_root / "quality-2026-08-11-test.json",
+        {
+            "report_date": "2026-08-11",
+            "generated_at_ms": 1_786_406_500_000,
+            "qualified_day": False,
+            "collector_outage_count": 0,
+            "collector_outage_duration_ms": 0,
+            "qualification_reasons": [
+                "coverage_below_threshold:BTC",
+                "major_gap:BTC",
+            ],
+            "markets": [],
+        },
+    )
+    reader = ObservabilityReader(settings)
+
+    result = reader.incidents()
+
+    assert result["count"] == 0
+    assert result["active_count"] == 0
+    assert result["incidents"] == []
+    quality = result["quality_anomalies"]
+    assert isinstance(quality, dict)
+    assert quality["available"] is True
+    assert quality["report_date"] == "2026-08-11"
+    assert quality["qualified_day"] is False
+    assert quality["count"] == 2
+    assert [item["code"] for item in quality["anomalies"]] == [  # type: ignore[index]
+        "coverage_below_threshold:BTC",
+        "major_gap:BTC",
+    ]
+
+    atomic_write_json(
+        settings.ops.runtime_root / "maintenance_status.json",
+        {"state": "failed", "error": "quality report failed"},
+    )
+
+    failed = reader.incidents()
+
+    assert failed["count"] == 1
+    assert failed["active_count"] == 1
+    assert failed["incidents"] == [
+        {
+            "severity": "critical",
+            "source": "maintenance",
+            "code": "maintenance_failed",
+            "detail": "quality report failed",
+        }
+    ]
+    failed_quality = failed["quality_anomalies"]
+    assert isinstance(failed_quality, dict)
+    assert failed_quality["count"] == 2
+
+
 def test_http_dashboard_and_api_are_authenticated_and_strictly_read_only(
     tmp_path: Path,
 ) -> None:
@@ -296,6 +355,9 @@ def test_http_dashboard_and_api_are_authenticated_and_strictly_read_only(
             assert ui_status == 200
             assert "hyperbot" in ui
             assert "observabilité" in ui
+            assert "incidents opérationnels actifs" in ui
+            assert "anomalies du dernier rapport m3" in ui
+            assert "ces anomalies ne sont pas des incidents actifs" in ui
             assert "/api/overview" in ui
             assert "/api/start" not in ui
             assert "/api/stop" not in ui

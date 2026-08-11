@@ -221,7 +221,7 @@ de changement de configuration ou de contrôle de processus.
 | `/api/markets` | oui | whitelist et dernier catalogue vérifié |
 | `/api/quality/latest` | oui | dernier rapport M3 checksumé |
 | `/api/quality/history?limit=30` | oui | historique borné et progression 7/30 jours |
-| `/api/incidents` | oui | incidents health/maintenance/qualité |
+| `/api/incidents` | oui | incidents opérationnels actifs et anomalies du dernier rapport M3, dans deux blocs séparés |
 | `/api/storage` | oui | réserve disque et manifests append-only |
 | `/api/shadow` | oui | dernière preuve M7 si elle existe |
 | `/api/config` | oui | configuration non sensible effective |

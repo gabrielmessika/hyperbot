@@ -519,6 +519,11 @@ maintenance réutilise un jour déjà finalisé même après un changement de co
 Le release final `20260811T155300Z-8e73ae32bdef` expose aussi la profondeur de
 file ; son smoke est à zéro drop, malformed, reconnexion et backlog.
 
+L'observabilité sépare désormais les incidents opérationnels actifs des
+anomalies du dernier rapport M3. Le compteur principal ne mélange plus une
+preuve qualité historique avec l'état courant ; l'API et l'UI exposent la date,
+le verdict et le nombre d'anomalies dans un bloc distinct.
+
 ### M8 — canary, bloqué par défaut
 
 Ce lot ne peut pas commencer à la suite d'un simple développement. Il exige :

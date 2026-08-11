@@ -264,14 +264,17 @@
 
         <div class="grid two">
           <div>
-            <div class="section-head"><div><h2>Incidents actifs</h2><p>Health, maintenance et dernière preuve M3.</p></div><span id="incident-count" class="pill neutral">0</span></div>
+            <div class="section-head"><div><h2>Incidents opérationnels actifs</h2><p>État courant du collector et de la maintenance.</p></div><span id="incident-count" class="pill neutral">0</span></div>
             <article class="card"><ul id="incident-list" class="incident-list"><li class="empty">Chargement…</li></ul></article>
           </div>
           <div>
-            <div class="section-head"><div><h2>Services</h2><p>États publiés dans le runtime partagé.</p></div></div>
-            <article class="card table-wrap"><table><thead><tr><th>Service</th><th>État</th><th>Dernière mise à jour</th></tr></thead><tbody id="services-body"></tbody></table></article>
+            <div class="section-head"><div><h2>Anomalies du dernier rapport M3</h2><p id="quality-anomaly-caption">Aucun rapport qualité disponible.</p></div><span id="quality-anomaly-count" class="pill neutral">—</span></div>
+            <article class="card"><ul id="quality-anomaly-list" class="incident-list"><li class="empty">Chargement…</li></ul></article>
           </div>
         </div>
+
+        <div class="section-head"><div><h2>Services</h2><p>États publiés dans le runtime partagé.</p></div></div>
+        <article class="card table-wrap"><table><thead><tr><th>Service</th><th>État</th><th>Dernière mise à jour</th></tr></thead><tbody id="services-body"></tbody></table></article>
       </section>
 
       <section id="page-markets" class="panel-page">
@@ -397,6 +400,25 @@
         item.append(make("span", incident.severity || "info", incident.severity === "critical" ? "bad" : "warn"));
         const detail = make("div");
         detail.append(make("b", incident.code || "incident"), make("div", `${incident.source || "runtime"}${incident.report_date ? ` · ${incident.report_date}` : ""}`, "incident-source"));
+        item.appendChild(detail); list.appendChild(item);
+      });
+    }
+
+    function renderQualityAnomalies(payload) {
+      const quality = payload.quality_anomalies || {};
+      const anomalies = quality.anomalies || [];
+      const count = Number(quality.count || 0);
+      const list = $("quality-anomaly-list"); clear(list);
+      text("quality-anomaly-count", quality.available ? `${count} anomalie${count === 1 ? "" : "s"}` : "Aucun rapport");
+      $("quality-anomaly-count").className = `pill ${!quality.available ? "neutral" : count ? "warn" : "good"}`;
+      text("quality-anomaly-caption", quality.available ? `Rapport qualité UTC du ${quality.report_date || "—"}. Ces anomalies ne sont pas des incidents actifs.` : "Aucun rapport qualité disponible.");
+      if (!quality.available) { list.appendChild(make("li", "Aucun rapport M3 disponible.", "empty")); return; }
+      if (!anomalies.length) { list.appendChild(make("li", `Le rapport du ${quality.report_date || "—"} est qualifié.`, "empty good")); return; }
+      anomalies.forEach((anomaly) => {
+        const item = make("li", null, "incident");
+        item.append(make("span", "historique", "warn"));
+        const detail = make("div");
+        detail.append(make("b", anomaly.code || "anomalie_qualité"), make("div", `Rapport M3 · ${anomaly.report_date || quality.report_date || "date inconnue"}`, "incident-source"));
         item.appendChild(detail); list.appendChild(item);
       });
     }
@@ -529,6 +551,7 @@
       text("metric-drops", `Drops : ${formatNumber(collector.dropped_events)} · File : ${formatNumber(collector.persistence_queue_depth)}/${formatNumber(collector.persistence_queue_capacity)}`);
       renderServices(status);
       renderIncidents(payload.incidents || {});
+      renderQualityAnomalies(payload.incidents || {});
       renderMarkets(payload.markets || {});
       renderQuality(payload.quality || {});
       renderStorage(payload.storage || {}, payload.configuration || {});
