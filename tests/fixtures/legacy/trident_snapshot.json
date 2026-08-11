@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-06-24T15:24:04.482937Z",
+  "symbols": [
+    {
+      "symbol": "SPY",
+      "price": 5140,
+      "best_bid": 0,
+      "best_ask": 0,
+      "bid_depth_10bps": 0,
+      "ask_depth_10bps": 0,
+      "source": "rest_fallback"
+    }
+  ]
+}

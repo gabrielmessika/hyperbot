@@ -1,0 +1,2647 @@
+{
+  "files": [
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1614.0,
+        "inferred_gap_count": 4,
+        "largest_gap_ms": 7447733.0,
+        "median_interval_ms": 538.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 21510
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:22:55.670000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:00.957000Z",
+      "line_count": 21511,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660473087682,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 21511,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "e9b32e1c4d4f718864d4bc8d02029e5a08eb313deff3eae764ef1bbfe2de9333",
+      "size_bytes": 4206959,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/ARB/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "ask_depth_10bps",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10bps",
+        "coin",
+        "mid",
+        "spread_bps",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1614.0,
+        "inferred_gap_count": 4,
+        "largest_gap_ms": 7447733.0,
+        "median_interval_ms": 538.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 21510
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:22:55.670000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:00.957000Z",
+      "line_count": 21511,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660469241034,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 21511,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "6fca347e58f9f162a693095c5a29ff8976a5b1f096d6d28f0783f7a0af69ed70",
+      "size_bytes": 4238866,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/AVAX/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "ask_depth_10bps",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10bps",
+        "coin",
+        "mid",
+        "spread_bps",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1614.0,
+        "inferred_gap_count": 6,
+        "largest_gap_ms": 7447203.0,
+        "median_interval_ms": 538.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 22652
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T09:50:40.544000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:00.957000Z",
+      "line_count": 22653,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660473087682,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 22653,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "3e757c9b743d395f13ad0e69625ec3fdab054b75ba3b8b2ae4de486326d9caa9",
+      "size_bytes": 4449827,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/BTC/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "ask_depth_10bps",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10bps",
+        "coin",
+        "mid",
+        "spread_bps",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1614.0,
+        "inferred_gap_count": 4,
+        "largest_gap_ms": 7447733.0,
+        "median_interval_ms": 538.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 21510
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:22:55.670000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:00.957000Z",
+      "line_count": 21511,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660465394386,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 21511,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "da190d456bbf51ab403a71a9a808ae81a66b7c7ccca5476b66f82b7146e253cb",
+      "size_bytes": 4412265,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/DOGE/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "ask_depth_10bps",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10bps",
+        "coin",
+        "mid",
+        "spread_bps",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1614.0,
+        "inferred_gap_count": 6,
+        "largest_gap_ms": 7447733.0,
+        "median_interval_ms": 538.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 22648
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T09:50:41.054000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:00.957000Z",
+      "line_count": 22650,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660469241034,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 22650,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "5a71eb04368bc590467ae679027df93f8651f8698e683efe2c5ac343d6236cf2",
+      "size_bytes": 4470862,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/ETH/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "ask_depth_10bps",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10bps",
+        "coin",
+        "mid",
+        "spread_bps",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1614.0,
+        "inferred_gap_count": 4,
+        "largest_gap_ms": 7447733.0,
+        "median_interval_ms": 538.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 21508
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:22:55.670000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:00.957000Z",
+      "line_count": 21510,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660469241034,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 21510,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "4d7acc43a42f0f9c534e35bcc937e6829abf942abca5fa45ea9bad44c400d7db",
+      "size_bytes": 4283826,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/HYPE/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "ask_depth_10bps",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10bps",
+        "coin",
+        "mid",
+        "spread_bps",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1614.0,
+        "inferred_gap_count": 4,
+        "largest_gap_ms": 7447733.0,
+        "median_interval_ms": 538.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 21510
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:22:55.670000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:00.957000Z",
+      "line_count": 21511,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660469241034,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 21511,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "58a2fd1e1ec623a192f6d4d266f880a93cc2caac161da26b183524a71e93285c",
+      "size_bytes": 4272706,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/LINK/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "ask_depth_10bps",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10bps",
+        "coin",
+        "mid",
+        "spread_bps",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1614.0,
+        "inferred_gap_count": 4,
+        "largest_gap_ms": 7447733.0,
+        "median_interval_ms": 538.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 21510
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:22:55.670000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:00.957000Z",
+      "line_count": 21511,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660469241034,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 21511,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "330674af1bae062de1f0607c4028ccb8fda9ef33ede0e96343bb8ea87a9a8bae",
+      "size_bytes": 4196075,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/NEAR/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "ask_depth_10bps",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10bps",
+        "coin",
+        "mid",
+        "spread_bps",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1614.0,
+        "inferred_gap_count": 4,
+        "largest_gap_ms": 7447733.0,
+        "median_interval_ms": 538.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 21510
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:22:55.670000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:00.957000Z",
+      "line_count": 21511,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660465394386,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 21511,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "417942dd5f3fc1841b4ab96adabf1cc7a37610961b864a3b6bc4ab38ba4a91a8",
+      "size_bytes": 4208047,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/OP/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "ask_depth_10bps",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10bps",
+        "coin",
+        "mid",
+        "spread_bps",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1614.0,
+        "inferred_gap_count": 6,
+        "largest_gap_ms": 7447733.0,
+        "median_interval_ms": 538.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 22648
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T09:50:41.054000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:00.957000Z",
+      "line_count": 22650,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660473087682,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 22650,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "9818b93f04527eaf40ddcfa114bad0926fa31b7fd111bc7503e6b2a81f909d0d",
+      "size_bytes": 4432025,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/SOL/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "ask_depth_10bps",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10bps",
+        "coin",
+        "mid",
+        "spread_bps",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1614.0,
+        "inferred_gap_count": 4,
+        "largest_gap_ms": 7447733.0,
+        "median_interval_ms": 538.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 21508
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:22:55.670000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:00.957000Z",
+      "line_count": 21510,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660469241034,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 21510,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "3b079f0529785f4f9e076981faee3f158511f97b0b65b6c6fe9655830e0617b9",
+      "size_bytes": 4325706,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/SUI/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "ask_depth_10bps",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10bps",
+        "coin",
+        "mid",
+        "spread_bps",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1614.0,
+        "inferred_gap_count": 4,
+        "largest_gap_ms": 7447733.0,
+        "median_interval_ms": 538.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 21509
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:22:55.670000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:00.957000Z",
+      "line_count": 21510,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660465394386,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 21510,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "53e1c7206677a0b2bf2e5c9d5e9ca9d4673743e4851c19b06b0438a66e3f8a05",
+      "size_bytes": 4216066,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/XRP/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "ask_depth_10bps",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10bps",
+        "coin",
+        "mid",
+        "spread_bps",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 31572.0,
+        "inferred_gap_count": 180,
+        "largest_gap_ms": 7079000.0,
+        "median_interval_ms": 10524.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 2,
+        "positive_interval_count": 641
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:16:53.805000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:40:46.425000Z",
+      "line_count": 900,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660480780979,
+      "quality_flags": [
+        "legacy_research_only",
+        "out_of_order_timestamps",
+        "inferred_time_gaps"
+      ],
+      "record_count": 900,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "63fc648740be7452dc19aed279ee81cd34e6ddc4456d89f2d038dbfed32f9487",
+      "size_bytes": 76356,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/ARB/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "coin",
+        "is_buy",
+        "price",
+        "size",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 16689.0,
+        "inferred_gap_count": 266,
+        "largest_gap_ms": 7375098.0,
+        "median_interval_ms": 5563.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 1,
+        "positive_interval_count": 1364
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:17:08.744000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:40:49.808000Z",
+      "line_count": 2037,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660476934331,
+      "quality_flags": [
+        "legacy_research_only",
+        "out_of_order_timestamps",
+        "inferred_time_gaps"
+      ],
+      "record_count": 2037,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "82b5c05fea156d8ea80e8728ca1a3fccee2e213e8cdc27020837fe337a3e18e2",
+      "size_bytes": 170692,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/AVAX/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "coin",
+        "is_buy",
+        "price",
+        "size",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 771.0,
+        "inferred_gap_count": 4327,
+        "largest_gap_ms": 7442012.0,
+        "median_interval_ms": 257.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 30048
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T09:50:39.202000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:01.295000Z",
+      "line_count": 101016,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660473087682,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 101016,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "1223bc912db24a4f9c847ef19df92fd51b3b454747c863f92d0ee70667527d91",
+      "size_bytes": 8707958,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/BTC/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "coin",
+        "is_buy",
+        "price",
+        "size",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 13261.5,
+        "inferred_gap_count": 336,
+        "largest_gap_ms": 7285531.0,
+        "median_interval_ms": 4420.5,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 1,
+        "positive_interval_count": 1486
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:18:02.928000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:40:51.546000Z",
+      "line_count": 1983,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660480780979,
+      "quality_flags": [
+        "legacy_research_only",
+        "out_of_order_timestamps",
+        "inferred_time_gaps"
+      ],
+      "record_count": 1983,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "3efb075502c3f6f03d4873915c2980a1fe16d5835aa593d379f7e02254e790b7",
+      "size_bytes": 172554,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/DOGE/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "coin",
+        "is_buy",
+        "price",
+        "size",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1842.0,
+        "inferred_gap_count": 1892,
+        "largest_gap_ms": 7447830.0,
+        "median_interval_ms": 614.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 13563
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T09:50:22.146000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:01.223000Z",
+      "line_count": 32860,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660476934331,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 32860,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "2cb109b3c2e25b9ed1b4294ee099354f13235238f9b274814fff1fe18cc3732f",
+      "size_bytes": 2767815,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/ETH/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "coin",
+        "is_buy",
+        "price",
+        "size",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 2034.0,
+        "inferred_gap_count": 1726,
+        "largest_gap_ms": 7424491.0,
+        "median_interval_ms": 678.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 10400
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:22:24.171000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:01.023000Z",
+      "line_count": 32054,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660476934331,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 32054,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "efe1efd34214068a34504efa073a697998c937cf6ca918b33ddae4b23a0719f6",
+      "size_bytes": 2683774,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/HYPE/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "coin",
+        "is_buy",
+        "price",
+        "size",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 15049.5,
+        "inferred_gap_count": 264,
+        "largest_gap_ms": 7390359.0,
+        "median_interval_ms": 5016.5,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 1,
+        "positive_interval_count": 1358
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:17:14.953000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:40:50.357000Z",
+      "line_count": 2061,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660476934331,
+      "quality_flags": [
+        "legacy_research_only",
+        "out_of_order_timestamps",
+        "inferred_time_gaps"
+      ],
+      "record_count": 2061,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "d97b95f3e666450eab37d3de302a8253f10fc2acbb0c34013ac2e58a2cb25e35",
+      "size_bytes": 170685,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/LINK/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "coin",
+        "is_buy",
+        "price",
+        "size",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 33582.0,
+        "inferred_gap_count": 179,
+        "largest_gap_ms": 7067546.0,
+        "median_interval_ms": 11194.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 2,
+        "positive_interval_count": 587
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:18:44.013000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:40:27.741000Z",
+      "line_count": 741,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660476934331,
+      "quality_flags": [
+        "legacy_research_only",
+        "out_of_order_timestamps",
+        "inferred_time_gaps"
+      ],
+      "record_count": 741,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "47e72e5362dae2c61cc86ca5f1ba953924020ecfbe7555cf2465c67b633af0da",
+      "size_bytes": 62150,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/NEAR/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "coin",
+        "is_buy",
+        "price",
+        "size",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 61849.5,
+        "inferred_gap_count": 72,
+        "largest_gap_ms": 6690384.0,
+        "median_interval_ms": 20616.5,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 2,
+        "positive_interval_count": 550
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:09:42.705000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:40:56.788000Z",
+      "line_count": 653,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660476934331,
+      "quality_flags": [
+        "legacy_research_only",
+        "out_of_order_timestamps",
+        "inferred_time_gaps"
+      ],
+      "record_count": 653,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "bb8dbc4f15ac4e090a16fe5d9da8aa82babf3c8505671aa894a2908c59d73120",
+      "size_bytes": 54509,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/OP/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "coin",
+        "is_buy",
+        "price",
+        "size",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 2137.5,
+        "inferred_gap_count": 1669,
+        "largest_gap_ms": 7446696.0,
+        "median_interval_ms": 712.5,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 9778
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T09:50:24.269000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:41:01.023000Z",
+      "line_count": 22906,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660476934331,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 22906,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "a8a5b27f772a46414263ba15c6a5cb19f36224d82e642db70934903bdd672da5",
+      "size_bytes": 1889806,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/SOL/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "coin",
+        "is_buy",
+        "price",
+        "size",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 12900.0,
+        "inferred_gap_count": 337,
+        "largest_gap_ms": 7320867.0,
+        "median_interval_ms": 4300.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 2,
+        "positive_interval_count": 1349
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:15:47.253000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:40:52.396000Z",
+      "line_count": 1954,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660480780979,
+      "quality_flags": [
+        "legacy_research_only",
+        "out_of_order_timestamps",
+        "inferred_time_gaps"
+      ],
+      "record_count": 1954,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "548ea887ab6c694a44815c65a75811befe796cd4db67054ea1abc3b87dee7d18",
+      "size_bytes": 164690,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/SUI/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "coin",
+        "is_buy",
+        "price",
+        "size",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 8166.0,
+        "inferred_gap_count": 465,
+        "largest_gap_ms": 7391623.0,
+        "median_interval_ms": 2722.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 1,
+        "positive_interval_count": 2437
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-01T10:19:54.097000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-01T16:40:57.000000Z",
+      "line_count": 3953,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775061660480780979,
+      "quality_flags": [
+        "legacy_research_only",
+        "out_of_order_timestamps",
+        "inferred_time_gaps"
+      ],
+      "record_count": 3953,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "55ae4d8e1995ce65b4e59cbeb3fef088adc0e8101f809278e961d0553ffcca71",
+      "size_bytes": 328774,
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/XRP/2026-04-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "coin",
+        "is_buy",
+        "price",
+        "size",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 5670000.0,
+        "inferred_gap_count": 1,
+        "largest_gap_ms": 24960000.0,
+        "median_interval_ms": 1890000.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 4
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-05T07:40:00.000000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-05T15:40:00.000000Z",
+      "line_count": 7,
+      "malformed_record_count": 0,
+      "mtime_ns": 1775403633897620833,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 7,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "8373d8bbe2b1c2be5cb7b1b80e6d60c6471921349bf329df1235e11cf0f80689",
+      "size_bytes": 7248,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-04-05.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "regime_snapshot",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 7252626.512,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": 2417542.171,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 6
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-23T09:24:34.464976Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-23T13:56:21.398262Z",
+      "line_count": 7,
+      "malformed_record_count": 0,
+      "mtime_ns": 1776952581393279411,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 7,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "92946561c8a4116a27a8828f9f0161841621a622cb548b43fcef60aec7ce3292",
+      "size_bytes": 11751,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-04-23.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 182275.464,
+        "inferred_gap_count": 1,
+        "largest_gap_ms": 203361.043,
+        "median_interval_ms": 60758.488,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 3
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-24T14:00:26.298880Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-24T14:05:06.153145Z",
+      "line_count": 4,
+      "malformed_record_count": 0,
+      "mtime_ns": 1777039506152819615,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 4,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "e96312b01aedf76e7419b9c63bcf818bdea048bea7aec92ca15689620db3f89f",
+      "size_bytes": 6980,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-04-24.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1759260.696,
+        "inferred_gap_count": 3,
+        "largest_gap_ms": 4740853.938,
+        "median_interval_ms": 586420.232,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 8
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-27T18:45:22.302689Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-27T22:00:21.111108Z",
+      "line_count": 9,
+      "malformed_record_count": 0,
+      "mtime_ns": 1777327221109145297,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 9,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "e5c0af2b8ec955f25823c2c497313cb9261e99029bd633d685716d55622af27c",
+      "size_bytes": 15705,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-04-27.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 651993.154,
+        "inferred_gap_count": 1,
+        "largest_gap_ms": 7542213.901,
+        "median_interval_ms": 217331.052,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 1,
+        "positive_interval_count": 6
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-04-29T08:43:00.000000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-29T11:07:48.711219Z",
+      "line_count": 13,
+      "malformed_record_count": 0,
+      "mtime_ns": 1777460868705019830,
+      "quality_flags": [
+        "legacy_research_only",
+        "out_of_order_timestamps",
+        "inferred_time_gaps"
+      ],
+      "record_count": 13,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 2,
+      "sha256": "f9dba9b6d2b761ed75b39d47bacbe4fbcd76b2259813403b8807ae3dc8f89cca",
+      "size_bytes": 32609,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-04-29.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": null,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": null,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 0
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-05-01T22:21:03.596712Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-05-01T22:21:03.596712Z",
+      "line_count": 1,
+      "malformed_record_count": 0,
+      "mtime_ns": 1777674063597163774,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 1,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "5994807ba11cd1340bdf0b195383306ff980a441d4b627345e6d7e2a80e02126",
+      "size_bytes": 1745,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-01.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 639906.971,
+        "inferred_gap_count": 1,
+        "largest_gap_ms": 25911765.978,
+        "median_interval_ms": 213302.323,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 6
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-05-02T08:00:20.198754Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-05-02T15:31:20.762306Z",
+      "line_count": 7,
+      "malformed_record_count": 0,
+      "mtime_ns": 1777735880756024203,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 7,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "3bf08186e9c6fd91682c6a81fa2a513690f07efb8e3d2f87c80da257b56d42ae",
+      "size_bytes": 12215,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-02.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 75588.747,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": 25196.249,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 1
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-05-03T18:55:38.401755Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-05-03T18:56:03.598004Z",
+      "line_count": 2,
+      "malformed_record_count": 0,
+      "mtime_ns": 1777834563593473161,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 2,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "9ef2b825c5534dcfbd73ae7aa42d1d34389013a8c4c114eb0ca0f20853e81602",
+      "size_bytes": 3490,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-03.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 653478.606,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": 217826.202,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 2
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-05-05T20:03:50.445122Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-05-05T20:11:06.097526Z",
+      "line_count": 3,
+      "malformed_record_count": 0,
+      "mtime_ns": 1778011866091043561,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 3,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "61b656e4c31f1899af7eb9f127040363b43058c64878ebe31980526d61c9d248",
+      "size_bytes": 5235,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-05.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 7107096.588,
+        "inferred_gap_count": 2,
+        "largest_gap_ms": 21491769.673,
+        "median_interval_ms": 2369032.196,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 7
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-05-13T10:08:49.973853Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-05-13T20:52:36.248835Z",
+      "line_count": 8,
+      "malformed_record_count": 0,
+      "mtime_ns": 1778705556246778940,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 8,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "6f85a57c820d943d1dafd630b2251ef71d7b82e7c5c981444ac4e5b484b07ac1",
+      "size_bytes": 17596,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-13.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": null,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": null,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 0
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-05-16T12:46:39.139644Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-05-16T12:46:39.139644Z",
+      "line_count": 1,
+      "malformed_record_count": 0,
+      "mtime_ns": 1778935599135388160,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 1,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "b429b769209e75156233e24a26fd9305b8fb6d7e338b5169ef39ab0eb267c806",
+      "size_bytes": 2131,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-16.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1081507.657,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": 360502.552,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 2
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-05-17T20:43:47.545576Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-05-17T20:55:48.550681Z",
+      "line_count": 3,
+      "malformed_record_count": 0,
+      "mtime_ns": 1779051348549025104,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 3,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "dd422aa556ef262f85e4d67bed70aa6267b6270944adaf62a76ab6cca11441c3",
+      "size_bytes": 6393,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-17.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 933033.458,
+        "inferred_gap_count": 1,
+        "largest_gap_ms": 2330942.393,
+        "median_interval_ms": 311011.153,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 4
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-05-26T19:54:07.195127Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-05-26T20:44:56.100986Z",
+      "line_count": 5,
+      "malformed_record_count": 0,
+      "mtime_ns": 1779828296095038510,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 5,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "ad4fa8821a1debbe55e74f5f80d9a7dc820e9da0b1a12c54c44b5b9dca109d05",
+      "size_bytes": 10655,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-26.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 22748309.067,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": 7582769.689,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 2
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-05-27T13:31:48.918478Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-05-27T17:44:34.457856Z",
+      "line_count": 3,
+      "malformed_record_count": 0,
+      "mtime_ns": 1779903874453370353,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 3,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "55eb348c143e9d5745be40f9ed7778c4d9e51c028387843b987ec46578ce15b4",
+      "size_bytes": 6393,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-27.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 27053747.534,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": 9017915.844,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 2
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-05-29T08:10:57.955085Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-05-29T13:11:33.786774Z",
+      "line_count": 3,
+      "malformed_record_count": 0,
+      "mtime_ns": 1780060293784928442,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 3,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "86b471dcdabb1ca2fa32922ab10c0a32420c3c8c4cae7d92e0e4c45057253866",
+      "size_bytes": 6393,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-29.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": null,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": null,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 0
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-06-02T06:12:21.880085Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-06-02T06:12:21.880085Z",
+      "line_count": 1,
+      "malformed_record_count": 0,
+      "mtime_ns": 1780380741879579712,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 1,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "3171440a370d5e990f79099bfd2cb71170a09ff33d1519a374b4f57f61d81be9",
+      "size_bytes": 2131,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-02.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": null,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": null,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 0
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-06-05T08:14:17.024040Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-06-05T08:14:17.024040Z",
+      "line_count": 1,
+      "malformed_record_count": 0,
+      "mtime_ns": 1780647257019102843,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 1,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "c6f70e9c565b68ced392e57eb125bc51241f3c086c77fe05db0953354782b1ea",
+      "size_bytes": 2131,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-05.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": null,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": null,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 0
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-06-07T11:07:09.542653Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-06-07T11:07:09.542653Z",
+      "line_count": 1,
+      "malformed_record_count": 0,
+      "mtime_ns": 1780830429537641861,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 1,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "e792a4f0b3bab61b68cfb26430517b422ab3433d86201a1a3e35fc4ee827641c",
+      "size_bytes": 2131,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-07.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": null,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": null,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 0
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-06-09T05:47:33.660242Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-06-09T05:47:33.660242Z",
+      "line_count": 1,
+      "malformed_record_count": 0,
+      "mtime_ns": 1780984053659559238,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 1,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "df81881b2481b026aa36494b85fa56c6f0627cb678a15bc0896a370a2265c67d",
+      "size_bytes": 2131,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-09.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": null,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": null,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 0
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-06-10T11:54:13.152606Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-06-10T11:54:13.152606Z",
+      "line_count": 1,
+      "malformed_record_count": 0,
+      "mtime_ns": 1781092453151980052,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 1,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "cc4ffe8b6e74b00a71dda7dbd5754884abd8b5cf49b96e057ac423b8efe35f12",
+      "size_bytes": 2131,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-10.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": null,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": null,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 0
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-06-12T06:16:39.132305Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-06-12T06:16:39.132305Z",
+      "line_count": 1,
+      "malformed_record_count": 0,
+      "mtime_ns": 1781244999129468721,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 1,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "9712ff02ebfb18bae537e87106dfc02174d9f5a3caae6b03f9e4389ff9077fa8",
+      "size_bytes": 2131,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-12.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 127076.952,
+        "inferred_gap_count": 2,
+        "largest_gap_ms": 505000.999,
+        "median_interval_ms": 42358.984,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 5
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-06-14T20:41:51.929416Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-06-14T20:55:40.197171Z",
+      "line_count": 6,
+      "malformed_record_count": 0,
+      "mtime_ns": 1781470540193630534,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 6,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "c517b663bd3e6ead1966e4c77b7ca24009ed1c3ac7ac65cf82fadaf7bf675586",
+      "size_bytes": 12786,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-14.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 634314.648,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": 211438.216,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 2
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-06-15T07:47:00.244719Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-06-15T07:54:03.121151Z",
+      "line_count": 3,
+      "malformed_record_count": 0,
+      "mtime_ns": 1781510043117870771,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 3,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "2899fc6d576403a614a1784e7a49d19492104568ddaa29f1a480f1cb764a78ca",
+      "size_bytes": 6393,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-15.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": null,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": null,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 0
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-06-18T08:22:41.914897Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-06-18T08:22:41.914897Z",
+      "line_count": 1,
+      "malformed_record_count": 0,
+      "mtime_ns": 1781770961914825830,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 1,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "50571499f9bc1b3ddb35e85070992fda1970eaf24d3301fa3237d3949aa07490",
+      "size_bytes": 2131,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-18.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 12366713.52,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": 4122237.84,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 5
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-06-22T08:56:33.280555Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-06-22T15:29:23.055338Z",
+      "line_count": 6,
+      "malformed_record_count": 0,
+      "mtime_ns": 1782142163052549130,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 6,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "eeb080a3cd1bd0d707dba2822afac58178a26e12d5ed4f55b2daaaf149c586fe",
+      "size_bytes": 12786,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-22.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 2348229.084,
+        "inferred_gap_count": 1,
+        "largest_gap_ms": 8804019.564,
+        "median_interval_ms": 782743.028,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 11
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-06-23T09:13:57.004266Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-06-23T13:29:03.606439Z",
+      "line_count": 12,
+      "malformed_record_count": 0,
+      "mtime_ns": 1782221343603225655,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 12,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "ff201a91e5d7a6df8250a64ac9460a007d99048ddeb2498c29cbe83feb81509a",
+      "size_bytes": 25572,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-23.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": null,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": null,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 0
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-06-24T15:24:04.482937Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-06-24T15:24:04.482937Z",
+      "line_count": 1,
+      "malformed_record_count": 0,
+      "mtime_ns": 1782314644479746137,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 1,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "ea345df9b22f9038f68181cd1dede7f8e7185e7720b2e7483782eebaf1d38ed9",
+      "size_bytes": 2131,
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-24.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "capture_reason",
+        "cluster_regime_snapshots",
+        "regime_snapshot",
+        "stream_source",
+        "symbols",
+        "timestamp"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 5528.274,
+        "inferred_gap_count": 14,
+        "largest_gap_ms": 45480.503,
+        "median_interval_ms": 1842.758,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 629
+      },
+      "dataset_tier": "B",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-05-27T07:49:35.978658Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-05-27T08:13:09.442000Z",
+      "line_count": 1260,
+      "malformed_record_count": 0,
+      "mtime_ns": 1779869591211460073,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 1260,
+      "repeated_capture_candidates": [
+        "/workspaces/trident/server-data/hip4/logs/hip4_nautilus_shadow/book_snapshots.jsonl"
+      ],
+      "schema_variant_count": 3,
+      "sha256": "0483bd1d27513f0941d37e64567fb85602f0f5252dbd1f83fdcbcec0fa3c4620",
+      "size_bytes": 502048,
+      "source_name": "hip4_nautilus_books",
+      "source_path": "/workspaces/trident/server-data/hip4/logs/hip4_nautilus_shadow/archive_before_nautilus_ws_clean_20260527T081334Z/book_snapshots.jsonl",
+      "timestamp_fields": [
+        "ts_event"
+      ],
+      "top_level_fields": [
+        "ask_depth_10",
+        "ask_size",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10",
+        "bid_size",
+        "coin",
+        "instrument_id",
+        "is_snapshot",
+        "market_id",
+        "side_name",
+        "source",
+        "source_latency_ms",
+        "spread",
+        "ts_event",
+        "ts_init",
+        "update_count"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 48696.0,
+        "inferred_gap_count": 11,
+        "largest_gap_ms": 202672202.0,
+        "median_interval_ms": 16232.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 217,
+        "positive_interval_count": 178847
+      },
+      "dataset_tier": "B",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-05-27T08:13:37.566000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-07-06T20:10:43.088000Z",
+      "line_count": 892492,
+      "malformed_record_count": 0,
+      "mtime_ns": 1783368648600652570,
+      "quality_flags": [
+        "legacy_research_only",
+        "out_of_order_timestamps",
+        "inferred_time_gaps"
+      ],
+      "record_count": 892492,
+      "repeated_capture_candidates": [
+        "/workspaces/trident/server-data/hip4/logs/hip4_nautilus_shadow/archive_before_nautilus_ws_clean_20260527T081334Z/book_snapshots.jsonl"
+      ],
+      "schema_variant_count": 2,
+      "sha256": "e23544528c2e64b6c72ae42e93458e4ed6a002993aa4808e75ce933cb435d959",
+      "size_bytes": 407668198,
+      "source_name": "hip4_nautilus_books",
+      "source_path": "/workspaces/trident/server-data/hip4/logs/hip4_nautilus_shadow/book_snapshots.jsonl",
+      "timestamp_fields": [
+        "ts_event"
+      ],
+      "top_level_fields": [
+        "ask_depth_10",
+        "ask_size",
+        "best_ask",
+        "best_bid",
+        "bid_depth_10",
+        "bid_size",
+        "coin",
+        "instrument_id",
+        "is_snapshot",
+        "market_id",
+        "side_name",
+        "source",
+        "source_latency_ms",
+        "spread",
+        "ts_event",
+        "ts_init",
+        "update_count"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 1533.081,
+        "inferred_gap_count": 3287,
+        "largest_gap_ms": 19390.382,
+        "median_interval_ms": 511.027,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 118167
+      },
+      "dataset_tier": "B",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-07-05T17:58:27.563577Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-07-06T20:10:42.905386Z",
+      "line_count": 118168,
+      "malformed_record_count": 0,
+      "mtime_ns": 1783368632857266473,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 118168,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "ff1865eddea9195ef678055f78955e00925b9aeb6f81c223ccda3e11acb060d5",
+      "size_bytes": 193761363,
+      "source_name": "hip4_paper",
+      "source_path": "/workspaces/trident/server-data/hip4/logs/hip4_outcome_mainnet_paper/market_observations.jsonl",
+      "timestamp_fields": [
+        "ts"
+      ],
+      "top_level_fields": [
+        "books",
+        "bucket_index",
+        "bucket_lower",
+        "bucket_upper",
+        "class_name",
+        "coins",
+        "description",
+        "expiry_iso",
+        "expiry_ts",
+        "market_id",
+        "mode",
+        "name",
+        "now_ts",
+        "outcome",
+        "period",
+        "raw",
+        "side_names",
+        "support_reason",
+        "support_status",
+        "thresholds",
+        "ts",
+        "underlying"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 26326604.961,
+        "inferred_gap_count": 40,
+        "largest_gap_ms": 259210640.113,
+        "median_interval_ms": 8775534.987,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 98
+      },
+      "dataset_tier": "B",
+      "duplicate_paths": [],
+      "file_format": "csv",
+      "first_timestamp_utc": "2026-05-24T16:05:45.707728Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-07-06T06:05:45.133147Z",
+      "line_count": 100,
+      "malformed_record_count": 0,
+      "mtime_ns": 1783368620453962080,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 99,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "b1e13ba3e1d4790d335e88528a3a2a923285972cb694fa672e3194c13cd3d760",
+      "size_bytes": 19150,
+      "source_name": "hip4_paper",
+      "source_path": "/workspaces/trident/server-data/hip4/logs/hip4_outcome_mainnet_paper/settlements.csv",
+      "timestamp_fields": [
+        "ts"
+      ],
+      "top_level_fields": [
+        "fee_usdc",
+        "gross_pnl_usdc",
+        "is_win",
+        "market_id",
+        "net_pnl_usdc",
+        "notes",
+        "outcome",
+        "payout_usdc",
+        "pnl_usdc",
+        "result",
+        "side",
+        "ts",
+        "underlying"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 38865.612,
+        "inferred_gap_count": 1635,
+        "largest_gap_ms": 205845827.677,
+        "median_interval_ms": 12955.204,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 145386
+      },
+      "dataset_tier": "B",
+      "duplicate_paths": [],
+      "file_format": "csv",
+      "first_timestamp_utc": "2026-05-24T15:28:06.351727Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-07-06T20:10:19.476626Z",
+      "line_count": 145388,
+      "malformed_record_count": 0,
+      "mtime_ns": 1783368619475938070,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 145387,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "99a25dcb84735313ce2e940d3e282e12a70d8ff1e33d292077da906bfc45b922",
+      "size_bytes": 35823319,
+      "source_name": "hip4_paper",
+      "source_path": "/workspaces/trident/server-data/hip4/logs/hip4_outcome_mainnet_paper/shadow_maker_quotes.csv",
+      "timestamp_fields": [
+        "ts"
+      ],
+      "top_level_fields": [
+        "ask",
+        "bid",
+        "decision_approved",
+        "decision_reason",
+        "edge_type",
+        "maker_edge",
+        "maker_net_edge",
+        "maker_price",
+        "market_id",
+        "mid_price",
+        "min_order_ok",
+        "outcome",
+        "quote_size_usdc",
+        "quote_token_qty",
+        "reason",
+        "reference_price",
+        "seconds_left",
+        "side",
+        "spread_capture",
+        "strike",
+        "ts",
+        "underlying",
+        "win_probability",
+        "would_quote"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 19858670.415,
+        "inferred_gap_count": 42,
+        "largest_gap_ms": 281177230.684,
+        "median_interval_ms": 6619556.805,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 101
+      },
+      "dataset_tier": "B",
+      "duplicate_paths": [],
+      "file_format": "csv",
+      "first_timestamp_utc": "2026-05-24T15:28:06.353757Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-07-06T09:51:52.893511Z",
+      "line_count": 103,
+      "malformed_record_count": 0,
+      "mtime_ns": 1783331512892160037,
+      "quality_flags": [
+        "legacy_research_only",
+        "inferred_time_gaps"
+      ],
+      "record_count": 102,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "e1931d8087090bab45f16b13144035e3429f73558e96d56733e4f1c25f2319b0",
+      "size_bytes": 12143,
+      "source_name": "hip4_paper",
+      "source_path": "/workspaces/trident/server-data/hip4/logs/hip4_outcome_mainnet_paper/trades.csv",
+      "timestamp_fields": [
+        "ts"
+      ],
+      "top_level_fields": [
+        "cloid",
+        "coin",
+        "edge_type",
+        "market_id",
+        "oid",
+        "outcome",
+        "price",
+        "side",
+        "size_usdc",
+        "status",
+        "token_qty",
+        "ts",
+        "underlying"
+      ]
+    },
+    {
+      "blank_line_count": 0,
+      "cadence": {
+        "gap_threshold_ms": 2700000.0,
+        "inferred_gap_count": 0,
+        "largest_gap_ms": null,
+        "median_interval_ms": 900000.0,
+        "method": "consecutive positive timestamp deltas; gaps > 3x median",
+        "out_of_order_count": 0,
+        "positive_interval_count": 2880
+      },
+      "dataset_tier": "C",
+      "duplicate_paths": [],
+      "file_format": "jsonl",
+      "first_timestamp_utc": "2026-03-20T18:29:59.999000Z",
+      "invalid_timestamp_count": 0,
+      "last_timestamp_utc": "2026-04-19T18:29:59.999000Z",
+      "line_count": 2881,
+      "malformed_record_count": 0,
+      "mtime_ns": 1776622631308501629,
+      "quality_flags": [
+        "legacy_research_only"
+      ],
+      "record_count": 2881,
+      "repeated_capture_candidates": [],
+      "schema_variant_count": 1,
+      "sha256": "5efedbfdadf3c8b3ad95e3cc70fe66fc962e01c6cb25d2e7ce782f46e936eef7",
+      "size_bytes": 10735175,
+      "source_name": "trident_replay_sample",
+      "source_path": "/workspaces/trident/server-data/replay_inputs/special_symbols_hl_15m_30d_20260419.jsonl",
+      "timestamp_fields": [
+        "timestamp"
+      ],
+      "top_level_fields": [
+        "regime_snapshot",
+        "symbols",
+        "timestamp"
+      ]
+    }
+  ],
+  "gap_policy": "Gaps are inferred when a consecutive positive timestamp delta exceeds three times the file median. They do not prove a collector outage.",
+  "issues": [],
+  "reproducibility_note": "No generation timestamp is stored; unchanged sources and scanner produce byte-identical JSON.",
+  "scanner_version": "1.0.0",
+  "schema_version": 1,
+  "sources": [
+    {
+      "absent": "carnet L2 complet, continuité longue et fills maker",
+      "approximated": "activité et markouts sur une fenêtre courte",
+      "known": "BBO, profondeur agrégée et trades du 1er avril",
+      "name": "gbot_microstructure",
+      "patterns": [
+        "l2/*/*.jsonl",
+        "trades/*/*.jsonl"
+      ],
+      "root": "/workspaces/trident/data/gbot_archive",
+      "tier": "C"
+    },
+    {
+      "absent": "diffs L2 complets, volume devant une quote et position de file",
+      "approximated": "cadence et trous temporels inférés",
+      "known": "BBO, profondeur agrégée, marché et timestamps publiés",
+      "name": "hip4_nautilus_books",
+      "patterns": [
+        "book_snapshots.jsonl",
+        "**/book_snapshots.jsonl"
+      ],
+      "root": "/workspaces/trident/server-data/hip4/logs/hip4_nautilus_shadow",
+      "tier": "B"
+    },
+    {
+      "absent": "ACK/fills maker réels et position de file vérifiable",
+      "approximated": "markouts et reproduction des décisions historiques",
+      "known": "observations, quotes shadow, trades paper et settlements",
+      "name": "hip4_paper",
+      "patterns": [
+        "market_observations.jsonl",
+        "shadow_maker_quotes.csv",
+        "trades.csv",
+        "settlements.csv"
+      ],
+      "root": "/workspaces/trident/server-data/hip4/logs/hip4_outcome_mainnet_paper",
+      "tier": "B"
+    },
+    {
+      "absent": "continuité, complétude et preuve d'exécution",
+      "approximated": "compatibilité de schéma uniquement",
+      "known": "petits snapshots dispersés utilisables comme fixtures",
+      "name": "trident_live_snapshots",
+      "patterns": [
+        "*.jsonl"
+      ],
+      "root": "/workspaces/trident/data/live_snapshots",
+      "tier": "C"
+    },
+    {
+      "absent": "microstructure de file et preuve d'exécution maker",
+      "approximated": "régimes et compatibilité de schéma",
+      "known": "features agrégées et snapshots directionnels historiques",
+      "name": "trident_replay_sample",
+      "patterns": [
+        "special_symbols_hl_15m_30d_20260419.jsonl"
+      ],
+      "root": "/workspaces/trident/server-data/replay_inputs",
+      "tier": "C"
+    }
+  ],
+  "summary": {
+    "exact_duplicate_group_count": 0,
+    "fatal_issue_count": 0,
+    "file_count": 58,
+    "malformed_record_count": 0,
+    "repeated_capture_group_count": 1,
+    "total_line_count": 1625170,
+    "total_record_count": 1625167,
+    "total_size_bytes": 717705513,
+    "warning_issue_count": 0
+  }
+}

@@ -1,0 +1,1688 @@
+{
+  "dataset_coverage": [
+    {
+      "absent": "carnet L2 complet, continuité longue et fills maker",
+      "approximated": "activité et markouts sur une fenêtre courte",
+      "dataset_tier": "C",
+      "known": "BBO, profondeur agrégée et trades du 1er avril",
+      "source_name": "gbot_microstructure"
+    },
+    {
+      "absent": "diffs L2 complets, volume devant une quote et position de file",
+      "approximated": "cadence et trous temporels inférés",
+      "dataset_tier": "B",
+      "known": "BBO, profondeur agrégée, marché et timestamps publiés",
+      "source_name": "hip4_nautilus_books"
+    },
+    {
+      "absent": "ACK/fills maker réels et position de file vérifiable",
+      "approximated": "markouts et reproduction des décisions historiques",
+      "dataset_tier": "B",
+      "known": "observations, quotes shadow, trades paper et settlements",
+      "source_name": "hip4_paper"
+    },
+    {
+      "absent": "continuité, complétude et preuve d'exécution",
+      "approximated": "compatibilité de schéma uniquement",
+      "dataset_tier": "C",
+      "known": "petits snapshots dispersés utilisables comme fixtures",
+      "source_name": "trident_live_snapshots"
+    },
+    {
+      "absent": "microstructure de file et preuve d'exécution maker",
+      "approximated": "régimes et compatibilité de schéma",
+      "dataset_tier": "C",
+      "known": "features agrégées et snapshots directionnels historiques",
+      "source_name": "trident_replay_sample"
+    }
+  ],
+  "event_type_counts": [
+    {
+      "count": 1196480,
+      "name": "LegacyBookObservation"
+    },
+    {
+      "count": 14532,
+      "name": "LegacyFeatureObservation"
+    },
+    {
+      "count": 145387,
+      "name": "LegacyQuoteObservation"
+    },
+    {
+      "count": 99,
+      "name": "LegacySettlementObservation"
+    },
+    {
+      "count": 203220,
+      "name": "LegacyTradeObservation"
+    }
+  ],
+  "files": [
+    {
+      "accepted_records": 5522,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 5522,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.e9b32e1c4d4f7188.errors.jsonl",
+      "error_sha256": "26fe8b64ba91093381478afda339a43c83a77e14291f046d2ba56cbc5a0d7829",
+      "error_size_bytes": 7983456,
+      "event_type_counts": [
+        {
+          "count": 5522,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.e9b32e1c4d4f7188.jsonl",
+      "output_sha256": "1e4c2bdaa2be00b9d873e815d2a1fdef22d842f16a45d45c68c8738020c6fd02",
+      "output_size_bytes": 6320512,
+      "rejected_records": 15989,
+      "rejection_counts": [
+        {
+          "count": 15989,
+          "name": "crossed_book"
+        }
+      ],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/ARB/2026-04-01.jsonl",
+      "source_sha256": "e9b32e1c4d4f718864d4bc8d02029e5a08eb313deff3eae764ef1bbfe2de9333"
+    },
+    {
+      "accepted_records": 5525,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 5525,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.6fca347e58f9f162.errors.jsonl",
+      "error_sha256": "a0dddb71d791f6a3276e9b56ebf5ddb3f4d82471c64ec3295f68a8e6b73bb788",
+      "error_size_bytes": 7997943,
+      "event_type_counts": [
+        {
+          "count": 5525,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.6fca347e58f9f162.jsonl",
+      "output_sha256": "e70350935b1c77e6be35524357cf743094b4b64378e9d514e5617cbb89c435b5",
+      "output_size_bytes": 6332631,
+      "rejected_records": 15986,
+      "rejection_counts": [
+        {
+          "count": 15986,
+          "name": "crossed_book"
+        }
+      ],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/AVAX/2026-04-01.jsonl",
+      "source_sha256": "6fca347e58f9f162a693095c5a29ff8976a5b1f096d6d28f0783f7a0af69ed70"
+    },
+    {
+      "accepted_records": 5547,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 5547,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.3e757c9b743d395f.errors.jsonl",
+      "error_sha256": "630d4dfedb511d25d71258523b5569312cdad0c92a11950da3c019a16b60e675",
+      "error_size_bytes": 8542047,
+      "event_type_counts": [
+        {
+          "count": 5547,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.3e757c9b743d395f.jsonl",
+      "output_sha256": "a2804a640584dc6b5b50fa643f5b51d8ec1d1ba550256b18d8d7b3e461ed28bb",
+      "output_size_bytes": 6351358,
+      "rejected_records": 17106,
+      "rejection_counts": [
+        {
+          "count": 17106,
+          "name": "crossed_book"
+        }
+      ],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/BTC/2026-04-01.jsonl",
+      "source_sha256": "3e757c9b743d395f13ad0e69625ec3fdab054b75ba3b8b2ae4de486326d9caa9"
+    },
+    {
+      "accepted_records": 5506,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 5506,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.da190d456bbf51ab.errors.jsonl",
+      "error_sha256": "d22682ec21cb6823d9c252e0d2e4bd286b29ddb43f467f80546b3d2a2016e2fa",
+      "error_size_bytes": 8007435,
+      "event_type_counts": [
+        {
+          "count": 5506,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.da190d456bbf51ab.jsonl",
+      "output_sha256": "81984cb65c78ea2f7c8efd30287eeb7da0dbbb3045d6c6255ffd3bddae119d5a",
+      "output_size_bytes": 6332533,
+      "rejected_records": 16005,
+      "rejection_counts": [
+        {
+          "count": 16005,
+          "name": "crossed_book"
+        }
+      ],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/DOGE/2026-04-01.jsonl",
+      "source_sha256": "da190d456bbf51ab403a71a9a808ae81a66b7c7ccca5476b66f82b7146e253cb"
+    },
+    {
+      "accepted_records": 5531,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 5531,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.5a71eb04368bc590.errors.jsonl",
+      "error_sha256": "51ff558982a997c0bb3ce0c1a6d4cad140e3f0fbb7f78ae68562b93dd5377bc5",
+      "error_size_bytes": 8548477,
+      "event_type_counts": [
+        {
+          "count": 5531,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.5a71eb04368bc590.jsonl",
+      "output_sha256": "6d201df6155c45467ad2353ec10a71dcffbd26e989a2a6789201d80c0f6f1dbb",
+      "output_size_bytes": 6333442,
+      "rejected_records": 17119,
+      "rejection_counts": [
+        {
+          "count": 17119,
+          "name": "crossed_book"
+        }
+      ],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/ETH/2026-04-01.jsonl",
+      "source_sha256": "5a71eb04368bc590467ae679027df93f8651f8698e683efe2c5ac343d6236cf2"
+    },
+    {
+      "accepted_records": 5504,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 5504,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.4d7acc43a42f0f9c.errors.jsonl",
+      "error_sha256": "1bd4ed3487305067f6c2828a04e8608dd61007d2115de44972eec166155c38cb",
+      "error_size_bytes": 8007940,
+      "event_type_counts": [
+        {
+          "count": 5504,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.4d7acc43a42f0f9c.jsonl",
+      "output_sha256": "d360072ca6fdf282f0bc759a782e99742b1fe7a320865beb0972fb0cf8365932",
+      "output_size_bytes": 6296564,
+      "rejected_records": 16006,
+      "rejection_counts": [
+        {
+          "count": 16006,
+          "name": "crossed_book"
+        }
+      ],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/HYPE/2026-04-01.jsonl",
+      "source_sha256": "4d7acc43a42f0f9c534e35bcc937e6829abf942abca5fa45ea9bad44c400d7db"
+    },
+    {
+      "accepted_records": 5517,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 5517,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.58a2fd1e1ec623a1.errors.jsonl",
+      "error_sha256": "3de33122af2ce552e787912a257bf21fb7826992611be6503da49c820e7aa91b",
+      "error_size_bytes": 8001949,
+      "event_type_counts": [
+        {
+          "count": 5517,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.58a2fd1e1ec623a1.jsonl",
+      "output_sha256": "b46783b5c1a83dcee78000a0c88f2f74930ea6b5f9c6a863d1294c5b6e2bb6a4",
+      "output_size_bytes": 6295486,
+      "rejected_records": 15994,
+      "rejection_counts": [
+        {
+          "count": 15994,
+          "name": "crossed_book"
+        }
+      ],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/LINK/2026-04-01.jsonl",
+      "source_sha256": "58a2fd1e1ec623a192f6d4d266f880a93cc2caac161da26b183524a71e93285c"
+    },
+    {
+      "accepted_records": 5582,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 5582,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.330674af1bae062d.errors.jsonl",
+      "error_sha256": "4c7245e1fa38bbc23bed2e42b170d04362a3ce95a6a1d2cb8a621f40ff086902",
+      "error_size_bytes": 7969473,
+      "event_type_counts": [
+        {
+          "count": 5582,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.330674af1bae062d.jsonl",
+      "output_sha256": "8f02277479697fbfe3ea538bd1043d62b39d1d1c4b1456bba584deb77ccc81e2",
+      "output_size_bytes": 6384920,
+      "rejected_records": 15929,
+      "rejection_counts": [
+        {
+          "count": 15929,
+          "name": "crossed_book"
+        }
+      ],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/NEAR/2026-04-01.jsonl",
+      "source_sha256": "330674af1bae062de1f0607c4028ccb8fda9ef33ede0e96343bb8ea87a9a8bae"
+    },
+    {
+      "accepted_records": 5573,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 5573,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.417942dd5f3fc184.errors.jsonl",
+      "error_sha256": "7e1250257835b7b106399734cea97882f622518ca5ac6e88b4cf65567db4c53b",
+      "error_size_bytes": 7942071,
+      "event_type_counts": [
+        {
+          "count": 5573,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.417942dd5f3fc184.jsonl",
+      "output_sha256": "9ace013996ffbfac43c8534711ae5aa5289d19fbb6c8cbd2f880d26b59bf8ccd",
+      "output_size_bytes": 6366391,
+      "rejected_records": 15938,
+      "rejection_counts": [
+        {
+          "count": 15938,
+          "name": "crossed_book"
+        }
+      ],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/OP/2026-04-01.jsonl",
+      "source_sha256": "417942dd5f3fc1841b4ab96adabf1cc7a37610961b864a3b6bc4ab38ba4a91a8"
+    },
+    {
+      "accepted_records": 5569,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 5569,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.9818b93f04527eaf.errors.jsonl",
+      "error_sha256": "5c3297ea90cfea1894a317e44516fce90ba727c8ccf65bfca210810d97593641",
+      "error_size_bytes": 8529563,
+      "event_type_counts": [
+        {
+          "count": 5569,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.9818b93f04527eaf.jsonl",
+      "output_sha256": "e81eb37c6bdd15d44fdc7c4b6dbb32a6d01bad4da284b515f2bbd0582d5fe6aa",
+      "output_size_bytes": 6365395,
+      "rejected_records": 17081,
+      "rejection_counts": [
+        {
+          "count": 17081,
+          "name": "crossed_book"
+        }
+      ],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/SOL/2026-04-01.jsonl",
+      "source_sha256": "9818b93f04527eaf40ddcfa114bad0926fa31b7fd111bc7503e6b2a81f909d0d"
+    },
+    {
+      "accepted_records": 5512,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 5512,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.3b079f0529785f4f.errors.jsonl",
+      "error_sha256": "1228785c69201bb5641da0cf07ae71da35d03d48afccd1c56192b0de3bdb78c5",
+      "error_size_bytes": 7987942,
+      "event_type_counts": [
+        {
+          "count": 5512,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.3b079f0529785f4f.jsonl",
+      "output_sha256": "3d95b060224d2395a44569ae64746ca90dbd5855980baf191ed8bf3950590764",
+      "output_size_bytes": 6304399,
+      "rejected_records": 15998,
+      "rejection_counts": [
+        {
+          "count": 15998,
+          "name": "crossed_book"
+        }
+      ],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/SUI/2026-04-01.jsonl",
+      "source_sha256": "3b079f0529785f4f9e076981faee3f158511f97b0b65b6c6fe9655830e0617b9"
+    },
+    {
+      "accepted_records": 5504,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 5504,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.53e1c7206677a0b2.errors.jsonl",
+      "error_sha256": "ea5bc076fa92b85164177016f4409ae73e254a3c7c90b44229305f1443db6fc5",
+      "error_size_bytes": 7991910,
+      "event_type_counts": [
+        {
+          "count": 5504,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.53e1c7206677a0b2.jsonl",
+      "output_sha256": "79e2d149dd8743cf3844ca33832a5136483526b45f70fee0a63b2197dcbf0cdb",
+      "output_size_bytes": 6290464,
+      "rejected_records": 16006,
+      "rejection_counts": [
+        {
+          "count": 16006,
+          "name": "crossed_book"
+        }
+      ],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/l2/XRP/2026-04-01.jsonl",
+      "source_sha256": "53e1c7206677a0b2bf2e5c9d5e9ca9d4673743e4851c19b06b0438a66e3f8a05"
+    },
+    {
+      "accepted_records": 900,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 900,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.63fc648740be7452.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 900,
+          "name": "LegacyTradeObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.63fc648740be7452.jsonl",
+      "output_sha256": "1db7ba60930d6873b4127a1a1f5f8401d6aba7ba1f21b0941a51b764a65fe74e",
+      "output_size_bytes": 959148,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/ARB/2026-04-01.jsonl",
+      "source_sha256": "63fc648740be7452dc19aed279ee81cd34e6ddc4456d89f2d038dbfed32f9487"
+    },
+    {
+      "accepted_records": 2037,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 2037,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.82b5c05fea156d8e.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 2037,
+          "name": "LegacyTradeObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.82b5c05fea156d8e.jsonl",
+      "output_sha256": "b4629a1f2ac105810a57259f80876c938f29fe248e4184f76b6e706ac65fb7e5",
+      "output_size_bytes": 2171956,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/AVAX/2026-04-01.jsonl",
+      "source_sha256": "82b5c05fea156d8ea80e8728ca1a3fccee2e213e8cdc27020837fe337a3e18e2"
+    },
+    {
+      "accepted_records": 101016,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 101016,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.1223bc912db24a4f.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 101016,
+          "name": "LegacyTradeObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.1223bc912db24a4f.jsonl",
+      "output_sha256": "ff3285e1c8a9af49b1e7492b368c9a4f6c19015360353fc8db482165dac31138",
+      "output_size_bytes": 107996597,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/BTC/2026-04-01.jsonl",
+      "source_sha256": "1223bc912db24a4f9c847ef19df92fd51b3b454747c863f92d0ee70667527d91"
+    },
+    {
+      "accepted_records": 1983,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 1983,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.3efb075502c3f6f0.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 1983,
+          "name": "LegacyTradeObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.3efb075502c3f6f0.jsonl",
+      "output_sha256": "606a2f1baa46681c84b97bf580f6fd1d4f1edd312950404dda446c954dfefd9a",
+      "output_size_bytes": 2120736,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/DOGE/2026-04-01.jsonl",
+      "source_sha256": "3efb075502c3f6f03d4873915c2980a1fe16d5835aa593d379f7e02254e790b7"
+    },
+    {
+      "accepted_records": 32860,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 32860,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.2cb109b3c2e25b9e.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 32860,
+          "name": "LegacyTradeObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.2cb109b3c2e25b9e.jsonl",
+      "output_sha256": "40f8e3cf42b6cd7e3a14af3b472a444c75117b0e05322b982378ea61844e2d72",
+      "output_size_bytes": 35058089,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/ETH/2026-04-01.jsonl",
+      "source_sha256": "2cb109b3c2e25b9ed1b4294ee099354f13235238f9b274814fff1fe18cc3732f"
+    },
+    {
+      "accepted_records": 32054,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 32054,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.efe1efd34214068a.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 32054,
+          "name": "LegacyTradeObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.efe1efd34214068a.jsonl",
+      "output_sha256": "605f75407e355aea6b5fefbaf2746636f522d42f8f93c6b414be37e871c0b867",
+      "output_size_bytes": 34213804,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/HYPE/2026-04-01.jsonl",
+      "source_sha256": "efe1efd34214068a34504efa073a697998c937cf6ca918b33ddae4b23a0719f6"
+    },
+    {
+      "accepted_records": 2061,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 2061,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.d97b95f3e666450e.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 2061,
+          "name": "LegacyTradeObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.d97b95f3e666450e.jsonl",
+      "output_sha256": "1afdb7d7e606d4e9bad8733a5dfe52cbc2435f97617eaba82e19301f6ad639eb",
+      "output_size_bytes": 2195541,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/LINK/2026-04-01.jsonl",
+      "source_sha256": "d97b95f3e666450eab37d3de302a8253f10fc2acbb0c34013ac2e58a2cb25e35"
+    },
+    {
+      "accepted_records": 741,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 741,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.47e72e5362dae2c6.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 741,
+          "name": "LegacyTradeObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.47e72e5362dae2c6.jsonl",
+      "output_sha256": "b0729a9e1f3b930500dc3e75621cac67bc09ee3fea3b774415f41c815609d3e2",
+      "output_size_bytes": 789704,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/NEAR/2026-04-01.jsonl",
+      "source_sha256": "47e72e5362dae2c61cc86ca5f1ba953924020ecfbe7555cf2465c67b633af0da"
+    },
+    {
+      "accepted_records": 653,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 653,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.bb8dbc4f15ac4e09.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 653,
+          "name": "LegacyTradeObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.bb8dbc4f15ac4e09.jsonl",
+      "output_sha256": "2807c30ea3374aef41767850c2dae31712486b2c2bff45c7be80c6999eaa37df",
+      "output_size_bytes": 694341,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/OP/2026-04-01.jsonl",
+      "source_sha256": "bb8dbc4f15ac4e090a16fe5d9da8aa82babf3c8505671aa894a2908c59d73120"
+    },
+    {
+      "accepted_records": 22906,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 22906,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.a8a5b27f772a4641.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 22906,
+          "name": "LegacyTradeObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.a8a5b27f772a4641.jsonl",
+      "output_sha256": "4bf3221883148d5b987790dcdeb45f95ad0c4ddf99c0de439ed1e88d2d4c1ca2",
+      "output_size_bytes": 24395298,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/SOL/2026-04-01.jsonl",
+      "source_sha256": "a8a5b27f772a46414263ba15c6a5cb19f36224d82e642db70934903bdd672da5"
+    },
+    {
+      "accepted_records": 1954,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 1954,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.548ea887ab6c694a.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 1954,
+          "name": "LegacyTradeObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.548ea887ab6c694a.jsonl",
+      "output_sha256": "ea845b64ac7b2e333ec7e7c99c1d8eb59a96ebe8b5a8b117169426f7ca8dd692",
+      "output_size_bytes": 2082411,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/SUI/2026-04-01.jsonl",
+      "source_sha256": "548ea887ab6c694a44815c65a75811befe796cd4db67054ea1abc3b87dee7d18"
+    },
+    {
+      "accepted_records": 3953,
+      "adapter_name": "LegacyGbotAdapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "C",
+      "emitted_events": 3953,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.55ae4d8e1995ce65.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 3953,
+          "name": "LegacyTradeObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/gbot_microstructure/2026-04-01.jsonl.55ae4d8e1995ce65.jsonl",
+      "output_sha256": "e3b0b7c50c86fe2bf535a4c79887045619c0911bdc72a5b55ed1a684d0a15909",
+      "output_size_bytes": 4209513,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "gbot_microstructure",
+      "source_path": "/workspaces/trident/data/gbot_archive/trades/XRP/2026-04-01.jsonl",
+      "source_sha256": "55ae4d8e1995ce65b4e59cbeb3fef088adc0e8101f809278e961d0553ffcca71"
+    },
+    {
+      "accepted_records": 7,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 16,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-04-05.jsonl.8373d8bbe2b1c2be.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 16,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-04-05.jsonl.8373d8bbe2b1c2be.jsonl",
+      "output_sha256": "abf0dabbacf1271add6193636ff3cdad3d24ee3ea16803aa05ff2f57fde11a09",
+      "output_size_bytes": 18841,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-04-05.jsonl",
+      "source_sha256": "8373d8bbe2b1c2be5cb7b1b80e6d60c6471921349bf329df1235e11cf0f80689"
+    },
+    {
+      "accepted_records": 7,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 7,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-04-23.jsonl.92946561c8a4116a.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 7,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-04-23.jsonl.92946561c8a4116a.jsonl",
+      "output_sha256": "d072bb57a06c5910ba999e01e479aeb30e99686e7dc1d1eac17c482ac121470b",
+      "output_size_bytes": 8393,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-04-23.jsonl",
+      "source_sha256": "92946561c8a4116a27a8828f9f0161841621a622cb548b43fcef60aec7ce3292"
+    },
+    {
+      "accepted_records": 4,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 4,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-04-24.jsonl.e96312b01aedf76e.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 4,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-04-24.jsonl.e96312b01aedf76e.jsonl",
+      "output_sha256": "fec42e9572abf78f3302ec9773aa852b0b74f0cb9151ae2d939eb65f8a2cf7b7",
+      "output_size_bytes": 4796,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-04-24.jsonl",
+      "source_sha256": "e96312b01aedf76e7419b9c63bcf818bdea048bea7aec92ca15689620db3f89f"
+    },
+    {
+      "accepted_records": 9,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 9,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-04-27.jsonl.e5c0af2b8ec955f2.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 9,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-04-27.jsonl.e5c0af2b8ec955f2.jsonl",
+      "output_sha256": "926a88dfa688e3af9a1d67fef48d30c54f31a49f3f46084a875360b8be2ca690",
+      "output_size_bytes": 10791,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-04-27.jsonl",
+      "source_sha256": "e5c0af2b8ec955f25823c2c497313cb9261e99029bd633d685716d55622af27c"
+    },
+    {
+      "accepted_records": 13,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 20,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-04-29.jsonl.f9dba9b6d2b761ed.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 20,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-04-29.jsonl.f9dba9b6d2b761ed.jsonl",
+      "output_sha256": "f774f220123850ba0f4e7ca9d65bf6ce7942f49f84a6fb853e4ccf3dbc215417",
+      "output_size_bytes": 24134,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-04-29.jsonl",
+      "source_sha256": "f9dba9b6d2b761ed75b39d47bacbe4fbcd76b2259813403b8807ae3dc8f89cca"
+    },
+    {
+      "accepted_records": 1,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 1,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-01.jsonl.5994807ba11cd134.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 1,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-01.jsonl.5994807ba11cd134.jsonl",
+      "output_sha256": "543a5427300eb186c1731887263f34b750bc801ae66c8bd55563afd2147fdaac",
+      "output_size_bytes": 1199,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-01.jsonl",
+      "source_sha256": "5994807ba11cd1340bdf0b195383306ff980a441d4b627345e6d7e2a80e02126"
+    },
+    {
+      "accepted_records": 7,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 7,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-02.jsonl.3bf08186e9c6fd91.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 7,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-02.jsonl.3bf08186e9c6fd91.jsonl",
+      "output_sha256": "a4ff82c07b4c2bf0a056fb8dc3ea28a25a35342eeaa1389407500a60ce2bfeb6",
+      "output_size_bytes": 8393,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-02.jsonl",
+      "source_sha256": "3bf08186e9c6fd91682c6a81fa2a513690f07efb8e3d2f87c80da257b56d42ae"
+    },
+    {
+      "accepted_records": 2,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 2,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-03.jsonl.9ef2b825c5534dcf.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 2,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-03.jsonl.9ef2b825c5534dcf.jsonl",
+      "output_sha256": "6678817baedb22357c6a0dca1104d296f6f43951fab69190178d91199346a25a",
+      "output_size_bytes": 2398,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-03.jsonl",
+      "source_sha256": "9ef2b825c5534dcfbd73ae7aa42d1d34389013a8c4c114eb0ca0f20853e81602"
+    },
+    {
+      "accepted_records": 3,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 3,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-05.jsonl.61b656e4c31f1899.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 3,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-05.jsonl.61b656e4c31f1899.jsonl",
+      "output_sha256": "39726e4df811a229a7a4819d46bdef5c449862c614c5d663cfe8140309d8d2c4",
+      "output_size_bytes": 3597,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-05.jsonl",
+      "source_sha256": "61b656e4c31f1899af7eb9f127040363b43058c64878ebe31980526d61c9d248"
+    },
+    {
+      "accepted_records": 8,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 8,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-13.jsonl.6f85a57c820d943d.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 8,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-13.jsonl.6f85a57c820d943d.jsonl",
+      "output_sha256": "e04b937d159475adbec2ed35960f8db845c268df1a02fd1839bd7159f1ff1065",
+      "output_size_bytes": 9592,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-13.jsonl",
+      "source_sha256": "6f85a57c820d943d1dafd630b2251ef71d7b82e7c5c981444ac4e5b484b07ac1"
+    },
+    {
+      "accepted_records": 1,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 1,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-16.jsonl.b429b769209e7515.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 1,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-16.jsonl.b429b769209e7515.jsonl",
+      "output_sha256": "8f6c720f7713e97c7801cb966da9b4bba20f3ec5b43c7a713af651967c8f91cb",
+      "output_size_bytes": 1199,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-16.jsonl",
+      "source_sha256": "b429b769209e75156233e24a26fd9305b8fb6d7e338b5169ef39ab0eb267c806"
+    },
+    {
+      "accepted_records": 3,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 3,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-17.jsonl.dd422aa556ef262f.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 3,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-17.jsonl.dd422aa556ef262f.jsonl",
+      "output_sha256": "e43cf3e18d909968cf427f80da83cb0c8a45d50c9a1d0cdf1f9eba126ee6771c",
+      "output_size_bytes": 3597,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-17.jsonl",
+      "source_sha256": "dd422aa556ef262f85e4d67bed70aa6267b6270944adaf62a76ab6cca11441c3"
+    },
+    {
+      "accepted_records": 5,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 5,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-26.jsonl.ad4fa8821a1debbe.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 5,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-26.jsonl.ad4fa8821a1debbe.jsonl",
+      "output_sha256": "a769d5ce7c67782e7f982c0f3f985b2b495868104b22bb60bd72e7ca3f749ed2",
+      "output_size_bytes": 5995,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-26.jsonl",
+      "source_sha256": "ad4fa8821a1debbe55e74f5f80d9a7dc820e9da0b1a12c54c44b5b9dca109d05"
+    },
+    {
+      "accepted_records": 3,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 3,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-27.jsonl.55eb348c143e9d57.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 3,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-27.jsonl.55eb348c143e9d57.jsonl",
+      "output_sha256": "d666be02ba8f6caa0ab60c0f2117674884a4083931f65cf95d5b9d8c60c17913",
+      "output_size_bytes": 3597,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-27.jsonl",
+      "source_sha256": "55eb348c143e9d5745be40f9ed7778c4d9e51c028387843b987ec46578ce15b4"
+    },
+    {
+      "accepted_records": 3,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 3,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-29.jsonl.86b471dcdabb1ca2.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 3,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-05-29.jsonl.86b471dcdabb1ca2.jsonl",
+      "output_sha256": "a7e0060e50adff0c5c42513f539c37809ef3116a170ef01c0dc9a3ec5d82bb88",
+      "output_size_bytes": 3597,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-05-29.jsonl",
+      "source_sha256": "86b471dcdabb1ca2fa32922ab10c0a32420c3c8c4cae7d92e0e4c45057253866"
+    },
+    {
+      "accepted_records": 1,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 1,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-02.jsonl.3171440a370d5e99.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 1,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-02.jsonl.3171440a370d5e99.jsonl",
+      "output_sha256": "88de9f01111e15b1a866ed6a87c948853d34f186d42ff88203f41147cfd4e5ec",
+      "output_size_bytes": 1199,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-02.jsonl",
+      "source_sha256": "3171440a370d5e990f79099bfd2cb71170a09ff33d1519a374b4f57f61d81be9"
+    },
+    {
+      "accepted_records": 1,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 1,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-05.jsonl.c6f70e9c565b68ce.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 1,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-05.jsonl.c6f70e9c565b68ce.jsonl",
+      "output_sha256": "f5b241214e10bb9a7451a140c091383e96781f6b2f294a72eea437db6b5458a1",
+      "output_size_bytes": 1199,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-05.jsonl",
+      "source_sha256": "c6f70e9c565b68ced392e57eb125bc51241f3c086c77fe05db0953354782b1ea"
+    },
+    {
+      "accepted_records": 1,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 1,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-07.jsonl.e792a4f0b3bab61b.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 1,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-07.jsonl.e792a4f0b3bab61b.jsonl",
+      "output_sha256": "9af44a9e98956462ce16aada74ca515007dd81eeb4541a2afefcc2f9cbc06acd",
+      "output_size_bytes": 1199,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-07.jsonl",
+      "source_sha256": "e792a4f0b3bab61b68cfb26430517b422ab3433d86201a1a3e35fc4ee827641c"
+    },
+    {
+      "accepted_records": 1,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 1,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-09.jsonl.df81881b2481b026.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 1,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-09.jsonl.df81881b2481b026.jsonl",
+      "output_sha256": "dd28c244477e2c4d63eb132de0eff35f19e1b4dc3bddcc3744b3e4dc5ea4c553",
+      "output_size_bytes": 1199,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-09.jsonl",
+      "source_sha256": "df81881b2481b026aa36494b85fa56c6f0627cb678a15bc0896a370a2265c67d"
+    },
+    {
+      "accepted_records": 1,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 1,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-10.jsonl.cc4ffe8b6e74b00a.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 1,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-10.jsonl.cc4ffe8b6e74b00a.jsonl",
+      "output_sha256": "cb7401485f1ba81d8e4d8b5073578eb77002840a74103c07d7d2d638d34e6e75",
+      "output_size_bytes": 1199,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-10.jsonl",
+      "source_sha256": "cc4ffe8b6e74b00a71dda7dbd5754884abd8b5cf49b96e057ac423b8efe35f12"
+    },
+    {
+      "accepted_records": 1,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 1,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-12.jsonl.9712ff02ebfb18ba.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 1,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-12.jsonl.9712ff02ebfb18ba.jsonl",
+      "output_sha256": "726b5ad55acc99423176ec406ac386c7251af9b5dd336dbd06f56faaf4dc34a6",
+      "output_size_bytes": 1199,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-12.jsonl",
+      "source_sha256": "9712ff02ebfb18bae537e87106dfc02174d9f5a3caae6b03f9e4389ff9077fa8"
+    },
+    {
+      "accepted_records": 6,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 6,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-14.jsonl.c517b663bd3e6ead.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 6,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-14.jsonl.c517b663bd3e6ead.jsonl",
+      "output_sha256": "a47ca02f158d2eb0f38dd1cc99d54c9ad53cf9d932d27965f47c09aa9f8ed183",
+      "output_size_bytes": 7194,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-14.jsonl",
+      "source_sha256": "c517b663bd3e6ead1966e4c77b7ca24009ed1c3ac7ac65cf82fadaf7bf675586"
+    },
+    {
+      "accepted_records": 3,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 3,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-15.jsonl.2899fc6d576403a6.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 3,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-15.jsonl.2899fc6d576403a6.jsonl",
+      "output_sha256": "ff022c5a025fa02eec521c4bd69e3873491f99dcd8824a4ceee75bcb242d7258",
+      "output_size_bytes": 3597,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-15.jsonl",
+      "source_sha256": "2899fc6d576403a614a1784e7a49d19492104568ddaa29f1a480f1cb764a78ca"
+    },
+    {
+      "accepted_records": 1,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 1,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-18.jsonl.50571499f9bc1b3d.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 1,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-18.jsonl.50571499f9bc1b3d.jsonl",
+      "output_sha256": "4c3f4dab7de3f2fca8ebe8507c2bc3d7ddf31b08bc163a5059aad4b04d956b99",
+      "output_size_bytes": 1199,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-18.jsonl",
+      "source_sha256": "50571499f9bc1b3ddb35e85070992fda1970eaf24d3301fa3237d3949aa07490"
+    },
+    {
+      "accepted_records": 6,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 6,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-22.jsonl.eeb080a3cd1bd0d7.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 6,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-22.jsonl.eeb080a3cd1bd0d7.jsonl",
+      "output_sha256": "06644cbc2a55e0601bdd9125fbaa83d783b210fdf444b83e4cdff35b785b5c04",
+      "output_size_bytes": 7194,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-22.jsonl",
+      "source_sha256": "eeb080a3cd1bd0d707dba2822afac58178a26e12d5ed4f55b2daaaf149c586fe"
+    },
+    {
+      "accepted_records": 12,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 12,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-23.jsonl.ff201a91e5d7a6df.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 12,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-23.jsonl.ff201a91e5d7a6df.jsonl",
+      "output_sha256": "ad2cd9694779a8ff4b20e217e1315e5e8e1fd82a7a0d86f2468263b19b2b043b",
+      "output_size_bytes": 14391,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-23.jsonl",
+      "source_sha256": "ff201a91e5d7a6df8250a64ac9460a007d99048ddeb2498c29cbe83feb81509a"
+    },
+    {
+      "accepted_records": 1,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 1,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-24.jsonl.ea345df9b22f9038.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 1,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_live_snapshots/2026-06-24.jsonl.ea345df9b22f9038.jsonl",
+      "output_sha256": "25b08cbc8adec27fefbabeabb9f71a894d8020d604680a2a4430781d9a887d03",
+      "output_size_bytes": 1199,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_live_snapshots",
+      "source_path": "/workspaces/trident/data/live_snapshots/2026-06-24.jsonl",
+      "source_sha256": "ea345df9b22f9038f68181cd1dede7f8e7185e7720b2e7483782eebaf1d38ed9"
+    },
+    {
+      "accepted_records": 1260,
+      "adapter_name": "LegacyHip4Adapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "B",
+      "emitted_events": 1260,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/hip4_nautilus_books/book_snapshots.jsonl.0483bd1d27513f09.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 1260,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/hip4_nautilus_books/book_snapshots.jsonl.0483bd1d27513f09.jsonl",
+      "output_sha256": "06d9d845f0fbca0a4228a4d161e5ec928bdd29fcc400ba9278d346d062c7d2cf",
+      "output_size_bytes": 1564242,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "hip4_nautilus_books",
+      "source_path": "/workspaces/trident/server-data/hip4/logs/hip4_nautilus_shadow/archive_before_nautilus_ws_clean_20260527T081334Z/book_snapshots.jsonl",
+      "source_sha256": "0483bd1d27513f0941d37e64567fb85602f0f5252dbd1f83fdcbcec0fa3c4620"
+    },
+    {
+      "accepted_records": 892492,
+      "adapter_name": "LegacyHip4Adapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "B",
+      "emitted_events": 892492,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/hip4_nautilus_books/book_snapshots.jsonl.e23544528c2e64b6.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 892492,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/hip4_nautilus_books/book_snapshots.jsonl.e23544528c2e64b6.jsonl",
+      "output_sha256": "aafd08e67ce9761a986bf035b9d000b456107a547159cb0f117fde72aaf64c27",
+      "output_size_bytes": 1062841933,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "hip4_nautilus_books",
+      "source_path": "/workspaces/trident/server-data/hip4/logs/hip4_nautilus_shadow/book_snapshots.jsonl",
+      "source_sha256": "e23544528c2e64b6c72ae42e93458e4ed6a002993aa4808e75ce933cb435d959"
+    },
+    {
+      "accepted_records": 118168,
+      "adapter_name": "LegacyHip4Adapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "B",
+      "emitted_events": 236336,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/hip4_paper/market_observations.jsonl.ff1865eddea9195e.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 236336,
+          "name": "LegacyBookObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/hip4_paper/market_observations.jsonl.ff1865eddea9195e.jsonl",
+      "output_sha256": "cc9216ea32b8c94b1461248bf7265a91cf9db52181a62d18be698e6f2a68661a",
+      "output_size_bytes": 283655051,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "hip4_paper",
+      "source_path": "/workspaces/trident/server-data/hip4/logs/hip4_outcome_mainnet_paper/market_observations.jsonl",
+      "source_sha256": "ff1865eddea9195ef678055f78955e00925b9aeb6f81c223ccda3e11acb060d5"
+    },
+    {
+      "accepted_records": 99,
+      "adapter_name": "LegacyHip4Adapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "B",
+      "emitted_events": 99,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/hip4_paper/settlements.csv.b1e13ba3e1d4790d.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 99,
+          "name": "LegacySettlementObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/hip4_paper/settlements.csv.b1e13ba3e1d4790d.jsonl",
+      "output_sha256": "6f14bd9b6856c22667835db862d8d9e3215afab1a503066a2707b22be2a61540",
+      "output_size_bytes": 109751,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "hip4_paper",
+      "source_path": "/workspaces/trident/server-data/hip4/logs/hip4_outcome_mainnet_paper/settlements.csv",
+      "source_sha256": "b1e13ba3e1d4790d335e88528a3a2a923285972cb694fa672e3194c13cd3d760"
+    },
+    {
+      "accepted_records": 145387,
+      "adapter_name": "LegacyHip4Adapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "B",
+      "emitted_events": 145387,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/hip4_paper/shadow_maker_quotes.csv.99a25dcb84735313.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 145387,
+          "name": "LegacyQuoteObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/hip4_paper/shadow_maker_quotes.csv.99a25dcb84735313.jsonl",
+      "output_sha256": "16288d2261fb475cc3f21f81cc21b6e9806424a510b0c3b6f226daa86990ef73",
+      "output_size_bytes": 185758348,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "hip4_paper",
+      "source_path": "/workspaces/trident/server-data/hip4/logs/hip4_outcome_mainnet_paper/shadow_maker_quotes.csv",
+      "source_sha256": "99a25dcb84735313ce2e940d3e282e12a70d8ff1e33d292077da906bfc45b922"
+    },
+    {
+      "accepted_records": 102,
+      "adapter_name": "LegacyHip4Adapter",
+      "adapter_version": "1.0.1",
+      "dataset_tier": "B",
+      "emitted_events": 102,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/hip4_paper/trades.csv.e1931d8087090bab.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 102,
+          "name": "LegacyTradeObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/hip4_paper/trades.csv.e1931d8087090bab.jsonl",
+      "output_sha256": "ff4858a31f2955b062a21a84f168ef44da9e9faeaa7cc11f0ead8a181a8369bd",
+      "output_size_bytes": 115509,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "hip4_paper",
+      "source_path": "/workspaces/trident/server-data/hip4/logs/hip4_outcome_mainnet_paper/trades.csv",
+      "source_sha256": "e1931d8087090bab45f16b13144035e3429f73558e96d56733e4f1c25f2319b0"
+    },
+    {
+      "accepted_records": 2881,
+      "adapter_name": "LegacyTridentSnapshotAdapter",
+      "adapter_version": "1.0.0",
+      "dataset_tier": "C",
+      "emitted_events": 14405,
+      "error_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_replay_sample/special_symbols_hl_15m_30d_20260419.jsonl.5efedbfdadf3c8b3.errors.jsonl",
+      "error_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error_size_bytes": 0,
+      "event_type_counts": [
+        {
+          "count": 14405,
+          "name": "LegacyFeatureObservation"
+        }
+      ],
+      "output_path": "/workspaces/hyperbot/data/legacy_imports/legacy-import-b674044f8ed8848f/trident_replay_sample/special_symbols_hl_15m_30d_20260419.jsonl.5efedbfdadf3c8b3.jsonl",
+      "output_sha256": "faef71c13487c4197c0b70e3d226aaa89a2733659859e033e30d1dc0b7a8bdf2",
+      "output_size_bytes": 17312103,
+      "rejected_records": 0,
+      "rejection_counts": [],
+      "source_name": "trident_replay_sample",
+      "source_path": "/workspaces/trident/server-data/replay_inputs/special_symbols_hl_15m_30d_20260419.jsonl",
+      "source_sha256": "5efedbfdadf3c8b3ad95e3cc70fe66fc962e01c6cb25d2e7ce782f46e936eef7"
+    }
+  ],
+  "import_config_hash": "b674044f8ed8848fbb790bc872a331ec67365b4c151701ba0fa1068d6034280b",
+  "importer_version": "1.0.0",
+  "inventory_manifest_path": "/workspaces/hyperbot/reports/legacy_inventory/manifest.json",
+  "inventory_manifest_sha256": "89d201eb1a4a9b3d406069357be3d33a9e00ce612e78467b80cfc1c2f049a463",
+  "rejection_counts": [
+    {
+      "count": 195157,
+      "name": "crossed_book"
+    }
+  ],
+  "replay_policy": [
+    {
+      "allowed": true,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "les données B/C sont admises uniquement pour la recherche ou comme borne optimiste",
+      "replay_use": "fair_value",
+      "required_label": "legacy_research_only"
+    },
+    {
+      "allowed": true,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "les données B/C sont admises uniquement pour la recherche ou comme borne optimiste",
+      "replay_use": "spread_analysis",
+      "required_label": "legacy_research_only"
+    },
+    {
+      "allowed": true,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "les données B/C sont admises uniquement pour la recherche ou comme borne optimiste",
+      "replay_use": "aggregated_depth",
+      "required_label": "legacy_research_only"
+    },
+    {
+      "allowed": true,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "les données B/C sont admises uniquement pour la recherche ou comme borne optimiste",
+      "replay_use": "markout_analysis",
+      "required_label": "legacy_research_only"
+    },
+    {
+      "allowed": true,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "les données B/C sont admises uniquement pour la recherche ou comme borne optimiste",
+      "replay_use": "outcome_parity",
+      "required_label": "legacy_research_only"
+    },
+    {
+      "allowed": true,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "les données B/C sont admises uniquement pour la recherche ou comme borne optimiste",
+      "replay_use": "market_selection",
+      "required_label": "legacy_research_only"
+    },
+    {
+      "allowed": true,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "les données B/C sont admises uniquement pour la recherche ou comme borne optimiste",
+      "replay_use": "stale_detection",
+      "required_label": "legacy_research_only"
+    },
+    {
+      "allowed": true,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "les données B/C sont admises uniquement pour la recherche ou comme borne optimiste",
+      "replay_use": "legacy_bot_reproduction",
+      "required_label": "legacy_research_only"
+    },
+    {
+      "allowed": true,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "les données B/C sont admises uniquement pour la recherche ou comme borne optimiste",
+      "replay_use": "optimistic_touch",
+      "required_label": "legacy_research_only_optimistic_touch"
+    },
+    {
+      "allowed": false,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "les données B/C ne prouvent ni file exacte, ni fills centraux/pessimistes, ni rentabilité live, ni promotion",
+      "replay_use": "exact_queue_position",
+      "required_label": null
+    },
+    {
+      "allowed": false,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "les données B/C ne prouvent ni file exacte, ni fills centraux/pessimistes, ni rentabilité live, ni promotion",
+      "replay_use": "partial_maker_fills",
+      "required_label": null
+    },
+    {
+      "allowed": false,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "les données B/C ne prouvent ni file exacte, ni fills centraux/pessimistes, ni rentabilité live, ni promotion",
+      "replay_use": "central_fill_model",
+      "required_label": null
+    },
+    {
+      "allowed": false,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "les données B/C ne prouvent ni file exacte, ni fills centraux/pessimistes, ni rentabilité live, ni promotion",
+      "replay_use": "pessimistic_fill_model",
+      "required_label": null
+    },
+    {
+      "allowed": false,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "le niveau de données ne suffit pas : les gates OOS, risque et autorisation séparée restent obligatoires",
+      "replay_use": "live_profitability_claim",
+      "required_label": null
+    },
+    {
+      "allowed": false,
+      "dataset_tiers": [
+        "B",
+        "C"
+      ],
+      "reason": "le niveau de données ne suffit pas : les gates OOS, risque et autorisation séparée restent obligatoires",
+      "replay_use": "canary_promotion",
+      "required_label": null
+    }
+  ],
+  "reproducibility_note": "No wall-clock field is stored. Existing derived files are accepted only when their byte-level checksum matches a fresh import.",
+  "run_id": "legacy-import-b674044f8ed8848f",
+  "schema_version": 1,
+  "summary": {
+    "accepted_records": 1430010,
+    "emitted_events": 1559718,
+    "error_size_bytes": 97510206,
+    "file_count": 58,
+    "output_size_bytes": 1844370257,
+    "rejected_records": 195157
+  }
+}

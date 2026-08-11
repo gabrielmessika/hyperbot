@@ -1,0 +1,25 @@
+{
+  "ts": "2026-07-05T17:58:28.065791Z",
+  "market_id": "BTC_GT_100_20260706_0600",
+  "support_status": "supported",
+  "books": {
+    "yes": {
+      "coin": "#1",
+      "bid": 0.4,
+      "ask": 0.5,
+      "bid_size": 2,
+      "ask_size": 3,
+      "bid_depth_usdc": 4,
+      "ask_depth_usdc": 5
+    },
+    "no": {
+      "coin": "#2",
+      "bid": 0.5,
+      "ask": 0.6,
+      "bid_size": 3,
+      "ask_size": 2,
+      "bid_depth_usdc": 5,
+      "ask_depth_usdc": 4
+    }
+  }
+}

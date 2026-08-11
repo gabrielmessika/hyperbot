@@ -1,6 +1,6 @@
 # HyperBot — plan de développement et suivi
 
-**Dernière mise à jour :** 10 août 2026
+**Dernière mise à jour :** 11 août 2026
 
 **Document stratégique :** [`HYPERBOT_FOUNDATION.md`](HYPERBOT_FOUNDATION.md)
 
@@ -33,7 +33,7 @@ Les statuts utilisés sont : `À faire`, `En cours`, `Terminé`, `Bloqué`.
 |---|---|---|---|
 | M0 | dépôt, workspace, packaging, règles agents | Terminé | tests/lint/types opérationnels |
 | M1 | contrats d'événements, config sûre, event store | Terminé | invariants et intégrité couverts par tests |
-| M1L | inventaire et import des archives TRIDENT | À faire | manifestes, adaptateurs et limites explicites |
+| M1L | inventaire et import des archives TRIDENT | Terminé | manifestes, adaptateurs et limites explicites |
 | M2 | catalogue de marchés et collector public | À faire | flux outcomes/HIP-3 enregistré sans ordre |
 | M3 | contrôle qualité et rapport quotidien | À faire | trous, fraîcheur et complétude mesurés |
 | M4 | replay déterministe et modèles de file | À faire | central + pessimiste reproductibles |
@@ -84,14 +84,14 @@ Limite connue : le store v1 détecte la modification d'un payload, mais pas la
 suppression d'une ligne complète. Un hash chaîné et un manifest de segments sont
 prévus dans M2 avant la collecte longue.
 
-## 5. Prochain lot — M1L import des données historiques
+## 5. Lot M1L livré — import des données historiques
 
 Le lot M1L accélère la recherche sans transformer les archives TRIDENT en
 preuve d'exécution. Il précède M2 mais n'en remplace aucune exigence.
 
 ### M1L.1 Inventaire reproductible
 
-Statut : `À faire`
+Statut : `Terminé`
 
 - scanner en lecture seule les sources autorisées sous `/workspaces/trident` ;
 - produire un manifest JSON et un résumé Markdown ;
@@ -112,9 +112,29 @@ Sources prioritaires :
 Critères d'acceptation : inventaire relançable à résultat identique, erreurs de
 lecture explicites, aucune copie massive et aucun fichier source modifié.
 
+Livré le 11 août 2026 :
+
+- scanner déterministe et strictement en lecture seule dans
+  `src/hyperbot/legacy/manifest.py` ;
+- CLI `scripts/inventory_legacy_data.py`, qui refuse d'écrire sous la racine
+  TRIDENT ;
+- manifest JSON, rapport Markdown et checksums indépendants sous
+  `reports/legacy_inventory/` ;
+- 58 fichiers inventoriés, 717 705 513 octets, 1 625 170 lignes physiques et
+  1 625 167 records valides ;
+- zéro record malformé, zéro erreur fatale, zéro doublon SHA-256 exact et une
+  capture Nautilus archivée signalée comme candidate de fetch répété ;
+- schémas de premier niveau, périodes UTC, cadences médianes et trous temporels
+  inférés consignés par fichier.
+
+La mesure des trous reste une heuristique `delta > 3 × médiane`. Sur un flux de
+trades irrégulier elle mesure aussi l'inactivité naturelle et ne prouve donc pas
+une panne du collector. Les checksums ont été calculés fichier par fichier ;
+aucune archive n'a été copiée ou modifiée.
+
 ### M1L.2 Adaptateurs de schéma
 
-Statut : `À faire`
+Statut : `Terminé`
 
 - créer `LegacyGbotAdapter`, `LegacyTridentSnapshotAdapter` et
   `LegacyHip4Adapter` ;
@@ -128,9 +148,28 @@ Statut : `À faire`
 Critères d'acceptation : conversion déterministe, rapport des lignes
 acceptées/rejetées et aucune dépendance runtime du package vers TRIDENT.
 
+Livré le 11 août 2026 :
+
+- `LegacyHip4Adapter`, `LegacyGbotAdapter` et
+  `LegacyTridentSnapshotAdapter`, sans import runtime de code TRIDENT ;
+- événements immuables pour BBO/profondeur agrégée, trades, quotes paper,
+  settlements et features historiques ;
+- provenance obligatoire avec niveau B/C, chemins et SHA-256 source, numéro et
+  hash du record, sous-record et version d'adaptateur ;
+- importer qui revérifie taille, mtime et checksum avant lecture, refuse les
+  symlinks et publie les sorties dérivées de façon immuable ;
+- flux JSONL séparé pour chaque source rejetée et rapport d'acceptation sous
+  `reports/legacy_import/`.
+
+Import complet `legacy-import-b674044f8ed8848f` : 1 430 010 records acceptés,
+195 157 rejetés et 1 559 718 événements émis. Tous les rejets sont des BBO GBOT
+croisés (`best_bid > best_ask`) ; ils sont exclus plutôt que réparés. Les 21 887
+observations HIP-4 sans payload de carnet sont conservées comme carnets vides,
+avec champs nuls et flags `empty_book`/`book_payload_absent`.
+
 ### M1L.3 Replays autorisés sur legacy
 
-Statut : `À faire`
+Statut : `Terminé`
 
 Les données B/C peuvent alimenter :
 
@@ -151,6 +190,15 @@ Elles ne peuvent pas alimenter comme vérité :
 Critère de sortie M1L : un rapport de couverture indique précisément ce qui est
 connu, approximé ou absent pour chaque dataset, et aucun résultat legacy n'est
 présenté sans son niveau de preuve.
+
+Livré le 11 août 2026 : `src/hyperbot/legacy/policy.py` centralise une gate
+fail-closed. Les usages de recherche autorisés imposent le label
+`legacy_research_only`; `optimistic_touch` impose en plus
+`legacy_research_only_optimistic_touch`. La file exacte, les fills maker
+partiels, les modèles central/pessimiste, une affirmation de rentabilité live
+et une promotion canary sont refusés dès qu'une donnée B/C est présente. La
+matrice complète et les limites par dataset figurent dans
+`reports/legacy_import/coverage.md`.
 
 ## 6. Lot M2 — catalogue et collector
 
@@ -250,16 +298,17 @@ Ce lot ne peut pas commencer à la suite d'un simple développement. Il exige :
 
 ## 8. Séquence de travail recommandée
 
-1. M1L.1 inventaire et manifestes des archives ;
-2. M1L.2 adaptateurs HIP-4 puis GBOT ;
-3. démarrer les replays legacy de fair value/markout ;
-4. M2.1 catalogue et fixtures publiques ;
-5. M2.2 client WebSocket factice puis public ;
-6. M2.3 segmentation et manifests ;
-7. M3 rapport qualité quotidien ;
-8. lancer la collecte continue de niveau A ;
-9. développer M4 pendant l'accumulation des trente jours ;
-10. valider les modèles de fair value sur legacy puis sur niveau A OOS.
+1. M1L.1 inventaire et manifestes des archives — terminé ;
+2. M1L.2 adaptateurs HIP-4 puis GBOT — terminé ;
+3. M1L.3 politique et couverture de preuve — terminé ;
+4. démarrer les replays legacy de fair value/markout ;
+5. M2.1 catalogue et fixtures publiques ;
+6. M2.2 client WebSocket factice puis public ;
+7. M2.3 segmentation et manifests ;
+8. M3 rapport qualité quotidien ;
+9. lancer la collecte continue de niveau A ;
+10. développer M4 pendant l'accumulation des trente jours ;
+11. valider les modèles de fair value sur legacy puis sur niveau A OOS.
 
 Cette séquence évite d'optimiser une stratégie avant de connaître la qualité et
 la représentativité de ses données.
@@ -280,8 +329,9 @@ Les fichiers de données restent locaux et ignorés par Git.
 
 M1L lit `/workspaces/trident` sans le modifier. Les archives volumineuses restent
 à leur emplacement ; HyperBot versionne seulement manifestes, fixtures minimaux
-et rapports. Une exécution sans accès à TRIDENT reste possible pour le package,
-les tests et le collector.
+et rapports. Le run dérivé courant occupe environ 1,9 Gio sous
+`data/legacy_imports/` et reste ignoré par Git. Une exécution sans accès à
+TRIDENT reste possible pour le package, les tests et le collector.
 
 M2 ajoutera un collector public local. Le service `hyperbot-collector` et le
 script `scripts/fetch_hyperbot_data.sh` ne seront créés qu'après stabilisation du

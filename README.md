@@ -14,11 +14,11 @@ Le statut d'implémentation et les prochains lots sont suivis dans
 
 ## État actuel
 
-- phase : instrumentation locale, lot M1 terminé ;
+- phase : instrumentation locale, lots M1 et M1L terminés ;
 - trading live : désactivé ;
 - livré : contrats d'événements, configuration fail-closed et event store ;
-- prochaine priorité : import contrôlé des archives TRIDENT, puis catalogue de
-  marchés et collector public ;
+- prochaine priorité : premiers replays legacy fair value/markout, puis
+  catalogue de marchés M2.1 et collector public ;
 - dépôt TRIDENT : référence historique uniquement.
 
 ## Données historiques
@@ -38,6 +38,27 @@ uv sync
 uv run pytest
 uv run ruff check .
 ```
+
+L'inventaire legacy M1L.1 se génère localement, sans écrire dans TRIDENT :
+
+```bash
+uv run python scripts/inventory_legacy_data.py
+```
+
+Il produit un manifest JSON déterministe, un résumé Markdown et leurs checksums
+dans `reports/legacy_inventory/`. Les cadences et trous de ce rapport sont des
+inférences de qualité de données, jamais des preuves de fills maker.
+
+L'import normalisé et son rapport de couverture se relancent avec :
+
+```bash
+uv run python scripts/import_legacy_data.py
+```
+
+Les événements dérivés restent dans `data/legacy_imports/` et portent tous leur
+provenance B/C ainsi que `legacy_research_only`. La politique M1L.3 bloque leur
+utilisation pour la file exacte, les fills central/pessimiste, la rentabilité
+live ou une promotion canary.
 
 Ouvrir `hyperbot.code-workspace` pour charger HyperBot avec TRIDENT comme dossier
 de référence séparé.
