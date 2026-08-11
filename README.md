@@ -14,12 +14,12 @@ Le statut d'implémentation et les prochains lots sont suivis dans
 
 ## État actuel
 
-- phase : instrumentation/replay/recherche, lots M1 à M5 terminés côté logiciel ;
+- phase : instrumentation/replay/recherche/risque, lots M1 à M6 terminés côté logiciel ;
 - trading live : désactivé ;
 - livré : contrats d'événements, configuration fail-closed, import legacy,
   catalogue public, collector WebSocket et store segmenté intègre ;
-- prochaine priorité : stratégies et superviseur fail-closed M6, pendant
-  l'accumulation réelle des gates qualité M3 et des preuves OOS M5 ;
+- prochaine priorité : runner et observabilité shadow M7, pendant l'accumulation
+  réelle des gates qualité M3 et des preuves OOS M5 ;
 - dépôt TRIDENT : référence historique uniquement.
 
 ## Données historiques
@@ -81,6 +81,11 @@ M5 fournit le benchmark digital, l'évaluation walk-forward purgée, le scanner
 HIP-3 à coûts runtime et le journal hash-chaîné des variantes. Son statut
 logiciel terminé ne constitue pas une validation d'edge : les gates OOS restent
 négatives tant que les données A requises ne sont pas disponibles.
+
+M6 sépare strictement stratégie, risque et exécution : les stratégies produisent
+des intentions, le superviseur est la seule autorité d'approbation et le gateway
+shadow ne possède aucune méthode d'envoi d'ordre. Les hard stops restent latched
+jusqu'à une confirmation opérateur explicite.
 
 L'inventaire legacy M1L.1 se génère localement, sans écrire dans TRIDENT :
 

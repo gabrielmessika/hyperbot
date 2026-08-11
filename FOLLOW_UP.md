@@ -38,7 +38,7 @@ Les statuts utilisés sont : `À faire`, `En cours`, `Terminé`, `Bloqué`.
 | M3 | contrôle qualité et rapport quotidien | Terminé | trous, fraîcheur et complétude mesurés |
 | M4 | replay déterministe et modèles de file | Terminé | central + pessimiste reproductibles |
 | M5 | fair value outcomes et scanner HIP-3 | Terminé | benchmarks OOS sans fuite temporelle |
-| M6 | stratégies de quote et superviseur de risque | À faire | intentions uniquement, caps testés |
+| M6 | stratégies de quote et superviseur de risque | Terminé | intentions uniquement, caps testés |
 | M7 | runner shadow et observabilité | À faire | 14 jours sans violation opérationnelle |
 | M8 | canary monétaire | Bloqué | autorisation utilisateur + gates statistiques |
 
@@ -388,11 +388,33 @@ un edge et ne remplacent pas les données A encore en collecte.
 
 ### M6 — stratégies et risque
 
+Statut : `Terminé` pour le logiciel ; stratégies non promues.
+
 - stratégies limitées à `QuoteIntent` ;
 - superviseur seul autorisé à approuver ou rejeter ;
 - worst-case payoff YES/NO et caps corrélés ;
 - stale book, orphan order et position mismatch fail-closed ;
 - execution gateway shadow sans méthode d'envoi d'ordre.
+
+Livré le 11 août 2026 :
+
+- contrat `Strategy` pur et états immuables ; moteurs outcomes/growth limités à
+  des `QuoteIntent`, sans dépendance execution ;
+- arrondis tick/lot et notional minimal, filtres stale/croisé/expiration et
+  fair values bornées ;
+- `RiskSupervisor` seul producteur d'`ApprovedIntent`, avec contrôles ALO,
+  version de marché, tick, budgets, inventaires et drawdowns ;
+- payoff YES/NO recalculé après fill hypothétique, caps par marché, corrélés et
+  agrégés ;
+- heartbeat, orphan, perte inconnue et mismatch position fail-closed ;
+- hard stop latched, réarmable uniquement par autorisation opérateur explicite ;
+- DEX HIP-3 unique, caps gross/net et réduction soft refusée si elle passe sous
+  le minimum d'ordre ;
+- `ShadowExecutionGateway` sans méthode d'envoi, avec état exchange simulé
+  autoritaire au restart ; rapport `reports/m6/implementation_report.md`.
+
+Les moteurs sont toujours désactivés et non promus : M6 prouve les contrats et
+les barrières, pas l'edge M5 ni la qualification shadow M7.
 
 ### M7 — shadow
 
