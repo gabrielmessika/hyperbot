@@ -344,6 +344,19 @@ sur le disque courant. La suppression du TRIDENT classique ne suffirait pas :
 elle ne restituerait qu'environ 11 Go et ne doit pas être exécutée comme solution
 de capacité sans sauvegarde et décision explicite.
 
+Un Volume Hetzner de 100 Go a ensuite été monté sur
+`/opt/hyperbot/shared/data`, avec 93 Gio libres après migration. Le sentinel
+`/app/data/.hyperbot-volume-106591803` bloque tout démarrage si le montage est
+absent. Cette capacité couvre la gate de 30 jours sur la projection courante,
+mais un stockage froid reste nécessaire pour garantir 60 jours avec marge.
+
+La compression des segments fermés valide et prépare désormais chaque fichier
+hors du verrou du stream ; le verrou exclusif ne couvre que la revalidation
+finale et la publication atomique du gzip et du manifest. La maintenance ne
+recalcule pas non plus un jour déjà finalisé après un changement de
+configuration. Ces deux propriétés empêchent la maintenance quotidienne de
+saturer la file du collector.
+
 ## 10. Première activation réalisée
 
 Le 11 août 2026, le release `20260811T141144Z-4e811c0bce9b` a été installé puis
@@ -363,3 +376,12 @@ Le premier rapport qualité de la veille est logiquement non qualifié, puisque 
 collector n'était pas encore actif durant cette fenêtre UTC. La collecte M3
 commence avec la journée d'activation ; aucune continuité antérieure n'est
 inventée.
+
+## 11. Migration vers le Volume réalisée
+
+Le 11 août 2026, les données ont été copiées vers le Volume `106591803`, puis
+comparées par `rsync --checksum` et validées avec le store segmenté avant la
+bascule. L'ancienne copie reste disponible sous
+`/opt/hyperbot/shared/data.root-backup-volume-migration` jusqu'à une revue
+ultérieure explicite. Le release final actif est
+`20260811T155300Z-8e73ae32bdef`.

@@ -503,13 +503,21 @@ manquant. Le release `20260811T144555Z-7c52fbdb22bb` a ensuite remplacé la
 whitelist BTC minimale. Le smoke serveur confirme les 52 couples, les quatre
 services sains, zéro drop/malformed/reconnexion et l'intégrité du store actif.
 
-La mesure serveur initiale est toutefois d'environ 12 Gio/jour bruts et 1,83
-Gio/jour après gzip. Le disque actuel ne peut pas conserver 30 jours tout en
-gardant la réserve fail-closed de 10 Gio. Retirer tout le TRIDENT classique
-libérerait seulement environ 11 Go et porterait l'autonomie estimée à environ 19
-jours ; TRIDENT-HIP4 est exclu et aucune suppression n'a été effectuée. Une
-extension de disque, un stockage froid externe ou une réduction explicite de la
-matrice doit être décidée avant de considérer la gate M3 comme soutenable.
+La mesure serveur initiale est d'environ 12 Gio/jour bruts et 1,83 Gio/jour
+après gzip. Un Volume Hetzner de 100 Go est désormais monté directement sur
+`/opt/hyperbot/shared/data` : 93 Gio étaient libres après migration, avec une
+réserve fail-closed de 10 Gio. La gate M3 de 30 jours devient soutenable sur
+cette projection, mais pas la rétention locale de 60 jours ; un archivage froid
+reste à préparer. TRIDENT classique et TRIDENT-HIP4 n'ont pas été supprimés.
+
+La migration a aussi révélé qu'une première maintenance lancée en concurrence
+avec le collector pouvait garder le verrou du store pendant une validation et
+une compression complètes. Le run de diagnostic concerné a produit des drops et
+reste explicitement non qualifié. La compression valide maintenant chaque
+segment hors verrou, ne prend le verrou que pour sa publication atomique, et la
+maintenance réutilise un jour déjà finalisé même après un changement de config.
+Le release final `20260811T155300Z-8e73ae32bdef` expose aussi la profondeur de
+file ; son smoke est à zéro drop, malformed, reconnexion et backlog.
 
 ### M8 — canary, bloqué par défaut
 
@@ -565,8 +573,8 @@ l'observer public `3002`. Le script de fetch HyperBot reste séparé de
 
 ## 11. Questions ouvertes
 
-- **bloquant pour la gate M3 à 30 jours :** capacité de stockage de la matrice
-  multi-marchés, à résoudre par extension, archivage froid ou réduction revue ;
+- **à résoudre avant 60 jours :** archivage froid checksummé des segments du
+  Volume, puisque 100 Go couvrent la gate de 30 jours mais pas 60 jours locaux ;
 
 - liste blanche outcomes initiale : découverte automatique puis validation ou
   configuration manuelle stricte ;
