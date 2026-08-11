@@ -14,12 +14,12 @@ Le statut d'implémentation et les prochains lots sont suivis dans
 
 ## État actuel
 
-- phase : instrumentation/replay/recherche/risque, lots M1 à M6 terminés côté logiciel ;
+- phase : instrumentation à shadow, lots M1 à M7 terminés côté logiciel ;
 - trading live : désactivé ;
 - livré : contrats d'événements, configuration fail-closed, import legacy,
   catalogue public, collector WebSocket et store segmenté intègre ;
-- prochaine priorité : runner et observabilité shadow M7, pendant l'accumulation
-  réelle des gates qualité M3 et des preuves OOS M5 ;
+- prochaine priorité : accumuler réellement les gates M3, M5 et M7 ; M8 reste
+  bloqué sans review et autorisation séparées ;
 - dépôt TRIDENT : référence historique uniquement.
 
 ## Données historiques
@@ -86,6 +86,11 @@ M6 sépare strictement stratégie, risque et exécution : les stratégies produi
 des intentions, le superviseur est la seule autorité d'approbation et le gateway
 shadow ne possède aucune méthode d'envoi d'ordre. Les hard stops restent latched
 jusqu'à une confirmation opérateur explicite.
+
+M7 orchestre ces contrats en shadow, compare les fills M4 aux markouts et
+produit une gate de quatorze jours consécutifs. Le logiciel est livré, mais la
+gate temporelle n'est pas acquise. Même une gate M7 acquise ne positionne que
+pour une discussion : `canary_authorized` reste faux et M8 demeure bloqué.
 
 L'inventaire legacy M1L.1 se génère localement, sans écrire dans TRIDENT :
 

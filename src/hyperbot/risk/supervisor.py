@@ -289,6 +289,26 @@ class RiskSupervisor:
             (),
         )
 
+    def evaluate_batch(
+        self,
+        requests: tuple[tuple[QuoteIntent, IntentMetadata], ...],
+        portfolio: PortfolioState,
+    ) -> tuple[RiskDecision, ...]:
+        """Evaluate intents sequentially against prior hypothetical approvals."""
+
+        decisions: list[RiskDecision] = []
+        hypothetical = portfolio
+        for intent, metadata in requests:
+            decision = self.evaluate(intent, metadata, hypothetical)
+            decisions.append(decision)
+            if decision.approved is not None:
+                hypothetical = self._apply_hypothetical_fill(
+                    decision.approved,
+                    metadata,
+                    hypothetical,
+                )
+        return tuple(decisions)
+
     def operator_reset(self, authorization: OperatorResetAuthorization) -> None:
         if not authorization.confirmed:
             raise PermissionError("hard stop reset requires explicit confirmation")
@@ -330,6 +350,55 @@ class RiskSupervisor:
         if portfolio.daily_pnl_usd <= -daily_loss_limit:
             reasons.append("daily_loss_stop")
         return reasons, RiskAction.CANCEL_ALL if reasons else RiskAction.NONE
+
+    def _apply_hypothetical_fill(
+        self,
+        approval: ApprovedIntent,
+        metadata: IntentMetadata,
+        portfolio: PortfolioState,
+    ) -> PortfolioState:
+        intent = replace(approval.intent, size=approval.approved_size)
+        if metadata.strategy_kind is StrategyKind.GROWTH:
+            inventory = dict(portfolio.growth_inventory_usd)
+            signed = intent.price * intent.size
+            if intent.side is Side.SELL:
+                signed = -signed
+            inventory[intent.market] = inventory.get(intent.market, Decimal(0)) + signed
+            dexes = tuple(sorted(set(portfolio.growth_active_dexes) | {metadata.dex}))
+            return replace(
+                portfolio,
+                growth_inventory_usd=tuple(sorted(inventory.items())),
+                growth_active_dexes=dexes,
+            )
+        market_id = metadata.outcome_market_id
+        token_side = metadata.outcome_token_side
+        correlation_group = metadata.correlation_group
+        assert market_id is not None
+        assert token_side is not None
+        assert correlation_group is not None
+        exposures = {
+            exposure.outcome_market_id: exposure
+            for exposure in portfolio.outcome_exposures
+        }
+        current = exposures.get(
+            market_id,
+            OutcomeExposure(market_id, correlation_group, Decimal(0), Decimal(0)),
+        )
+        yes_impact, no_impact = _outcome_quote_impact(intent, token_side)
+        exposures[market_id] = replace(
+            current,
+            pnl_if_yes_usd=current.pnl_if_yes_usd + yes_impact,
+            pnl_if_no_usd=current.pnl_if_no_usd + no_impact,
+            gross_inventory_usd=(
+                current.gross_inventory_usd + intent.price * intent.size
+            ),
+        )
+        return replace(
+            portfolio,
+            outcome_exposures=tuple(
+                exposures[key] for key in sorted(exposures)
+            ),
+        )
 
     def _outcome_checks(
         self,

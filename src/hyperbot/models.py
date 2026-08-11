@@ -71,6 +71,12 @@ class CollectorControlKind(StrEnum):
     SHUTDOWN = "shutdown"
 
 
+class ShadowQuoteStatus(StrEnum):
+    STAGED = "staged"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+
 def _require_non_empty(value: str, field_name: str) -> None:
     if not value.strip():
         raise ValueError(f"{field_name} must not be empty")
@@ -252,6 +258,92 @@ class CollectorControlEvent:
         if self.connection_attempt < 0 or self.dropped_messages < 0:
             raise ValueError("counters must be non-negative")
         _require_optional_non_empty(self.reason, "reason")
+
+
+@dataclass(frozen=True, slots=True)
+class RiskAuditEvent:
+    context: EventContext
+    decision_ts_ms: int
+    intent_id: str
+    approved: bool
+    approved_size: Decimal | None
+    action: str
+    reason_codes: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if self.decision_ts_ms < 0:
+            raise ValueError("decision_ts_ms must be non-negative")
+        _require_non_empty(self.intent_id, "intent_id")
+        _require_non_empty(self.action, "action")
+        _require_optional_positive(self.approved_size, "approved_size")
+        if self.approved != (self.approved_size is not None):
+            raise ValueError("approved flag and size are inconsistent")
+        if not self.reason_codes:
+            raise ValueError("risk audit requires reason codes")
+        for reason in self.reason_codes:
+            _require_non_empty(reason, "reason_code")
+
+
+@dataclass(frozen=True, slots=True)
+class ShadowQuoteEvent:
+    context: EventContext
+    decision_id: str
+    intent_id: str
+    market: str
+    side: Side
+    price: Decimal
+    size: Decimal
+    staged_ts_ms: int
+    expires_ts_ms: int
+    status: ShadowQuoteStatus
+    shadow_only: bool
+
+    def __post_init__(self) -> None:
+        for field_name, value in (
+            ("decision_id", self.decision_id),
+            ("intent_id", self.intent_id),
+            ("market", self.market),
+        ):
+            _require_non_empty(value, field_name)
+        _require_positive(self.price, "price")
+        _require_positive(self.size, "size")
+        if self.staged_ts_ms < 0 or self.expires_ts_ms <= self.staged_ts_ms:
+            raise ValueError("shadow quote timestamps are invalid")
+        if not self.shadow_only:
+            raise ValueError("shadow quote events must remain shadow-only")
+
+
+@dataclass(frozen=True, slots=True)
+class ShadowFillEvaluationEvent:
+    context: EventContext
+    evaluation_ts_ms: int
+    replay_result_sha256: str
+    quote_id: str
+    model: str
+    predicted_fill: bool
+    filled_size: Decimal
+    markout_100ms: Decimal | None
+    markout_1s: Decimal | None
+    markout_5s: Decimal | None
+    markout_30s: Decimal | None
+
+    def __post_init__(self) -> None:
+        if self.evaluation_ts_ms < 0:
+            raise ValueError("evaluation_ts_ms must be non-negative")
+        _require_sha256(self.replay_result_sha256, "replay_result_sha256")
+        _require_non_empty(self.quote_id, "quote_id")
+        _require_non_empty(self.model, "model")
+        _require_non_negative(self.filled_size, "filled_size")
+        if self.predicted_fill != (self.filled_size > 0):
+            raise ValueError("predicted_fill and filled_size are inconsistent")
+        for field_name, value in (
+            ("markout_100ms", self.markout_100ms),
+            ("markout_1s", self.markout_1s),
+            ("markout_5s", self.markout_5s),
+            ("markout_30s", self.markout_30s),
+        ):
+            if value is not None:
+                _require_finite(value, field_name)
 
 
 @dataclass(frozen=True, slots=True)
@@ -653,6 +745,9 @@ DomainEvent: TypeAlias = (
     MarketDefinition
     | PublicMarketDataEvent
     | CollectorControlEvent
+    | RiskAuditEvent
+    | ShadowQuoteEvent
+    | ShadowFillEvaluationEvent
     | BookEvent
     | QuoteIntent
     | OrderLifecycle

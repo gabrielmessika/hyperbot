@@ -39,7 +39,7 @@ Les statuts utilisés sont : `À faire`, `En cours`, `Terminé`, `Bloqué`.
 | M4 | replay déterministe et modèles de file | Terminé | central + pessimiste reproductibles |
 | M5 | fair value outcomes et scanner HIP-3 | Terminé | benchmarks OOS sans fuite temporelle |
 | M6 | stratégies de quote et superviseur de risque | Terminé | intentions uniquement, caps testés |
-| M7 | runner shadow et observabilité | À faire | 14 jours sans violation opérationnelle |
+| M7 | runner shadow et observabilité | Terminé | logiciel livré ; gate 14 jours en attente |
 | M8 | canary monétaire | Bloqué | autorisation utilisateur + gates statistiques |
 
 ## 4. Lot M1 livré
@@ -418,10 +418,31 @@ les barrières, pas l'edge M5 ni la qualification shadow M7.
 
 ### M7 — shadow
 
+Statut : `Terminé` pour le logiciel ; gate réelle de 14 jours en attente.
+
 - quotes calculées mais jamais envoyées ;
 - estimation de fill comparée aux markouts observés ;
 - restart et réconciliation simulée ;
 - quatorze jours sans violation de risque avant toute discussion de canary.
+
+Livré le 11 août 2026 :
+
+- `ShadowRunner` réutilise les contrats Strategy/Risk M6 et journalise intents,
+  décisions, actions et quotes `shadow_only` dans les stores HyperBot ;
+- évaluation en batch : les approbations hypothétiques précédentes alimentent
+  les caps des intents suivants ;
+- comparaison des résultats central/pessimiste M4 et événements par quote
+  reliant probabilité de fill aux markouts observés ;
+- restart fail-closed avec état exchange simulé autoritaire, blocage sur
+  position divergente ou ordre orphelin et déblocage seulement après état propre ;
+- rapports journaliers JSON/Markdown checksummés avec risque, qualité M3,
+  compatibilité replay et stress latence ;
+- gate de quatorze journées consécutives, remise à zéro par date manquante ou
+  incident ; même acquise, elle n'autorise jamais M8 ;
+- rapport : `reports/m7/implementation_report.md`.
+
+La gate réelle reste non acquise : aucun historique de quatorze jours n'a été
+simulé comme preuve. Aucun service ni executor live n'a été déployé.
 
 ### M8 — canary, bloqué par défaut
 
@@ -461,8 +482,9 @@ uv run mypy src
 
 ## 10. Impact déploiement et fetching
 
-À ce stade : aucun déploiement, aucun service serveur et aucun fetch distant.
-Les fichiers de données restent locaux et ignorés par Git.
+À ce stade : aucun déploiement, aucun executor live et aucun fetch distant. Le
+collector M2 et le runner shadow M7 sont des composants locaux explicites ; les
+fichiers de données restent sous `data/` et sont ignorés par Git.
 
 M1L lit `/workspaces/trident` sans le modifier. Les archives volumineuses restent
 à leur emplacement ; HyperBot versionne seulement manifestes, fixtures minimaux
@@ -470,9 +492,10 @@ et rapports. Le run dérivé courant occupe environ 1,9 Gio sous
 `data/legacy_imports/` et reste ignoré par Git. Une exécution sans accès à
 TRIDENT reste possible pour le package, les tests et le collector.
 
-M2 ajoutera un collector public local. Le service `hyperbot-collector` et le
-script `scripts/fetch_hyperbot_data.sh` ne seront créés qu'après stabilisation du
-format segmenté. Aucun script TRIDENT ne sera modifié.
+Le format segmenté est stabilisé côté logiciel, mais aucun service serveur
+`hyperbot-collector` n'est installé ou activé. Un éventuel script de fetch et le
+déploiement shadow feront l'objet d'une action opérationnelle séparée. Aucun
+script TRIDENT n'a été modifié.
 
 ## 11. Questions ouvertes non bloquantes
 
