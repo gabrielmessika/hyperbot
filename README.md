@@ -65,6 +65,9 @@ La collecte utilise deux profils explicites : `depth` reçoit
 `l2Book+bbo+trades` pour quatre marchés liquides et `breadth` reçoit uniquement
 `bbo+trades` pour vingt marchés de screening. Cela conserve la preuve L2 utile
 aux replays sans multiplier inutilement le stockage sur tout l'univers.
+Un Volume de données dédié peut être protégé par
+`HYPERBOT_DATA_MOUNT_SENTINEL` : tous les services refusent de démarrer si le
+montage attendu n'est pas présent.
 
 ## Données historiques
 

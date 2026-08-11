@@ -15,7 +15,7 @@ from typing import cast
 
 from hyperbot.services.public_collector import ALLOWED_CHANNELS
 
-OPS_SCHEMA_VERSION = 2
+OPS_SCHEMA_VERSION = 3
 DEPTH_CHANNELS = ("l2Book", "bbo", "trades")
 BREADTH_CHANNELS = ("bbo", "trades")
 _MARKET_PATTERN = re.compile(r"[A-Za-z0-9#][A-Za-z0-9:#._-]{0,127}")
@@ -88,6 +88,40 @@ def _runtime_path(environment: Mapping[str, str], name: str, default: str) -> Pa
     if path == Path("/") or ".." in path.parts:
         raise OpsConfigurationError(f"{name} must be a narrow path without '..'")
     return path
+
+
+def _data_mount_sentinel(
+    environment: Mapping[str, str],
+    data_root: Path,
+) -> Path | None:
+    raw = environment.get("HYPERBOT_DATA_MOUNT_SENTINEL", "").strip()
+    if not raw:
+        return None
+    sentinel = Path(raw)
+    if sentinel == Path("/") or ".." in sentinel.parts:
+        raise OpsConfigurationError(
+            "HYPERBOT_DATA_MOUNT_SENTINEL must be a narrow path without '..'"
+        )
+    allowed_parents = {data_root, *data_root.parents} - {Path("/")}
+    if sentinel.parent not in allowed_parents:
+        raise OpsConfigurationError(
+            "HYPERBOT_DATA_MOUNT_SENTINEL must share the data-root hierarchy"
+        )
+    try:
+        is_valid = (
+            not sentinel.is_symlink()
+            and sentinel.is_file()
+            and sentinel.stat().st_size <= 4_096
+        )
+    except OSError as exc:
+        raise OpsConfigurationError(
+            "cannot inspect HYPERBOT_DATA_MOUNT_SENTINEL"
+        ) from exc
+    if not is_valid:
+        raise OpsConfigurationError(
+            "required HyperBot data Volume sentinel is missing or invalid"
+        )
+    return sentinel
 
 
 def _validate_markets(markets: tuple[str, ...]) -> None:
@@ -189,6 +223,7 @@ class OpsSettings:
     breadth_markets: tuple[str, ...]
     subscriptions: tuple[tuple[str, str], ...]
     data_root: Path
+    data_mount_sentinel: Path | None
     runtime_root: Path
     review_root: Path
     queue_capacity: int
@@ -274,6 +309,7 @@ class OpsSettings:
         if hour > 23 or minute > 59:
             raise OpsConfigurationError("maintenance UTC time is invalid")
 
+        data_root = _runtime_path(values, "HYPERBOT_DATA_ROOT", "data/raw/collector")
         settings = cls(
             collector_enabled=collector_enabled,
             live_enabled=live_enabled,
@@ -283,7 +319,8 @@ class OpsSettings:
             depth_markets=depth_markets,
             breadth_markets=breadth_markets,
             subscriptions=subscriptions,
-            data_root=_runtime_path(values, "HYPERBOT_DATA_ROOT", "data/raw/collector"),
+            data_root=data_root,
+            data_mount_sentinel=_data_mount_sentinel(values, data_root),
             runtime_root=_runtime_path(values, "HYPERBOT_RUNTIME_ROOT", "runtime"),
             review_root=_runtime_path(values, "HYPERBOT_REVIEW_ROOT", "data/reviews"),
             queue_capacity=_integer(
@@ -349,6 +386,11 @@ class OpsSettings:
     def config_sha256(self) -> str:
         payload = asdict(self)
         payload["data_root"] = str(self.data_root)
+        payload["data_mount_sentinel"] = (
+            str(self.data_mount_sentinel)
+            if self.data_mount_sentinel is not None
+            else None
+        )
         payload["runtime_root"] = str(self.runtime_root)
         payload["review_root"] = str(self.review_root)
         encoded = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode(

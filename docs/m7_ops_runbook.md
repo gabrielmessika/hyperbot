@@ -163,6 +163,26 @@ immédiatement. Un arrêt propre valide et fsync le reliquat. Augmenter ces vale
 élargit la fenêtre de perte possible en cas de panne électrique et exige une
 nouvelle mesure de débit ainsi qu'une review explicite.
 
+### Volume de données dédié
+
+Quand `/opt/hyperbot/shared/data` est un Volume séparé, créer sur ce Volume un
+petit fichier sentinel et configurer son chemin vu du conteneur :
+
+```dotenv
+HYPERBOT_DATA_MOUNT_SENTINEL=/app/data/.hyperbot-volume-<id>
+```
+
+Le collector, la maintenance, le watchdog et l'observer refusent alors de
+démarrer si ce fichier est absent, est un symlink, dépasse 4 Kio ou ne se trouve
+pas dans la hiérarchie de `HYPERBOT_DATA_ROOT`. Le répertoire vide présent sous
+le point de montage du disque système ne doit jamais contenir ce sentinel : une
+absence du Volume reste ainsi fail-closed au lieu de rediriger silencieusement
+les écritures vers le disque racine.
+
+Un Volume Hetzner n'est pas inclus dans les snapshots ou backups du serveur.
+Les segments clôturés doivent donc aussi être exportés vers un stockage séparé
+avec leur manifest et leur SHA-256.
+
 ### Accès public au dashboard
 
 Si UFW est actif, ouvrir explicitement le port après avoir choisi la politique

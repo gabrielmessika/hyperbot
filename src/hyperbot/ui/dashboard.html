@@ -480,6 +480,7 @@
       addKv(configKv, "Subscriptions", configuration.subscription_count ?? "—");
       addKv(configKv, "Batch persistence", configuration.persistence_batch_size ?? "—");
       addKv(configKv, "Fsync marché", `tous les ${configuration.fsync_every_records ?? "—"} records`);
+      addKv(configKv, "Garde Volume data", configuration.data_mount_guard_enabled ? "Actif" : "Inactif");
       addKv(configKv, "Contrôles UI", "Désactivés");
       addKv(configKv, "Hash configuration", configuration.config_sha256 || "—");
       const body = $("streams-body"); clear(body);

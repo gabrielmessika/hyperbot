@@ -64,6 +64,7 @@ def test_ops_configuration_is_explicitly_enabled_and_secret_free(
     assert safe.markets == ("BTC",)
     assert safe.persistence_batch_size == 256
     assert safe.fsync_every_records == 100
+    assert safe.data_mount_sentinel is None
     assert len(safe.config_sha256) == 64
 
     outcomes = {
@@ -90,6 +91,38 @@ def test_ops_configuration_is_explicitly_enabled_and_secret_free(
     }
     with pytest.raises(OpsConfigurationError, match="must be >="):
         OpsSettings.from_environment(non_finite)
+
+
+def test_data_volume_sentinel_is_optional_and_fail_closed(tmp_path: Path) -> None:
+    environment = _environment(tmp_path)
+    sentinel = tmp_path / "data" / ".hyperbot-volume"
+    sentinel.parent.mkdir(parents=True)
+    sentinel.write_text("volume-ready\n", encoding="utf-8")
+    guarded = {
+        **environment,
+        "HYPERBOT_DATA_MOUNT_SENTINEL": str(sentinel),
+    }
+
+    settings = OpsSettings.from_environment(guarded)
+
+    assert settings.data_mount_sentinel == sentinel
+
+    sentinel.unlink()
+    with pytest.raises(OpsConfigurationError, match="missing or invalid"):
+        OpsSettings.from_environment(guarded)
+
+    sentinel.symlink_to(tmp_path / "missing-volume")
+    with pytest.raises(OpsConfigurationError, match="missing or invalid"):
+        OpsSettings.from_environment(guarded)
+
+    unrelated = {
+        **environment,
+        "HYPERBOT_DATA_MOUNT_SENTINEL": str(
+            tmp_path / "outside" / ".hyperbot-volume"
+        ),
+    }
+    with pytest.raises(OpsConfigurationError, match="data-root hierarchy"):
+        OpsSettings.from_environment(unrelated)
 
 
 def test_ops_configuration_builds_distinct_depth_and_breadth_profiles(
@@ -389,6 +422,8 @@ def test_deployment_artifacts_remain_disabled_by_default() -> None:
     assert "HYPERBOT_COLLECTOR_CHANNELS=" not in environment
     assert "HYPERBOT_FSYNC_EVERY_RECORDS=100" in environment
     assert "HYPERBOT_PERSISTENCE_BATCH_SIZE=256" in environment
+    assert "HYPERBOT_DATA_MOUNT_SENTINEL=" in environment
+    assert "HYPERBOT_DATA_MOUNT_SENTINEL" in compose
     assert 'profiles: ["collector"]' in compose
     assert "read_only: true" in compose
     assert sum(line.strip() == "ports:" for line in compose.splitlines()) == 1

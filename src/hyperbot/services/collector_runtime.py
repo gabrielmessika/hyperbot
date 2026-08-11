@@ -49,6 +49,7 @@ def _status_payload(
         "subscription_count": len(settings.subscriptions),
         "persistence_batch_size": settings.persistence_batch_size,
         "fsync_every_records": settings.fsync_every_records,
+        "data_mount_guard_enabled": settings.data_mount_sentinel is not None,
         "received_messages": metrics.received_messages,
         "persisted_events": metrics.persisted_events,
         "dropped_events": metrics.dropped_events,

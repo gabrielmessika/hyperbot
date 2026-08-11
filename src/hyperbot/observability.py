@@ -510,6 +510,7 @@ class ObservabilityReader:
             "queue_capacity": ops.queue_capacity,
             "persistence_batch_size": ops.persistence_batch_size,
             "fsync_every_records": ops.fsync_every_records,
+            "data_mount_guard_enabled": ops.data_mount_sentinel is not None,
             "heartbeat_interval_seconds": ops.heartbeat_interval_seconds,
             "stale_after_seconds": ops.stale_after_seconds,
             "health_max_age_seconds": ops.health_max_age_seconds,
