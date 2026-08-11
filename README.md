@@ -14,12 +14,12 @@ Le statut d'implémentation et les prochains lots sont suivis dans
 
 ## État actuel
 
-- phase : instrumentation locale et replay, lots M1 à M4 terminés côté logiciel ;
+- phase : instrumentation/replay/recherche, lots M1 à M5 terminés côté logiciel ;
 - trading live : désactivé ;
 - livré : contrats d'événements, configuration fail-closed, import legacy,
   catalogue public, collector WebSocket et store segmenté intègre ;
-- prochaine priorité : recherche d'edge M5 pendant l'accumulation réelle des
-  gates qualité M3 sur 7 puis 30 jours ;
+- prochaine priorité : stratégies et superviseur fail-closed M6, pendant
+  l'accumulation réelle des gates qualité M3 et des preuves OOS M5 ;
 - dépôt TRIDENT : référence historique uniquement.
 
 ## Données historiques
@@ -76,6 +76,11 @@ uv run python scripts/run_hyperbot_replay.py \
 
 Les modèles central et pessimiste refusent les données B/C ; seul
 `optimistic_touch` peut les utiliser avec son label de borne optimiste.
+
+M5 fournit le benchmark digital, l'évaluation walk-forward purgée, le scanner
+HIP-3 à coûts runtime et le journal hash-chaîné des variantes. Son statut
+logiciel terminé ne constitue pas une validation d'edge : les gates OOS restent
+négatives tant que les données A requises ne sont pas disponibles.
 
 L'inventaire legacy M1L.1 se génère localement, sans écrire dans TRIDENT :
 

@@ -37,7 +37,7 @@ Les statuts utilisés sont : `À faire`, `En cours`, `Terminé`, `Bloqué`.
 | M2 | catalogue de marchés et collector public | Terminé | flux outcomes/HIP-3 enregistré sans ordre |
 | M3 | contrôle qualité et rapport quotidien | Terminé | trous, fraîcheur et complétude mesurés |
 | M4 | replay déterministe et modèles de file | Terminé | central + pessimiste reproductibles |
-| M5 | fair value outcomes et scanner HIP-3 | À faire | benchmarks OOS sans fuite temporelle |
+| M5 | fair value outcomes et scanner HIP-3 | Terminé | benchmarks OOS sans fuite temporelle |
 | M6 | stratégies de quote et superviseur de risque | À faire | intentions uniquement, caps testés |
 | M7 | runner shadow et observabilité | À faire | 14 jours sans violation opérationnelle |
 | M8 | canary monétaire | Bloqué | autorisation utilisateur + gates statistiques |
@@ -359,11 +359,32 @@ valident ni edge ni promotion tant que la collecte A n'a pas satisfait M3.
 
 ### M5 — recherche d'edge
 
+Statut : `Terminé` pour le laboratoire ; edge OOS non démontré.
+
 - benchmark digital outcome sous volatilité empirique ;
 - calibration chronologique puis folds OOS purgés ;
 - scanner HIP-3 growth avec coûts effectifs au runtime ;
 - journal de toutes les variantes testées ;
 - aucune promotion si le profit dépend à plus de 40 % d'un sous-jacent.
+
+Livré le 11 août 2026 :
+
+- benchmark digital à volatilité empirique et calibration isotone ajustée sur
+  les seuls folds antérieurs ;
+- fenêtres train/calibration/test strictes, purge par date de settlement et
+  interdiction des tests OOS chevauchants ;
+- Brier, log loss, PnL/frais, PF, drawdown, comparaison au « ne rien faire » et
+  au legacy, ventilations marché/sous-jacent/régime/expiration ;
+- bootstrap reproductible par clusters journée × marché ;
+- scanner HIP-3 growth qui relit frais, statut, growth mode et hash de
+  définition au runtime avant chaque décision ;
+- journal de variantes append-only et hash-chaîné ;
+- gate fail-closed sur trois folds, PF, drawdown, concentration 40 %, replay
+  central/pessimiste, stress frais et borne bootstrap ;
+- rapport : `reports/m5/implementation_report.md`.
+
+Les fixtures valident l'absence de fuite et les gates. Elles ne démontrent pas
+un edge et ne remplacent pas les données A encore en collecte.
 
 ### M6 — stratégies et risque
 
