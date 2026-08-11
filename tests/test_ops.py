@@ -323,6 +323,8 @@ def test_collector_runtime_publishes_health_and_stops_cleanly(tmp_path: Path) ->
     assert running["subscription_count"] == 5
     assert running["persistence_batch_size"] == 256
     assert running["fsync_every_records"] == 100
+    assert running["persistence_queue_capacity"] == 10_000
+    assert isinstance(running["persistence_queue_depth"], int)
     assert subscriptions == [
         {"coin": "BTC", "type": "l2Book"},
         {"coin": "BTC", "type": "bbo"},
@@ -400,12 +402,27 @@ def test_daily_maintenance_is_idempotent_and_never_deletes_raw(
     assert len(list(settings.data_root.rglob("*.gz"))) == 2
     assert not first.qualified_day
     assert second.reused
+    changed_settings = replace(settings, fsync_every_records=101)
+    third = run_daily_maintenance(
+        changed_settings,
+        report_date=report_date,
+        generated_at_ms=1_786_406_600_000,
+    )
+    assert third.reused
+    assert third.report_json == first.report_json
     marker = json.loads(
         (
             settings.runtime_root / "maintenance" / f"{report_date.isoformat()}.json"
         ).read_text(encoding="utf-8")
     )
     assert marker["raw_data_deleted"] is False
+    maintenance_status = json.loads(
+        changed_settings.maintenance_status_path.read_text(encoding="utf-8")
+    )
+    assert maintenance_status["reused"] is True
+    assert maintenance_status["active_config_sha256"] == (
+        changed_settings.config_sha256
+    )
 
 
 def test_deployment_artifacts_remain_disabled_by_default() -> None:

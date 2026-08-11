@@ -103,6 +103,8 @@ class CollectorMetrics:
     malformed_messages: int
     connected: bool
     last_message_receive_ms: int | None
+    persistence_queue_depth: int
+    persistence_queue_capacity: int
 
 
 class _ReconnectRequired(RuntimeError):
@@ -161,6 +163,8 @@ class PublicWebSocketCollector:
             malformed_messages=self._malformed_messages,
             connected=self._connected,
             last_message_receive_ms=self._last_message_receive_ms,
+            persistence_queue_depth=self._queue.qsize(),
+            persistence_queue_capacity=self.config.queue_capacity,
         )
 
     async def run(self, stop: asyncio.Event) -> CollectorMetrics:

@@ -526,7 +526,7 @@
       $("metric-collector").className = `metric-value ${healthy ? "good" : "bad"}`;
       text("metric-feed", collector.connected ? `Connecté · dernier message ${formatTime(collector.last_message_receive_ms)}` : "Flux déconnecté");
       text("metric-events", formatNumber(collector.persisted_events));
-      text("metric-drops", `Drops : ${formatNumber(collector.dropped_events)} · Reconnexions : ${formatNumber(collector.reconnects)}`);
+      text("metric-drops", `Drops : ${formatNumber(collector.dropped_events)} · File : ${formatNumber(collector.persistence_queue_depth)}/${formatNumber(collector.persistence_queue_capacity)}`);
       renderServices(status);
       renderIncidents(payload.incidents || {});
       renderMarkets(payload.markets || {});

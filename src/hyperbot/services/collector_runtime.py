@@ -57,6 +57,8 @@ def _status_payload(
         "malformed_messages": metrics.malformed_messages,
         "connected": metrics.connected,
         "last_message_receive_ms": metrics.last_message_receive_ms,
+        "persistence_queue_depth": metrics.persistence_queue_depth,
+        "persistence_queue_capacity": metrics.persistence_queue_capacity,
         "error": error,
     }
 

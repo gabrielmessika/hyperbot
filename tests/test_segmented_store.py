@@ -119,6 +119,47 @@ def test_compression_ignores_an_active_segment(tmp_path: Path) -> None:
     assert active.suffix == ".open"
 
 
+def test_compression_validates_closed_content_and_allows_live_append(
+    tmp_path: Path,
+) -> None:
+    store = SegmentedEventStore(
+        tmp_path,
+        max_segment_bytes=1,
+        fsync=False,
+        clock_ms=iter((1000, 1001)).__next__,
+    )
+    store.append("market-data", _event(0))
+    store.append("market-data", _event(1))
+    store.close("market-data")
+    external = SegmentedEventStore(tmp_path, fsync=False, clock_ms=lambda: 1002)
+    original_scan = store._scan_content
+    appended = False
+
+    def append_while_validating(*args: object, **kwargs: object) -> object:
+        nonlocal appended
+        if not appended:
+            external.append("market-data", _event(2))
+            appended = True
+        return original_scan(*args, **kwargs)  # type: ignore[arg-type]
+
+    store._scan_content = append_while_validating  # type: ignore[method-assign]
+
+    assert store.compress_closed_segments("market-data") == 2
+    assert appended
+    external.close("market-data")
+    assert store.validate("market-data").record_count == 3
+
+
+def test_compression_refuses_a_corrupted_closed_segment(tmp_path: Path) -> None:
+    store, segment = _closed_store(tmp_path)
+    content = bytearray(segment.read_bytes())
+    content[len(content) // 2] ^= 1
+    segment.write_bytes(content)
+
+    with pytest.raises(EventIntegrityError, match="checksum mismatch"):
+        store.compress_closed_segments("market-data")
+
+
 def test_partial_active_line_is_removed_without_rewriting_valid_bytes(
     tmp_path: Path,
 ) -> None:

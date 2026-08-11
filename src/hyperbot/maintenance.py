@@ -33,10 +33,79 @@ class MaintenanceResult:
 
 def _valid_existing_report(json_path: Path) -> bool:
     checksum_path = json_path.with_suffix(".json.sha256")
-    if not json_path.is_file() or not checksum_path.is_file():
+    if (
+        json_path.is_symlink()
+        or checksum_path.is_symlink()
+        or not json_path.is_file()
+        or not checksum_path.is_file()
+    ):
         return False
     expected = checksum_path.read_text(encoding="ascii").split()[0]
     return hashlib.sha256(json_path.read_bytes()).hexdigest() == expected
+
+
+def _reuse_completed_day(
+    settings: OpsSettings,
+    marker: Path,
+    *,
+    report_date: date,
+    generated_at_ms: int,
+) -> MaintenanceResult | None:
+    if marker.is_symlink() or not marker.is_file():
+        return None
+    try:
+        marker_payload = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(marker_payload, dict):
+        return None
+    if marker_payload.get("report_date") != report_date.isoformat():
+        return None
+    raw_json = marker_payload.get("report_json")
+    raw_markdown = marker_payload.get("report_markdown")
+    expected_hash = marker_payload.get("report_sha256")
+    if not all(isinstance(value, str) for value in (raw_json, raw_markdown)):
+        return None
+    report_json = Path(cast(str, raw_json))
+    report_markdown = Path(cast(str, raw_markdown))
+    try:
+        review_root = settings.review_root.resolve(strict=True)
+        resolved_json = report_json.resolve(strict=True)
+        resolved_markdown = report_markdown.resolve(strict=True)
+    except OSError:
+        return None
+    if (
+        not resolved_json.is_relative_to(review_root)
+        or not resolved_markdown.is_relative_to(review_root)
+        or report_markdown.is_symlink()
+        or not report_markdown.is_file()
+        or not _valid_existing_report(report_json)
+        or not isinstance(expected_hash, str)
+        or hashlib.sha256(report_json.read_bytes()).hexdigest() != expected_hash
+    ):
+        return None
+    payload = json.loads(report_json.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        return None
+    atomic_write_json(
+        settings.maintenance_status_path,
+        {
+            **marker_payload,
+            "schema_version": OPS_SCHEMA_VERSION,
+            "state": "completed",
+            "updated_at_ms": generated_at_ms,
+            "reused": True,
+            "active_config_sha256": settings.config_sha256,
+        },
+    )
+    return MaintenanceResult(
+        report_date=report_date.isoformat(),
+        report_json=report_json,
+        report_markdown=report_markdown,
+        compressed_segments=0,
+        reused=True,
+        qualified_day=payload.get("qualified_day") is True,
+    )
 
 
 def run_daily_maintenance(
@@ -49,25 +118,18 @@ def run_daily_maintenance(
 
     settings.runtime_root.mkdir(parents=True, exist_ok=True)
     marker = settings.runtime_root / "maintenance" / f"{report_date.isoformat()}.json"
+    reused = _reuse_completed_day(
+        settings,
+        marker,
+        report_date=report_date,
+        generated_at_ms=generated_at_ms,
+    )
+    if reused is not None:
+        return reused
     run_id = f"ops-{report_date.strftime('%Y%m%d')}-{settings.config_sha256[:8]}"
     stem = f"quality-{report_date.isoformat()}-{run_id}"
     report_json = settings.review_root / f"{stem}.json"
     report_markdown = settings.review_root / f"{stem}.md"
-    if (
-        marker.is_file()
-        and report_markdown.is_file()
-        and _valid_existing_report(report_json)
-    ):
-        payload = json.loads(report_json.read_text(encoding="utf-8"))
-        return MaintenanceResult(
-            report_date=report_date.isoformat(),
-            report_json=report_json,
-            report_markdown=report_markdown,
-            compressed_segments=0,
-            reused=True,
-            qualified_day=payload.get("qualified_day") is True,
-        )
-
     store = SegmentedEventStore(settings.data_root)
     date_value = report_date.isoformat()
     market_events = [

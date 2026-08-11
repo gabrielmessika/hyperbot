@@ -206,6 +206,8 @@ def test_persistence_writer_batches_a_busy_public_feed() -> None:
 
     assert metrics.dropped_events == 0
     assert metrics.received_messages == 100
+    assert metrics.persistence_queue_depth == 0
+    assert metrics.persistence_queue_capacity == 1_000
     assert max(store.batch_sizes) > 1
     assert len(store.events) == metrics.persisted_events
 
