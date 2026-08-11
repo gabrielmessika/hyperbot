@@ -40,7 +40,7 @@ Les statuts utilisés sont : `À faire`, `En cours`, `Terminé`, `Bloqué`.
 | M5 | fair value outcomes et scanner HIP-3 | Terminé | benchmarks OOS sans fuite temporelle |
 | M6 | stratégies de quote et superviseur de risque | Terminé | intentions uniquement, caps testés |
 | M7 | runner shadow et observabilité | Terminé | logiciel livré ; gate 14 jours en attente |
-| M7-Ops | déploiement, preuves M3, API et dashboard | Terminé | outillage livré ; activation distante en attente |
+| M7-Ops | déploiement, preuves M3, API et dashboard | Terminé | collector BTC et observer 3002 actifs ; preuves en collecte |
 | M8 | canary monétaire | Bloqué | autorisation utilisateur + gates statistiques |
 
 ## 4. Lot M1 livré
@@ -477,6 +477,21 @@ La whitelist reste manuelle. Le premier déploiement doit uniquement lancer le
 collector et sa maintenance M3. Le runner shadow M7 reste inactif avant les gates
 M3/M5 et aucun executor n'est présent.
 
+Activation distante réalisée le 11 août 2026 :
+
+- release `/opt/hyperbot/releases/20260811T141144Z-4e811c0bce9b` ;
+- collector public limité à `BTC` et aux canaux `l2Book,bbo,trades` ;
+- `live_enabled=false`, `shadow_only=true`, aucun secret de signature ;
+- collector et observer Docker healthy, maintenance et watchdog running ;
+- observer publié sur `0.0.0.0:3002`, UFW ouvert uniquement pour `3002/tcp` en
+  plus des règles existantes ;
+- smoke API authentifié 200, dashboard sans auth 401, POST refusé 405 ;
+- snapshot du smoke : 591 messages reçus, 774 événements persistés, zéro drop
+  et zéro message malformé ;
+- premier rapport M3 correctement non qualifié faute de données A pour la
+  veille ; gates 7/30 jours non acquises ;
+- conteneurs TRIDENT/HIP-4 observés inchangés et aucun executor HyperBot présent.
+
 ### M8 — canary, bloqué par défaut
 
 Ce lot ne peut pas commencer à la suite d'un simple développement. Il exige :
@@ -515,9 +530,9 @@ uv run mypy src
 
 ## 10. Impact déploiement et fetching
 
-À ce stade : aucun déploiement distant, aucun executor live et aucun fetch réel.
-Le collector M2 et le runner shadow M7 sont des composants locaux explicites ;
-les fichiers de données restent sous `data/` et sont ignorés par Git.
+À ce stade, le collector public M2 et l'observer M7-Ops sont actifs sur le
+serveur ; aucun executor live, runner shadow distant ou fetch réel n'est actif.
+Les fichiers locaux de données restent sous `data/` et sont ignorés par Git.
 
 M1L lit `/workspaces/trident` sans le modifier. Les archives volumineuses restent
 à leur emplacement ; HyperBot versionne seulement manifestes, fixtures minimaux
@@ -525,9 +540,8 @@ et rapports. Le run dérivé courant occupe environ 1,9 Gio sous
 `data/legacy_imports/` et reste ignoré par Git. Une exécution sans accès à
 TRIDENT reste possible pour le package, les tests et le collector.
 
-Le format segmenté et l'outillage M7-Ops sont stabilisés côté logiciel, y compris
-l'observer public `3002`, mais aucun service serveur HyperBot n'est encore
-installé ou activé. Le script de fetch HyperBot reste séparé de
+Le format segmenté et l'outillage M7-Ops sont stabilisés et actifs avec
+l'observer public `3002`. Le script de fetch HyperBot reste séparé de
 `scripts/fetch_all_data.sh`. Aucun script TRIDENT n'a été modifié.
 
 ## 11. Questions ouvertes non bloquantes

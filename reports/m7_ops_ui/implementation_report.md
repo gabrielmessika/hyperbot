@@ -41,5 +41,14 @@ exécutée avant commit.
 
 ## État opérationnel
 
-Le logiciel et les artefacts de déploiement sont prêts. Aucun déploiement, aucune
-ouverture de firewall et aucune activation distante ne sont réalisés par ce lot.
+Le release `20260811T141144Z-4e811c0bce9b` est actif depuis le 11 août 2026 sur
+le serveur commun à TRIDENT, dans l'arborescence séparée `/opt/hyperbot`.
+L'observer est healthy et publié sur `0.0.0.0:3002`; UFW autorise ce seul port
+HyperBot. Le smoke externe confirme `/health=200`, dashboard sans auth `401`,
+API authentifiée `200` et mutation `POST=405`.
+
+Le collector public BTC est healthy avec, au snapshot de validation, 591
+messages reçus, 774 événements persistés, zéro drop et zéro message malformé.
+`live_enabled` reste faux, le runner shadow n'est pas déployé et le canary reste
+non autorisé. Les conteneurs TRIDENT/HIP-4 présents avant l'activation sont
+restés running.

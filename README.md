@@ -54,8 +54,12 @@ Les données publiques clôturées se rapatrient avec manifest et SHA-256 :
 ```
 
 Le runbook complet, le smoke test et le rollback sont décrits dans
-[`docs/m7_ops_runbook.md`](docs/m7_ops_runbook.md). Aucun service distant n'est
-installé par le seul fait de ce commit.
+[`docs/m7_ops_runbook.md`](docs/m7_ops_runbook.md).
+
+L'instance serveur a été activée le 11 août 2026 avec la whitelist minimale
+`BTC`. Le collector public et l'observer sont healthy ; l'interface est
+accessible sur `http://46.224.43.198:3002/`. Les gates M3/M5/M7 restent à
+acquérir et aucun executor live n'est déployé.
 
 ## Données historiques
 

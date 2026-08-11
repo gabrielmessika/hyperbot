@@ -70,6 +70,14 @@ Vérifier ensuite la capacité du serveur. Le seuil par défaut exige au moins
 
 ## 4. Installer sans démarrer
 
+Lors de la toute première installation, `/opt` n'est généralement pas
+inscriptible par le compte de déploiement. Créer une fois la racine étroite avec
+un compte administrateur, puis rendre la main au compte non-root :
+
+```bash
+sudo install -d -o trident-deploy -g trident-deploy -m 0750 /opt/hyperbot
+```
+
 ```bash
 ./deploy.sh --host trident-hetzner
 ```
@@ -292,3 +300,23 @@ Après la première installation :
 
 Le smoke test ne doit envoyer aucun ordre. Le runner shadow M7 ne sera déployé
 qu'après les gates M3 puis M5 ; M8 reste bloqué.
+
+## 10. Première activation réalisée
+
+Le 11 août 2026, le release `20260811T141144Z-4e811c0bce9b` a été installé puis
+activé avec la seule whitelist `BTC`. Les contrôles observés sont :
+
+- collector et observer healthy ; maintenance et watchdog running ;
+- flux public connecté, 591 messages reçus et 774 événements persistés au
+  snapshot du smoke test ;
+- zéro drop, zéro message malformé et aucune raison de health failure ;
+- `/health` public retourne 200, `/` sans auth retourne 401, API authentifiée
+  retourne 200 et POST retourne 405 ;
+- UFW publie `3002/tcp` et l'accès authentifié via l'adresse publique réussit ;
+- `live_enabled=false`, `shadow_only=true`, canary non autorisé ;
+- aucun conteneur TRIDENT/HIP-4 n'a été modifié.
+
+Le premier rapport qualité de la veille est logiquement non qualifié, puisque le
+collector n'était pas encore actif durant cette fenêtre UTC. La collecte M3
+commence avec la journée d'activation ; aucune continuité antérieure n'est
+inventée.
