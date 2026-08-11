@@ -1,0 +1,24 @@
+FROM python:3.11-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+RUN groupadd --gid 10001 hyperbot \
+    && useradd --uid 10001 --gid hyperbot --no-create-home --shell /usr/sbin/nologin hyperbot
+
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN python -m pip install --no-cache-dir .
+
+COPY config ./config
+COPY scripts ./scripts
+
+RUN mkdir -p /app/data /app/runtime /app/reports \
+    && chown -R hyperbot:hyperbot /app
+
+USER hyperbot
+
+CMD ["python", "scripts/run_collector_service.py"]

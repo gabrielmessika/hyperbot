@@ -93,6 +93,26 @@ def test_utc_date_rotates_even_when_size_limit_is_not_reached(
         "utc_date"
     ]
 
+    first_date = manifest["segments"][0]["utc_date"]
+    second_date = manifest["segments"][1]["utc_date"]
+    first = list(store.iter_records_for_utc_date("market-data", first_date))
+    second = list(store.iter_records_for_utc_date("market-data", second_date))
+
+    assert [record["sequence"] for record in first] == [0]
+    assert [record["sequence"] for record in second] == [1]
+
+
+def test_date_reader_refuses_a_mutable_active_segment(tmp_path: Path) -> None:
+    store = SegmentedEventStore(
+        tmp_path,
+        fsync=False,
+        clock_ms=lambda: 1_700_000_000_000,
+    )
+    store.append("market-data", _event(0))
+
+    with pytest.raises(EventIntegrityError, match="still has an active segment"):
+        list(store.iter_records_for_utc_date("market-data", "2023-11-14"))
+
 
 def test_compression_ignores_an_active_segment(tmp_path: Path) -> None:
     store = SegmentedEventStore(tmp_path, fsync=False, clock_ms=lambda: 1000)

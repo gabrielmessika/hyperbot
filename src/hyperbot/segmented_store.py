@@ -11,7 +11,7 @@ import re
 import time
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import cast
 
@@ -263,6 +263,86 @@ class SegmentedEventStore:
         active = self._active_paths(stream_dir)
         if active:
             yield from self._decode_records(active[0].read_bytes())
+
+    def iter_records_for_utc_date(
+        self,
+        stream: str,
+        utc_date: str,
+    ) -> Iterator[dict[str, object]]:
+        """Read and verify immutable closed segments for one UTC date only."""
+
+        try:
+            parsed_date = date.fromisoformat(utc_date)
+        except ValueError as exc:
+            raise EventStoreError(f"invalid UTC date: {utc_date!r}") from exc
+        if parsed_date.isoformat() != utc_date:
+            raise EventStoreError(f"invalid UTC date: {utc_date!r}")
+        stream_dir = self._stream_dir(stream)
+        if not stream_dir.exists():
+            return
+        with self._lock(stream_dir, exclusive=False):
+            manifest = self._load_manifest(stream)
+            segments = [dict(item) for item in self._manifest_segments(manifest)]
+            active = self._active_paths(stream_dir)
+            if active and active[0].name.startswith(utc_date):
+                raise EventIntegrityError(
+                    f"UTC date {utc_date} still has an active segment for {stream}"
+                )
+
+        for index, segment in enumerate(segments):
+            if segment.get("utc_date") != utc_date:
+                continue
+            path_name = segment.get("path")
+            if not isinstance(path_name, str):
+                raise EventIntegrityError("segment manifest path is invalid")
+            path = stream_dir / path_name
+            if not path.is_file():
+                raise EventIntegrityError(f"missing segment: {path}")
+            stored = path.read_bytes()
+            storage_hash = segment.get("storage_sha256")
+            if not isinstance(storage_hash, str) or _sha256(stored) != storage_hash:
+                raise EventIntegrityError(f"segment checksum mismatch: {path}")
+            content = gzip.decompress(stored) if path.suffix == ".gz" else stored
+            content_hash = segment.get("content_sha256")
+            if not isinstance(content_hash, str) or _sha256(content) != content_hash:
+                raise EventIntegrityError(f"segment content mismatch: {path}")
+            previous_record_hash: object = (
+                GENESIS_HASH
+                if index == 0
+                else segments[index - 1].get("last_record_sha256")
+            )
+            if not isinstance(previous_record_hash, str):
+                raise EventIntegrityError(f"previous record hash is invalid: {path}")
+            previous_content_hash: object = (
+                GENESIS_HASH
+                if index == 0
+                else segments[index - 1].get("content_sha256")
+            )
+            if segment.get("previous_segment_sha256") != previous_content_hash:
+                raise EventIntegrityError(f"segment chain mismatch: {path}")
+            expected_sequence = segment.get("first_sequence")
+            if not isinstance(expected_sequence, int):
+                raise EventIntegrityError(f"first sequence is invalid: {path}")
+            scan = self._scan_content(
+                content,
+                stream=stream,
+                previous_hash=previous_record_hash,
+                expected_sequence=expected_sequence,
+                path=path,
+            )
+            expected_fields = {
+                "record_count": scan.count,
+                "first_sequence": scan.first_sequence,
+                "last_sequence": scan.last_sequence,
+                "begin_recorded_at_ms": scan.begin_recorded_at_ms,
+                "end_recorded_at_ms": scan.end_recorded_at_ms,
+                "first_record_sha256": scan.first_record_sha256,
+                "last_record_sha256": scan.last_record_sha256,
+            }
+            for field, expected in expected_fields.items():
+                if segment.get(field) != expected:
+                    raise EventIntegrityError(f"{field} mismatch: {path}")
+            yield from self._decode_records(content)
 
     def read_records(self, stream: str) -> list[dict[str, object]]:
         return list(self.iter_records(stream))

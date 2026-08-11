@@ -1,0 +1,359 @@
+"""Fail-closed operational configuration and health contracts."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import os
+import re
+import shutil
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import cast
+
+from hyperbot.services.public_collector import ALLOWED_CHANNELS
+
+OPS_SCHEMA_VERSION = 1
+_MARKET_PATTERN = re.compile(r"[A-Za-z0-9#][A-Za-z0-9:#._-]{0,127}")
+_FORBIDDEN_SECRET_NAMES = (
+    "HYPERBOT_PRIVATE_KEY",
+    "HYPERBOT_SECRET_KEY",
+    "TRIDENT_SECRET_KEY",
+)
+
+
+class OpsConfigurationError(ValueError):
+    """Raised when server operation is ambiguous or unsafe."""
+
+
+def _boolean(environment: Mapping[str, str], name: str, default: str) -> bool:
+    raw = environment.get(name, default).strip().lower()
+    if raw not in {"true", "false"}:
+        raise OpsConfigurationError(f"{name} must be exactly true or false")
+    return raw == "true"
+
+
+def _integer(
+    environment: Mapping[str, str],
+    name: str,
+    default: str,
+    *,
+    minimum: int,
+) -> int:
+    try:
+        value = int(environment.get(name, default))
+    except ValueError as exc:
+        raise OpsConfigurationError(f"{name} must be an integer") from exc
+    if value < minimum:
+        raise OpsConfigurationError(f"{name} must be >= {minimum}")
+    return value
+
+
+def _float(
+    environment: Mapping[str, str],
+    name: str,
+    default: str,
+    *,
+    minimum: float,
+) -> float:
+    try:
+        value = float(environment.get(name, default))
+    except ValueError as exc:
+        raise OpsConfigurationError(f"{name} must be numeric") from exc
+    if not math.isfinite(value) or value < minimum:
+        raise OpsConfigurationError(f"{name} must be >= {minimum}")
+    return value
+
+
+def _csv(environment: Mapping[str, str], name: str, default: str) -> tuple[str, ...]:
+    values = tuple(
+        item.strip()
+        for item in environment.get(name, default).split(",")
+        if item.strip()
+    )
+    if len(values) != len(set(values)):
+        raise OpsConfigurationError(f"{name} entries must be unique")
+    return values
+
+
+def _runtime_path(environment: Mapping[str, str], name: str, default: str) -> Path:
+    value = environment.get(name, default).strip()
+    if not value:
+        raise OpsConfigurationError(f"{name} must not be empty")
+    path = Path(value)
+    if path == Path("/") or ".." in path.parts:
+        raise OpsConfigurationError(f"{name} must be a narrow path without '..'")
+    return path
+
+
+@dataclass(frozen=True, slots=True)
+class OpsSettings:
+    """Public-only settings shared by collector and maintenance services."""
+
+    collector_enabled: bool
+    live_enabled: bool
+    shadow_only: bool
+    markets: tuple[str, ...]
+    channels: tuple[str, ...]
+    data_root: Path
+    runtime_root: Path
+    review_root: Path
+    queue_capacity: int
+    heartbeat_interval_seconds: float
+    stale_after_seconds: float
+    reconnect_initial_seconds: float
+    reconnect_max_seconds: float
+    status_interval_seconds: float
+    health_max_age_seconds: int
+    minimum_free_bytes: int
+    minimum_retention_days: int
+    maintenance_hour_utc: int
+    maintenance_minute_utc: int
+    maintenance_poll_seconds: int
+
+    @classmethod
+    def from_environment(
+        cls,
+        environment: Mapping[str, str] | None = None,
+        *,
+        require_enabled: bool = False,
+    ) -> OpsSettings:
+        values = os.environ if environment is None else environment
+        for name in _FORBIDDEN_SECRET_NAMES:
+            if values.get(name, "").strip():
+                raise OpsConfigurationError(
+                    f"{name} must not be exposed to HyperBot public services"
+                )
+
+        collector_enabled = _boolean(
+            values, "HYPERBOT_COLLECTOR_ENABLED", "false"
+        )
+        live_enabled = _boolean(values, "HYPERBOT_LIVE_ENABLED", "false")
+        shadow_only = _boolean(values, "HYPERBOT_SHADOW_ONLY", "true")
+        if live_enabled:
+            raise OpsConfigurationError(
+                "live operation is not implemented or authorized"
+            )
+        if not shadow_only:
+            raise OpsConfigurationError("server operation must remain shadow-only")
+        if require_enabled and not collector_enabled:
+            raise OpsConfigurationError(
+                "collector activation requires HYPERBOT_COLLECTOR_ENABLED=true"
+            )
+
+        markets = _csv(values, "HYPERBOT_COLLECTOR_MARKETS", "BTC")
+        if not markets:
+            raise OpsConfigurationError("at least one collector market is required")
+        invalid_markets = [
+            market for market in markets if _MARKET_PATTERN.fullmatch(market) is None
+        ]
+        if invalid_markets:
+            raise OpsConfigurationError(
+                f"invalid collector markets: {sorted(invalid_markets)}"
+            )
+
+        channels = _csv(
+            values,
+            "HYPERBOT_COLLECTOR_CHANNELS",
+            "l2Book,bbo,trades",
+        )
+        if not channels or not set(channels).issubset(ALLOWED_CHANNELS):
+            raise OpsConfigurationError(
+                "collector channels must be selected from l2Book,bbo,trades"
+            )
+
+        heartbeat = _float(
+            values,
+            "HYPERBOT_HEARTBEAT_INTERVAL_SECONDS",
+            "20",
+            minimum=0.1,
+        )
+        stale = _float(
+            values,
+            "HYPERBOT_STALE_AFTER_SECONDS",
+            "60",
+            minimum=heartbeat,
+        )
+        reconnect_initial = _float(
+            values,
+            "HYPERBOT_RECONNECT_INITIAL_SECONDS",
+            "0.25",
+            minimum=0.01,
+        )
+        reconnect_max = _float(
+            values,
+            "HYPERBOT_RECONNECT_MAX_SECONDS",
+            "15",
+            minimum=reconnect_initial,
+        )
+        minimum_retention_days = _integer(
+            values, "HYPERBOT_MINIMUM_RETENTION_DAYS", "60", minimum=30
+        )
+        hour = _integer(
+            values, "HYPERBOT_MAINTENANCE_HOUR_UTC", "0", minimum=0
+        )
+        minute = _integer(
+            values, "HYPERBOT_MAINTENANCE_MINUTE_UTC", "15", minimum=0
+        )
+        if hour > 23 or minute > 59:
+            raise OpsConfigurationError("maintenance UTC time is invalid")
+
+        settings = cls(
+            collector_enabled=collector_enabled,
+            live_enabled=live_enabled,
+            shadow_only=shadow_only,
+            markets=markets,
+            channels=channels,
+            data_root=_runtime_path(
+                values, "HYPERBOT_DATA_ROOT", "data/raw/collector"
+            ),
+            runtime_root=_runtime_path(values, "HYPERBOT_RUNTIME_ROOT", "runtime"),
+            review_root=_runtime_path(
+                values, "HYPERBOT_REVIEW_ROOT", "data/reviews"
+            ),
+            queue_capacity=_integer(
+                values, "HYPERBOT_QUEUE_CAPACITY", "10000", minimum=100
+            ),
+            heartbeat_interval_seconds=heartbeat,
+            stale_after_seconds=stale,
+            reconnect_initial_seconds=reconnect_initial,
+            reconnect_max_seconds=reconnect_max,
+            status_interval_seconds=_float(
+                values,
+                "HYPERBOT_STATUS_INTERVAL_SECONDS",
+                "10",
+                minimum=0.1,
+            ),
+            health_max_age_seconds=_integer(
+                values, "HYPERBOT_HEALTH_MAX_AGE_SECONDS", "90", minimum=10
+            ),
+            minimum_free_bytes=_integer(
+                values,
+                "HYPERBOT_MINIMUM_FREE_BYTES",
+                str(10 * 1024 * 1024 * 1024),
+                minimum=1,
+            ),
+            minimum_retention_days=minimum_retention_days,
+            maintenance_hour_utc=hour,
+            maintenance_minute_utc=minute,
+            maintenance_poll_seconds=_integer(
+                values, "HYPERBOT_MAINTENANCE_POLL_SECONDS", "60", minimum=10
+            ),
+        )
+        if len(settings.markets) * len(settings.channels) > 1_000:
+            raise OpsConfigurationError("configured subscriptions exceed 1,000")
+        return settings
+
+    @property
+    def status_path(self) -> Path:
+        return self.runtime_root / "collector_status.json"
+
+    @property
+    def maintenance_status_path(self) -> Path:
+        return self.runtime_root / "maintenance_status.json"
+
+    @property
+    def config_sha256(self) -> str:
+        payload = asdict(self)
+        payload["data_root"] = str(self.data_root)
+        payload["runtime_root"] = str(self.runtime_root)
+        payload["review_root"] = str(self.review_root)
+        encoded = json.dumps(
+            payload, separators=(",", ":"), sort_keys=True
+        ).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
+
+
+def atomic_write_json(path: Path, payload: Mapping[str, object]) -> None:
+    """Atomically persist operational state without broad file permissions."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    encoded = json.dumps(payload, indent=2, sort_keys=True).encode("utf-8") + b"\n"
+    descriptor = os.open(temporary, os.O_CREAT | os.O_TRUNC | os.O_WRONLY, 0o640)
+    try:
+        view = memoryview(encoded)
+        while view:
+            written = os.write(descriptor, view)
+            if written <= 0:
+                raise OSError(f"failed to write {temporary}")
+            view = view[written:]
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    os.replace(temporary, path)
+
+
+@dataclass(frozen=True, slots=True)
+class HealthResult:
+    healthy: bool
+    reasons: tuple[str, ...]
+    checked_at_ms: int
+    status_age_ms: int | None
+    free_bytes: int
+    config_sha256: str
+
+
+def evaluate_collector_health(
+    settings: OpsSettings,
+    *,
+    now_ms: int,
+) -> HealthResult:
+    """Evaluate a public collector status and disk reserve without exchange access."""
+
+    reasons: list[str] = []
+    status_age_ms: int | None = None
+    try:
+        raw = json.loads(settings.status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        raw = {}
+        reasons.append("status_unavailable")
+    if not isinstance(raw, dict):
+        raw = {}
+        reasons.append("status_invalid")
+    status = cast(dict[str, object], raw)
+    updated_at_ms = status.get("updated_at_ms")
+    if isinstance(updated_at_ms, int):
+        status_age_ms = max(now_ms - updated_at_ms, 0)
+        if status_age_ms > settings.health_max_age_seconds * 1_000:
+            reasons.append("status_stale")
+    elif status:
+        reasons.append("status_timestamp_invalid")
+    if status.get("state") != "running":
+        reasons.append("collector_not_running")
+    if status.get("public_only") is not True:
+        reasons.append("public_only_guard_missing")
+    if status.get("live_enabled") is not False:
+        reasons.append("live_guard_failed")
+    if status.get("shadow_only") is not True:
+        reasons.append("shadow_guard_failed")
+    if status.get("config_sha256") != settings.config_sha256:
+        reasons.append("config_hash_mismatch")
+    if status.get("connected") is not True:
+        reasons.append("collector_disconnected")
+    dropped_events = status.get("dropped_events")
+    if not isinstance(dropped_events, int) or dropped_events > 0:
+        reasons.append("collector_data_loss")
+    last_message_ms = status.get("last_message_receive_ms")
+    if not isinstance(last_message_ms, int) or (
+        now_ms - last_message_ms > settings.health_max_age_seconds * 1_000
+    ):
+        reasons.append("public_feed_stale")
+    elif last_message_ms > now_ms + 5_000:
+        reasons.append("collector_clock_future")
+
+    disk_target = settings.data_root
+    disk_target.mkdir(parents=True, exist_ok=True)
+    free_bytes = shutil.disk_usage(disk_target).free
+    if free_bytes < settings.minimum_free_bytes:
+        reasons.append("disk_reserve_low")
+    return HealthResult(
+        healthy=not reasons,
+        reasons=tuple(dict.fromkeys(reasons)),
+        checked_at_ms=now_ms,
+        status_age_ms=status_age_ms,
+        free_bytes=free_bytes,
+        config_sha256=settings.config_sha256,
+    )

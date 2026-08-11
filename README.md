@@ -14,13 +14,35 @@ Le statut d'implémentation et les prochains lots sont suivis dans
 
 ## État actuel
 
-- phase : instrumentation à shadow, lots M1 à M7 terminés côté logiciel ;
+- phase : instrumentation à shadow, lots M1 à M7 et M7-Ops terminés côté logiciel ;
 - trading live : désactivé ;
 - livré : contrats d'événements, configuration fail-closed, import legacy,
   catalogue public, collector WebSocket et store segmenté intègre ;
 - prochaine priorité : accumuler réellement les gates M3, M5 et M7 ; M8 reste
   bloqué sans review et autorisation séparées ;
 - dépôt TRIDENT : référence historique uniquement.
+
+## Déploiement M7-Ops
+
+M7-Ops fournit un déploiement séparé sous `/opt/hyperbot`, désactivé par défaut.
+Le premier déploiement construit l'image et installe un `.env.hyperbot` sûr sans
+démarrer de service :
+
+```bash
+./deploy.sh --host trident-hetzner
+```
+
+Après revue de la whitelist et activation explicite sur le serveur, les commandes
+`scripts/hyperbot_server.sh` gèrent start/stop/status/health/logs/quality/catalog.
+Les données publiques clôturées se rapatrient avec manifest et SHA-256 :
+
+```bash
+./scripts/fetch_hyperbot_data.sh --days 3
+```
+
+Le runbook complet, le smoke test et le rollback sont décrits dans
+[`docs/m7_ops_runbook.md`](docs/m7_ops_runbook.md). Aucun service distant n'est
+installé par le seul fait de ce commit.
 
 ## Données historiques
 

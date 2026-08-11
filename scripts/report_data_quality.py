@@ -41,11 +41,15 @@ def main() -> int:
     store = SegmentedEventStore(args.data_root)
     market_events = [
         market_event_from_payload(cast(dict[str, object], record["payload"]))
-        for record in store.iter_records("public-market-data")
+        for record in store.iter_records_for_utc_date(
+            "public-market-data", report_date.isoformat()
+        )
     ]
     control_events = [
         control_event_from_payload(cast(dict[str, object], record["payload"]))
-        for record in store.iter_records("collector-control")
+        for record in store.iter_records_for_utc_date(
+            "collector-control", report_date.isoformat()
+        )
     ]
     source_context = (
         market_events[0].context

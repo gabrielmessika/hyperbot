@@ -1,0 +1,112 @@
+name: hyperbot
+
+services:
+  collector:
+    profiles: ["collector"]
+    build:
+      context: .
+      dockerfile: Dockerfile.hyperbot
+    image: hyperbot:${HYPERBOT_IMAGE_TAG:-local}
+    container_name: hyperbot-collector
+    command: ["python", "scripts/run_collector_service.py"]
+    environment: &hyperbot-environment
+      HYPERBOT_COLLECTOR_ENABLED: ${HYPERBOT_COLLECTOR_ENABLED:-false}
+      HYPERBOT_LIVE_ENABLED: ${HYPERBOT_LIVE_ENABLED:-false}
+      HYPERBOT_SHADOW_ONLY: ${HYPERBOT_SHADOW_ONLY:-true}
+      HYPERBOT_COLLECTOR_MARKETS: ${HYPERBOT_COLLECTOR_MARKETS:-BTC}
+      HYPERBOT_COLLECTOR_CHANNELS: ${HYPERBOT_COLLECTOR_CHANNELS:-l2Book,bbo,trades}
+      HYPERBOT_DATA_ROOT: ${HYPERBOT_DATA_ROOT:-/app/data/raw/collector}
+      HYPERBOT_RUNTIME_ROOT: ${HYPERBOT_RUNTIME_ROOT:-/app/runtime}
+      HYPERBOT_REVIEW_ROOT: ${HYPERBOT_REVIEW_ROOT:-/app/data/reviews}
+      HYPERBOT_QUEUE_CAPACITY: ${HYPERBOT_QUEUE_CAPACITY:-10000}
+      HYPERBOT_HEARTBEAT_INTERVAL_SECONDS: ${HYPERBOT_HEARTBEAT_INTERVAL_SECONDS:-20}
+      HYPERBOT_STALE_AFTER_SECONDS: ${HYPERBOT_STALE_AFTER_SECONDS:-60}
+      HYPERBOT_RECONNECT_INITIAL_SECONDS: ${HYPERBOT_RECONNECT_INITIAL_SECONDS:-0.25}
+      HYPERBOT_RECONNECT_MAX_SECONDS: ${HYPERBOT_RECONNECT_MAX_SECONDS:-15}
+      HYPERBOT_STATUS_INTERVAL_SECONDS: ${HYPERBOT_STATUS_INTERVAL_SECONDS:-10}
+      HYPERBOT_HEALTH_MAX_AGE_SECONDS: ${HYPERBOT_HEALTH_MAX_AGE_SECONDS:-90}
+      HYPERBOT_MINIMUM_FREE_BYTES: ${HYPERBOT_MINIMUM_FREE_BYTES:-10737418240}
+      HYPERBOT_MINIMUM_RETENTION_DAYS: ${HYPERBOT_MINIMUM_RETENTION_DAYS:-60}
+      HYPERBOT_MAINTENANCE_HOUR_UTC: ${HYPERBOT_MAINTENANCE_HOUR_UTC:-0}
+      HYPERBOT_MAINTENANCE_MINUTE_UTC: ${HYPERBOT_MAINTENANCE_MINUTE_UTC:-15}
+      HYPERBOT_MAINTENANCE_POLL_SECONDS: ${HYPERBOT_MAINTENANCE_POLL_SECONDS:-60}
+    user: "${HYPERBOT_UID:-1000}:${HYPERBOT_GID:-1000}"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    volumes: &hyperbot-volumes
+      - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/data:/app/data
+      - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/runtime:/app/runtime
+      - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/reports:/app/reports
+    restart: unless-stopped
+    stop_grace_period: 45s
+    healthcheck:
+      test: ["CMD", "python", "scripts/hyperbot_healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    cpus: ${HYPERBOT_COLLECTOR_CPUS:-1.0}
+    mem_limit: ${HYPERBOT_COLLECTOR_MEMORY:-768m}
+    logging: &bounded-logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  maintenance:
+    profiles: ["collector"]
+    image: hyperbot:${HYPERBOT_IMAGE_TAG:-local}
+    container_name: hyperbot-maintenance
+    command: ["python", "scripts/run_ops_maintenance.py"]
+    environment: *hyperbot-environment
+    user: "${HYPERBOT_UID:-1000}:${HYPERBOT_GID:-1000}"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    volumes: *hyperbot-volumes
+    depends_on:
+      collector:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_grace_period: 20s
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    cpus: ${HYPERBOT_MAINTENANCE_CPUS:-0.5}
+    mem_limit: ${HYPERBOT_MAINTENANCE_MEMORY:-512m}
+    logging: *bounded-logging
+
+  watchdog:
+    profiles: ["collector"]
+    image: hyperbot:${HYPERBOT_IMAGE_TAG:-local}
+    container_name: hyperbot-watchdog
+    command: ["python", "scripts/run_ops_watchdog.py"]
+    environment:
+      <<: *hyperbot-environment
+      HYPERBOT_ALERT_WEBHOOK_FILE: /run/secrets/hyperbot_alert_webhook
+      HYPERBOT_WATCHDOG_INTERVAL_SECONDS: ${HYPERBOT_WATCHDOG_INTERVAL_SECONDS:-30}
+      HYPERBOT_WATCHDOG_START_GRACE_SECONDS: ${HYPERBOT_WATCHDOG_START_GRACE_SECONDS:-120}
+      HYPERBOT_ALERT_COOLDOWN_SECONDS: ${HYPERBOT_ALERT_COOLDOWN_SECONDS:-900}
+    user: "${HYPERBOT_UID:-1000}:${HYPERBOT_GID:-1000}"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    volumes: *hyperbot-volumes
+    secrets:
+      - hyperbot_alert_webhook
+    depends_on:
+      collector:
+        condition: service_started
+    restart: unless-stopped
+    stop_grace_period: 20s
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    cpus: ${HYPERBOT_WATCHDOG_CPUS:-0.25}
+    mem_limit: ${HYPERBOT_WATCHDOG_MEMORY:-128m}
+    logging: *bounded-logging
+
+secrets:
+  hyperbot_alert_webhook:
+    file: ${HYPERBOT_ALERT_WEBHOOK_FILE:-./shared/alert_webhook_url}

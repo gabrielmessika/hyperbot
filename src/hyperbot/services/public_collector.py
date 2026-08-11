@@ -98,6 +98,8 @@ class CollectorMetrics:
     dropped_events: int
     reconnects: int
     malformed_messages: int
+    connected: bool
+    last_message_receive_ms: int | None
 
 
 class _ReconnectRequired(RuntimeError):
@@ -143,6 +145,8 @@ class PublicWebSocketCollector:
         self._malformed_messages = 0
         self._local_sequence = 0
         self._attempt = 0
+        self._connected = False
+        self._last_message_receive_ms: int | None = None
 
     @property
     def metrics(self) -> CollectorMetrics:
@@ -152,6 +156,8 @@ class PublicWebSocketCollector:
             dropped_events=self._dropped_events,
             reconnects=self._reconnects,
             malformed_messages=self._malformed_messages,
+            connected=self._connected,
+            last_message_receive_ms=self._last_message_receive_ms,
         )
 
     async def run(self, stop: asyncio.Event) -> CollectorMetrics:
@@ -166,6 +172,7 @@ class PublicWebSocketCollector:
                     async with self.connection_factory(
                         self.config.websocket_url
                     ) as connection:
+                        self._connected = True
                         kind = (
                             CollectorControlKind.CONNECTED
                             if self._attempt == 1
@@ -180,6 +187,7 @@ class PublicWebSocketCollector:
                 except asyncio.CancelledError:
                     raise
                 except Exception as exc:
+                    self._connected = False
                     if stop.is_set():
                         break
                     reason = f"{type(exc).__name__}: {exc}"
@@ -190,6 +198,7 @@ class PublicWebSocketCollector:
                     delay = min(delay * 2, self.config.reconnect_max_seconds)
             self._enqueue_control(CollectorControlKind.SHUTDOWN, "requested")
         finally:
+            self._connected = False
             await self._queue.put(None)
             await writer
         return self.metrics
@@ -227,6 +236,7 @@ class PublicWebSocketCollector:
                 if receive_task in done:
                     raw = receive_task.result()
                     receive_ts_ms = self.wall_clock_ms()
+                    self._last_message_receive_ms = receive_ts_ms
                     receive_monotonic_ns = self.monotonic_ns()
                     last_message_ns = receive_monotonic_ns
                     self._received_messages += 1

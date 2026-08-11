@@ -1,0 +1,16 @@
+.git
+.env
+.env.*
+!.env.hyperbot.example
+.venv
+__pycache__
+.pytest_cache
+.ruff_cache
+.mypy_cache
+data
+logs
+reports
+runtime
+server-data
+tmp
+*.pyc
