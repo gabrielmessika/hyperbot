@@ -63,3 +63,26 @@ La gate temporelle M3 repart sur la première journée UTC complète utilisant u
 configuration homogène. Les captures précédentes restent append-only avec leur
 ancien hash et ne sont ni réécrites ni présentées comme preuve de la nouvelle
 matrice.
+
+## Redéploiement et capacité mesurée
+
+Le release `/opt/hyperbot/releases/20260811T144555Z-7c52fbdb22bb` a été activé
+le 11 août 2026. Le smoke distant a confirmé les 24 marchés et les 52 couples
+canal/marché dans le flux brut du nouveau `run_id`, avec zéro drop, zéro message
+malformé et zéro reconnexion. L'API authentifiée répond 200, le dashboard sans
+authentification répond 401 et POST répond 405. Le store actif et sa chaîne de
+hash ont été validés pendant la collecte.
+
+Un premier échantillon serveur projette environ 12 Gio/jour bruts et 1,83
+Gio/jour après gzip. Cette extrapolation dépend de l'activité de marché, mais
+elle suffit à invalider une attente passive de 30 jours sur le disque actuel :
+45 Gio sont libres, dont 10 Gio réservés au fail-closed, et une journée active
+peut encore contenir environ 12 Gio non compressés.
+
+L'inventaire strictement read-only du TRIDENT classique mesure 10,52 Go sous
+`/opt/trident`, dont 8,14 Go de données et 2,35 Go de logs. La suppression de ses
+cinq images Docker arrêtées ajouterait au plus environ 0,7 Go ;
+`/opt/trident-hip4` et ses quatre conteneurs actifs sont exclus de ce calcul.
+Même après ce gain, la capacité estimée reste d'environ 19 jours avec la réserve
+de 10 Gio, donc insuffisante pour la gate M3 de 30 jours. Aucune donnée TRIDENT
+n'a été supprimée.

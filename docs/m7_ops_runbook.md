@@ -316,6 +316,14 @@ Après la première installation :
 Le smoke test ne doit envoyer aucun ordre. Le runner shadow M7 ne sera déployé
 qu'après les gates M3 puis M5 ; M8 reste bloqué.
 
+La projection de stockage doit être recalculée après chaque changement de
+matrice sur un échantillon réel. Le 11 août 2026, les 52 subscriptions ont
+produit environ 12 Gio/jour bruts et 1,83 Gio/jour après gzip. Avec 45 Gio libres
+et une réserve fail-closed de 10 Gio, la gate de 30 jours n'est pas soutenable
+sur le disque courant. La suppression du TRIDENT classique ne suffirait pas :
+elle ne restituerait qu'environ 11 Go et ne doit pas être exécutée comme solution
+de capacité sans sauvegarde et décision explicite.
+
 ## 10. Première activation réalisée
 
 Le 11 août 2026, le release `20260811T141144Z-4e811c0bce9b` a été installé puis

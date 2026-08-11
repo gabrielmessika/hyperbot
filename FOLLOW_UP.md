@@ -499,7 +499,17 @@ Extension multi-marchés préparée le 11 août 2026 : quatre marchés `depth` e
 vingt marchés `breadth`, soit 52 subscriptions. Les 24 symboles ont été revérifiés
 sur le catalogue public courant et observés sur un smoke WebSocket de douze
 secondes : 2 787 événements persistés, zéro drop, zéro malformed et aucun marché
-manquant. Le redéploiement de cette matrice remplace la whitelist BTC minimale.
+manquant. Le release `20260811T144555Z-7c52fbdb22bb` a ensuite remplacé la
+whitelist BTC minimale. Le smoke serveur confirme les 52 couples, les quatre
+services sains, zéro drop/malformed/reconnexion et l'intégrité du store actif.
+
+La mesure serveur initiale est toutefois d'environ 12 Gio/jour bruts et 1,83
+Gio/jour après gzip. Le disque actuel ne peut pas conserver 30 jours tout en
+gardant la réserve fail-closed de 10 Gio. Retirer tout le TRIDENT classique
+libérerait seulement environ 11 Go et porterait l'autonomie estimée à environ 19
+jours ; TRIDENT-HIP4 est exclu et aucune suppression n'a été effectuée. Une
+extension de disque, un stockage froid externe ou une réduction explicite de la
+matrice doit être décidée avant de considérer la gate M3 comme soutenable.
 
 ### M8 — canary, bloqué par défaut
 
@@ -553,7 +563,10 @@ Le format segmenté et l'outillage M7-Ops sont stabilisés et actifs avec
 l'observer public `3002`. Le script de fetch HyperBot reste séparé de
 `scripts/fetch_all_data.sh`. Aucun script TRIDENT n'a été modifié.
 
-## 11. Questions ouvertes non bloquantes
+## 11. Questions ouvertes
+
+- **bloquant pour la gate M3 à 30 jours :** capacité de stockage de la matrice
+  multi-marchés, à résoudre par extension, archivage froid ou réduction revue ;
 
 - liste blanche outcomes initiale : découverte automatique puis validation ou
   configuration manuelle stricte ;
