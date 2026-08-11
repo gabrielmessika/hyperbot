@@ -14,11 +14,11 @@ Le statut d'implémentation et les prochains lots sont suivis dans
 
 ## État actuel
 
-- phase : instrumentation locale, lots M1, M1L, M2 et logiciel M3 terminés ;
+- phase : instrumentation locale et replay, lots M1 à M4 terminés côté logiciel ;
 - trading live : désactivé ;
 - livré : contrats d'événements, configuration fail-closed, import legacy,
   catalogue public, collector WebSocket et store segmenté intègre ;
-- prochaine priorité : replay déterministe M4 pendant l'accumulation réelle des
+- prochaine priorité : recherche d'edge M5 pendant l'accumulation réelle des
   gates qualité M3 sur 7 puis 30 jours ;
 - dépôt TRIDENT : référence historique uniquement.
 
@@ -66,6 +66,16 @@ uv run python scripts/report_data_quality.py \
 
 Une capture courte reste volontairement non qualifiée : la gate M3 demande sept
 jours UTC consécutifs, puis trente jours de preuve A.
+
+Un replay M4 reproductible et ses stress se lancent sur un fixture explicite :
+
+```bash
+uv run python scripts/run_hyperbot_replay.py \
+  tests/fixtures/m4/replay_input.json --stress
+```
+
+Les modèles central et pessimiste refusent les données B/C ; seul
+`optimistic_touch` peut les utiliser avec son label de borne optimiste.
 
 L'inventaire legacy M1L.1 se génère localement, sans écrire dans TRIDENT :
 

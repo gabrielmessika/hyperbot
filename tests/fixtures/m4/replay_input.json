@@ -1,0 +1,48 @@
+{
+  "run_id": "m4-fixture",
+  "code_version": "test",
+  "model": "central",
+  "dataset_tiers": ["A"],
+  "placement_latency_ms": 0,
+  "cancel_latency_ms": 10,
+  "central_queue_fraction": "0.5",
+  "events": [
+    {
+      "type": "book",
+      "market": "BTC",
+      "timestamp_ms": 0,
+      "source_sequence": 0,
+      "bids": [{"price": "100", "size": "1"}],
+      "asks": [{"price": "101", "size": "1"}]
+    },
+    {
+      "type": "trade",
+      "market": "BTC",
+      "timestamp_ms": 100,
+      "source_sequence": 1,
+      "aggressor_side": "sell",
+      "price": "100",
+      "size": "2"
+    },
+    {
+      "type": "book",
+      "market": "BTC",
+      "timestamp_ms": 30100,
+      "source_sequence": 2,
+      "bids": [{"price": "101", "size": "1"}],
+      "asks": [{"price": "103", "size": "1"}]
+    }
+  ],
+  "quotes": [
+    {
+      "quote_id": "fixture-quote",
+      "market": "BTC",
+      "side": "buy",
+      "price": "100",
+      "size": "1",
+      "submitted_ts_ms": 0,
+      "cancel_requested_ts_ms": null,
+      "maker_fee_bps": "1"
+    }
+  ]
+}

@@ -36,7 +36,7 @@ Les statuts utilisés sont : `À faire`, `En cours`, `Terminé`, `Bloqué`.
 | M1L | inventaire et import des archives TRIDENT | Terminé | manifestes, adaptateurs et limites explicites |
 | M2 | catalogue de marchés et collector public | Terminé | flux outcomes/HIP-3 enregistré sans ordre |
 | M3 | contrôle qualité et rapport quotidien | Terminé | trous, fraîcheur et complétude mesurés |
-| M4 | replay déterministe et modèles de file | À faire | central + pessimiste reproductibles |
+| M4 | replay déterministe et modèles de file | Terminé | central + pessimiste reproductibles |
 | M5 | fair value outcomes et scanner HIP-3 | À faire | benchmarks OOS sans fuite temporelle |
 | M6 | stratégies de quote et superviseur de risque | À faire | intentions uniquement, caps testés |
 | M7 | runner shadow et observabilité | À faire | 14 jours sans violation opérationnelle |
@@ -330,12 +330,32 @@ continuité fictive n'a été créée.
 
 ### M4 — replay
 
+Statut : `Terminé` pour le moteur ; validation empirique A en attente.
+
 - horloge virtuelle et ordering déterministe ;
 - modèle pessimiste : volume devant la quote entièrement consommé ;
 - modèle central : file estimée, latence réelle et fills partiels ;
 - touch-fill uniquement comme borne optimiste ;
 - markouts et PnL économique après frais ;
 - résultat bit-à-bit identique pour même code/config/données.
+
+Livré le 11 août 2026 :
+
+- horloge virtuelle monotone et ordering stable indépendant de l'ordre d'entrée ;
+- modèles `pessimistic`, `central` et `optimistic_touch` séparés, le dernier
+  restant une borne explicitement étiquetée ;
+- file visible entièrement consommée au pessimiste, file estimée et fills
+  partiels au central, avec latences placement/cancel ;
+- refus fail-closed de central/pessimiste sur B/C et en l'absence de preuve L2 ;
+- markouts 100 ms/1 s/5 s/30 s dans une tolérance bornée, frais et PnL
+  économique 30 s ;
+- stress automatiques latence ×2 et frais ×2, hashes de configuration, entrée
+  et résultat ;
+- runner `scripts/run_hyperbot_replay.py`, fixture M4 et rapport
+  `reports/m4/implementation_report.md`.
+
+La reproductibilité logicielle est acquise. Les résultats sur fixtures ne
+valident ni edge ni promotion tant que la collecte A n'a pas satisfait M3.
 
 ### M5 — recherche d'edge
 
