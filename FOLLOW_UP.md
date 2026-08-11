@@ -34,7 +34,7 @@ Les statuts utilisés sont : `À faire`, `En cours`, `Terminé`, `Bloqué`.
 | M0 | dépôt, workspace, packaging, règles agents | Terminé | tests/lint/types opérationnels |
 | M1 | contrats d'événements, config sûre, event store | Terminé | invariants et intégrité couverts par tests |
 | M1L | inventaire et import des archives TRIDENT | Terminé | manifestes, adaptateurs et limites explicites |
-| M2 | catalogue de marchés et collector public | À faire | flux outcomes/HIP-3 enregistré sans ordre |
+| M2 | catalogue de marchés et collector public | Terminé | flux outcomes/HIP-3 enregistré sans ordre |
 | M3 | contrôle qualité et rapport quotidien | À faire | trous, fraîcheur et complétude mesurés |
 | M4 | replay déterministe et modèles de file | À faire | central + pessimiste reproductibles |
 | M5 | fair value outcomes et scanner HIP-3 | À faire | benchmarks OOS sans fuite temporelle |
@@ -204,7 +204,7 @@ matrice complète et les limites par dataset figurent dans
 
 ### M2.1 Catalogue de marchés
 
-Statut : `À faire`
+Statut : `Terminé`
 
 - interroger uniquement les endpoints publics Hyperliquid ;
 - normaliser core, HIP-3 et outcomes dans un `MarketDefinition` versionné ;
@@ -217,9 +217,27 @@ Statut : `À faire`
 Critères d'acceptation : fixtures API, marchés inconnus tolérés, changement de
 tick détecté, aucun secret requis.
 
+Livré le 11 août 2026 :
+
+- transport HTTPS minimal limité à l'endpoint public `info`, sans SDK de
+  signature ni client exchange ;
+- normalisation immuable et versionnée des perps core, DEX HIP-3 et deux côtés
+  de chaque outcome ;
+- asset ID, décimales de taille, incrément minimal, règle de tick, notional
+  minimal, DEX, growth mode, barème tier 0, oracle, mark et statut enregistrés ;
+- empreinte de spécification indépendante des variations d'oracle, avec nouvel
+  événement chaîné à la révision précédente lorsqu'une règle change ;
+- champs futurs ignorés, entrées invalides isolées dans des problèmes non
+  fatals et absence de `outcomeMeta` tolérée explicitement.
+
+Le snapshot public `catalog-1786437256-76047f05` contient 500 définitions :
+232 core, 252 HIP-3 et 16 côtés d'outcomes. Les métadonnées publiques observées
+ne donnent pas le tick/lot des outcomes : ils restent nuls avec un quality flag,
+sans reconstruction implicite.
+
 ### M2.2 Client WebSocket public
 
-Statut : `À faire`
+Statut : `Terminé`
 
 - une connexion durable avec reconnexion et backoff borné ;
 - subscriptions L2/BBO/trades pour une liste blanche de marchés ;
@@ -231,9 +249,27 @@ Statut : `À faire`
 Critères d'acceptation : tests sur serveur WebSocket factice, reconnexion,
 message malformé, surcharge de file, arrêt propre et zéro chemin d'ordre.
 
+Livré le 11 août 2026 :
+
+- subscriptions strictement limitées à `l2Book`, `bbo` et `trades`, sur une
+  whitelist de coins ;
+- horodatages exchange, réception murale et réception monotone sur chaque
+  événement brut ;
+- reconnexion durable avec backoff exponentiel plafonné, heartbeat applicatif
+  `ping`/`pong`, détection stale et événements explicites de gap ;
+- file de persistance bornée, compteur de drops et événement `queue_drop`
+  persisté directement par le writer sans blocage silencieux ;
+- arrêt drainé et protocole de store compatible avec `JsonlEventStore` et le
+  store segmenté M2.3 ;
+- serveur WebSocket factice couvrant reconnexion, message invalide, heartbeat,
+  surcharge et arrêt.
+
+Smoke test public de cinq secondes : BTC, `cash:AMZN` et `#10570`, 119
+événements (L2/BBO/trades), zéro drop, zéro malformed et aucun ordre.
+
 ### M2.3 Segmentation et intégrité
 
-Statut : `À faire`
+Statut : `Terminé`
 
 - rotation par date UTC et taille maximale ;
 - chaîne de hash entre records ou segments ;
@@ -243,6 +279,24 @@ Statut : `À faire`
 
 Critères d'acceptation : suppression, troncature et corruption détectées ; replay
 identique avant/après compression.
+
+Livré le 11 août 2026 :
+
+- rotation à la date UTC ou avant dépassement de taille ;
+- séquences continues et chaîne SHA-256 entre chaque record, prolongée entre
+  segments ;
+- manifest checksummé contenant configuration, début/fin UTC, séquences,
+  compteurs, hashes de records, contenu et stockage ;
+- récupération limitée à une dernière ligne active partielle : les octets
+  valides précédents ne sont pas réécrits et une corruption complète reste une
+  erreur ;
+- compression gzip déterministe uniquement des segments fermés préalablement
+  validés, avec vérification du contenu décompressé avant publication ;
+- tests distincts de suppression, troncature, corruption et identité du replay
+  avant/après compression.
+
+Le rapport et les limites du lot sont publiés dans
+`reports/m2/implementation_report.md`.
 
 ## 7. Lots suivants
 

@@ -46,6 +46,31 @@ class DatasetTier(StrEnum):
     C = "C"
 
 
+class MarketKind(StrEnum):
+    CORE_PERP = "core_perp"
+    HIP3_PERP = "hip3_perp"
+    OUTCOME = "outcome"
+
+
+class MarketStatus(StrEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    UNKNOWN = "unknown"
+
+
+class CollectorControlKind(StrEnum):
+    CONNECTED = "connected"
+    RECONNECTED = "reconnected"
+    DISCONNECTED = "disconnected"
+    GAP = "gap"
+    HEARTBEAT_SENT = "heartbeat_sent"
+    HEARTBEAT_ACK = "heartbeat_ack"
+    MALFORMED_MESSAGE = "malformed_message"
+    UNEXPECTED_MARKET = "unexpected_market"
+    QUEUE_DROP = "queue_drop"
+    SHUTDOWN = "shutdown"
+
+
 def _require_non_empty(value: str, field_name: str) -> None:
     if not value.strip():
         raise ValueError(f"{field_name} must not be empty")
@@ -96,6 +121,137 @@ class EventContext:
         _require_non_empty(self.run_id, "run_id")
         _require_non_empty(self.code_version, "code_version")
         _require_non_empty(self.config_hash, "config_hash")
+
+
+def _require_sha256(value: str, field_name: str) -> None:
+    invalid_character = any(char not in "0123456789abcdef" for char in value)
+    if len(value) != 64 or invalid_character:
+        raise ValueError(f"{field_name} must be a lowercase SHA-256")
+
+
+@dataclass(frozen=True, slots=True)
+class MarketDefinition:
+    """Versioned public market specification captured without credentials."""
+
+    context: EventContext
+    observed_at_ms: int
+    catalog_version: int
+    definition_version: int
+    market_id: str
+    market_kind: MarketKind
+    dex: str
+    coin: str
+    display_name: str
+    asset_id: int
+    sz_decimals: int | None
+    size_increment: Decimal | None
+    max_price_decimals: int | None
+    max_significant_figures: int | None
+    tick_size_at_reference: Decimal | None
+    minimum_order_notional_usd: Decimal
+    growth_mode: str | None
+    deployer_fee_scale: Decimal | None
+    maker_fee_bps: Decimal | None
+    taker_fee_bps: Decimal | None
+    fee_basis: str
+    oracle_px: Decimal | None
+    mark_px: Decimal | None
+    status: MarketStatus
+    definition_sha256: str
+    previous_definition_sha256: str | None
+    quality_flags: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if self.observed_at_ms < 0:
+            raise ValueError("observed_at_ms must be non-negative")
+        if self.catalog_version <= 0 or self.definition_version <= 0:
+            raise ValueError("catalog and definition versions must be positive")
+        for field_name, value in (
+            ("market_id", self.market_id),
+            ("dex", self.dex),
+            ("coin", self.coin),
+            ("display_name", self.display_name),
+            ("fee_basis", self.fee_basis),
+        ):
+            _require_non_empty(value, field_name)
+        if self.asset_id < 0:
+            raise ValueError("asset_id must be non-negative")
+        for field_name, integer_value in (
+            ("sz_decimals", self.sz_decimals),
+            ("max_price_decimals", self.max_price_decimals),
+            ("max_significant_figures", self.max_significant_figures),
+        ):
+            if integer_value is not None and integer_value < 0:
+                raise ValueError(f"{field_name} must be non-negative")
+        _require_optional_positive(self.size_increment, "size_increment")
+        _require_optional_positive(
+            self.tick_size_at_reference, "tick_size_at_reference"
+        )
+        _require_positive(
+            self.minimum_order_notional_usd, "minimum_order_notional_usd"
+        )
+        _require_optional_non_empty(self.growth_mode, "growth_mode")
+        _require_optional_non_negative(self.deployer_fee_scale, "deployer_fee_scale")
+        _require_optional_non_negative(self.maker_fee_bps, "maker_fee_bps")
+        _require_optional_non_negative(self.taker_fee_bps, "taker_fee_bps")
+        _require_optional_positive(self.oracle_px, "oracle_px")
+        _require_optional_positive(self.mark_px, "mark_px")
+        _require_sha256(self.definition_sha256, "definition_sha256")
+        if self.previous_definition_sha256 is not None:
+            _require_sha256(
+                self.previous_definition_sha256,
+                "previous_definition_sha256",
+            )
+        for flag in self.quality_flags:
+            _require_non_empty(flag, "quality_flag")
+
+
+@dataclass(frozen=True, slots=True)
+class PublicMarketDataEvent:
+    """Raw public WebSocket payload with all three observation clocks."""
+
+    context: EventContext
+    channel: str
+    coin: str
+    exchange_ts_ms: int | None
+    receive_ts_ms: int
+    receive_monotonic_ns: int
+    local_sequence: int
+    payload_json: str
+
+    def __post_init__(self) -> None:
+        if self.exchange_ts_ms is not None and self.exchange_ts_ms < 0:
+            raise ValueError("exchange_ts_ms must be non-negative")
+        if self.receive_ts_ms < 0 or self.receive_monotonic_ns < 0:
+            raise ValueError("receive timestamps must be non-negative")
+        if self.local_sequence < 0:
+            raise ValueError("local_sequence must be non-negative")
+        for field_name, value in (
+            ("channel", self.channel),
+            ("coin", self.coin),
+            ("payload_json", self.payload_json),
+        ):
+            _require_non_empty(value, field_name)
+
+
+@dataclass(frozen=True, slots=True)
+class CollectorControlEvent:
+    """Explicit collector lifecycle, gap, parsing, and overload signal."""
+
+    context: EventContext
+    kind: CollectorControlKind
+    receive_ts_ms: int
+    receive_monotonic_ns: int
+    connection_attempt: int
+    dropped_messages: int
+    reason: str | None
+
+    def __post_init__(self) -> None:
+        if self.receive_ts_ms < 0 or self.receive_monotonic_ns < 0:
+            raise ValueError("receive timestamps must be non-negative")
+        if self.connection_attempt < 0 or self.dropped_messages < 0:
+            raise ValueError("counters must be non-negative")
+        _require_optional_non_empty(self.reason, "reason")
 
 
 @dataclass(frozen=True, slots=True)
@@ -494,7 +650,10 @@ class LegacyFeatureObservation:
 
 
 DomainEvent: TypeAlias = (
-    BookEvent
+    MarketDefinition
+    | PublicMarketDataEvent
+    | CollectorControlEvent
+    | BookEvent
     | QuoteIntent
     | OrderLifecycle
     | FillAttribution

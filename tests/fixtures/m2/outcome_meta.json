@@ -1,0 +1,16 @@
+{
+  "outcomes": [
+    {
+      "outcome": 42,
+      "name": "BTC above target",
+      "description": "class:priceBinary|underlying:BTC",
+      "quoteToken": "USDC",
+      "sideSpecs": [
+        {"name": "Yes"},
+        {"name": "No"}
+      ],
+      "newServerField": {"safe": true}
+    }
+  ],
+  "questions": []
+}

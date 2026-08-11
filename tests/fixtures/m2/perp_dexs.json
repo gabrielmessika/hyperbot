@@ -1,0 +1,9 @@
+[
+  null,
+  {
+    "name": "xyz",
+    "fullName": "XYZ Markets",
+    "deployerFeeScale": "1.0",
+    "futureField": "ignored"
+  }
+]

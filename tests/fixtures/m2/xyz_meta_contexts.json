@@ -1,0 +1,19 @@
+[
+  {
+    "universe": [
+      {
+        "name": "xyz:XYZ100",
+        "szDecimals": 4,
+        "growthMode": "enabled",
+        "deployerFeeScale": "1.0"
+      }
+    ]
+  },
+  [
+    {
+      "coin": "xyz:XYZ100",
+      "oraclePx": "12.34",
+      "markPx": "12.35"
+    }
+  ]
+]

@@ -14,11 +14,12 @@ Le statut d'implémentation et les prochains lots sont suivis dans
 
 ## État actuel
 
-- phase : instrumentation locale, lots M1 et M1L terminés ;
+- phase : instrumentation locale, lots M1, M1L et M2 terminés ;
 - trading live : désactivé ;
-- livré : contrats d'événements, configuration fail-closed et event store ;
-- prochaine priorité : premiers replays legacy fair value/markout, puis
-  catalogue de marchés M2.1 et collector public ;
+- livré : contrats d'événements, configuration fail-closed, import legacy,
+  catalogue public, collector WebSocket et store segmenté intègre ;
+- prochaine priorité : qualité des données M3 et premiers replays legacy
+  fair value/markout ;
 - dépôt TRIDENT : référence historique uniquement.
 
 ## Données historiques
@@ -38,6 +39,23 @@ uv sync
 uv run pytest
 uv run ruff check .
 ```
+
+Un snapshot du catalogue public M2 se lance sans secret :
+
+```bash
+uv run python scripts/snapshot_market_catalog.py
+```
+
+Une session bornée du collector public peut ensuite être lancée explicitement :
+
+```bash
+uv run python scripts/run_public_collector.py \
+  --duration-seconds 10 --coin BTC --coin 'cash:AMZN'
+```
+
+Ces commandes n'importent aucun client de signature et ne savent envoyer que
+des subscriptions publiques et des heartbeats. Les données brutes sont écrites
+dans `data/raw/`, ignoré par Git.
 
 L'inventaire legacy M1L.1 se génère localement, sans écrire dans TRIDENT :
 

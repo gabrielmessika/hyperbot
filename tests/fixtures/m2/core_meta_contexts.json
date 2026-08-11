@@ -1,0 +1,26 @@
+[
+  {
+    "universe": [
+      {
+        "name": "BTC",
+        "szDecimals": 5,
+        "maxLeverage": 40,
+        "unknownFutureField": true
+      },
+      {
+        "name": "BROKEN_WITHOUT_TICK"
+      }
+    ]
+  },
+  [
+    {
+      "coin": "BTC",
+      "oraclePx": "60001",
+      "markPx": "60000",
+      "dayNtlVlm": "123"
+    },
+    {
+      "coin": "BROKEN_WITHOUT_TICK"
+    }
+  ]
+]
