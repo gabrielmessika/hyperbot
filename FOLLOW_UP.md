@@ -35,7 +35,7 @@ Les statuts utilisés sont : `À faire`, `En cours`, `Terminé`, `Bloqué`.
 | M1 | contrats d'événements, config sûre, event store | Terminé | invariants et intégrité couverts par tests |
 | M1L | inventaire et import des archives TRIDENT | Terminé | manifestes, adaptateurs et limites explicites |
 | M2 | catalogue de marchés et collector public | Terminé | flux outcomes/HIP-3 enregistré sans ordre |
-| M3 | contrôle qualité et rapport quotidien | À faire | trous, fraîcheur et complétude mesurés |
+| M3 | contrôle qualité et rapport quotidien | Terminé | trous, fraîcheur et complétude mesurés |
 | M4 | replay déterministe et modèles de file | À faire | central + pessimiste reproductibles |
 | M5 | fair value outcomes et scanner HIP-3 | À faire | benchmarks OOS sans fuite temporelle |
 | M6 | stratégies de quote et superviseur de risque | À faire | intentions uniquement, caps testés |
@@ -302,11 +302,31 @@ Le rapport et les limites du lot sont publiés dans
 
 ### M3 — qualité des données
 
+Statut : `Terminé` pour le logiciel ; gate temporelle en collecte.
+
 - calculer couverture, latence p50/p95/p99, gaps et périodes stale ;
 - produire spread, profondeur et activité par marché ;
 - distinguer absence réelle de messages et panne de collecte ;
 - générer un rapport quotidien JSON + Markdown ;
 - gate : sept jours sans trou majeur, puis collecte jusqu'à trente jours.
+
+Livré le 11 août 2026 :
+
+- `DailyQualityAnalyzer` calcule couverture, stale, latences p50/p95/p99,
+  spreads p10/p50/p90, profondeurs et activité par marché attendu ;
+- les gaps distinguent `collector_outage`, `collector_not_running` et
+  `market_stale`, sans interpréter une absence naturelle de trades comme une
+  panne ;
+- les rapports JSON et Markdown portent run, code, configurations, niveau A et
+  checksum indépendant ;
+- la gate exige sept puis trente journées UTC consécutives qualifiées et
+  signale dates manquantes ou journées échouées ;
+- CLI locale : `scripts/report_data_quality.py` ; rapport technique :
+  `reports/m3/implementation_report.md`.
+
+La capture M2 de cinq secondes est correctement refusée comme journée
+qualifiée. Les gates réelles 7/30 jours restent donc non acquises ; aucune
+continuité fictive n'a été créée.
 
 ### M4 — replay
 

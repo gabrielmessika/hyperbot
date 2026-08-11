@@ -14,12 +14,12 @@ Le statut d'implémentation et les prochains lots sont suivis dans
 
 ## État actuel
 
-- phase : instrumentation locale, lots M1, M1L et M2 terminés ;
+- phase : instrumentation locale, lots M1, M1L, M2 et logiciel M3 terminés ;
 - trading live : désactivé ;
 - livré : contrats d'événements, configuration fail-closed, import legacy,
   catalogue public, collector WebSocket et store segmenté intègre ;
-- prochaine priorité : qualité des données M3 et premiers replays legacy
-  fair value/markout ;
+- prochaine priorité : replay déterministe M4 pendant l'accumulation réelle des
+  gates qualité M3 sur 7 puis 30 jours ;
 - dépôt TRIDENT : référence historique uniquement.
 
 ## Données historiques
@@ -56,6 +56,16 @@ uv run python scripts/run_public_collector.py \
 Ces commandes n'importent aucun client de signature et ne savent envoyer que
 des subscriptions publiques et des heartbeats. Les données brutes sont écrites
 dans `data/raw/`, ignoré par Git.
+
+Le rapport qualité d'une journée collectée se génère avec la whitelist exacte :
+
+```bash
+uv run python scripts/report_data_quality.py \
+  --date 2026-08-11 --market BTC --market 'cash:AMZN'
+```
+
+Une capture courte reste volontairement non qualifiée : la gate M3 demande sept
+jours UTC consécutifs, puis trente jours de preuve A.
 
 L'inventaire legacy M1L.1 se génère localement, sans écrire dans TRIDENT :
 
