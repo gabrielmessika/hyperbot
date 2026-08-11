@@ -62,6 +62,8 @@ def test_ops_configuration_is_explicitly_enabled_and_secret_free(
     assert not safe.live_enabled
     assert safe.shadow_only
     assert safe.markets == ("BTC",)
+    assert safe.persistence_batch_size == 256
+    assert safe.fsync_every_records == 100
     assert len(safe.config_sha256) == 64
 
     outcomes = {
@@ -88,6 +90,85 @@ def test_ops_configuration_is_explicitly_enabled_and_secret_free(
     }
     with pytest.raises(OpsConfigurationError, match="must be >="):
         OpsSettings.from_environment(non_finite)
+
+
+def test_ops_configuration_builds_distinct_depth_and_breadth_profiles(
+    tmp_path: Path,
+) -> None:
+    environment = _environment(tmp_path)
+    environment.pop("HYPERBOT_COLLECTOR_MARKETS")
+    environment.pop("HYPERBOT_COLLECTOR_CHANNELS")
+    environment.update(
+        {
+            "HYPERBOT_COLLECTOR_DEPTH_MARKETS": "BTC,ETH",
+            "HYPERBOT_COLLECTOR_BREADTH_MARKETS": "SOL,xyz:GOLD",
+        }
+    )
+
+    settings = OpsSettings.from_environment(environment)
+
+    assert settings.markets == ("BTC", "ETH", "SOL", "xyz:GOLD")
+    assert settings.depth_markets == ("BTC", "ETH")
+    assert settings.breadth_markets == ("SOL", "xyz:GOLD")
+    assert settings.channels == ("l2Book", "bbo", "trades")
+    assert settings.subscriptions == (
+        ("l2Book", "BTC"),
+        ("bbo", "BTC"),
+        ("trades", "BTC"),
+        ("l2Book", "ETH"),
+        ("bbo", "ETH"),
+        ("trades", "ETH"),
+        ("bbo", "SOL"),
+        ("trades", "SOL"),
+        ("bbo", "xyz:GOLD"),
+        ("trades", "xyz:GOLD"),
+    )
+
+    overlap = {
+        **environment,
+        "HYPERBOT_COLLECTOR_BREADTH_MARKETS": "ETH,SOL",
+    }
+    with pytest.raises(OpsConfigurationError, match="overlap"):
+        OpsSettings.from_environment(overlap)
+
+    empty = {
+        **environment,
+        "HYPERBOT_COLLECTOR_DEPTH_MARKETS": "",
+        "HYPERBOT_COLLECTOR_BREADTH_MARKETS": "",
+    }
+    with pytest.raises(OpsConfigurationError, match="profile market"):
+        OpsSettings.from_environment(empty)
+
+    mixed = {
+        **environment,
+        "HYPERBOT_COLLECTOR_MARKETS": "BTC",
+    }
+    with pytest.raises(OpsConfigurationError, match="cannot be mixed"):
+        OpsSettings.from_environment(mixed)
+
+    excessive = {
+        **environment,
+        "HYPERBOT_COLLECTOR_DEPTH_MARKETS": ",".join(
+            f"M{index}" for index in range(334)
+        ),
+        "HYPERBOT_COLLECTOR_BREADTH_MARKETS": "",
+    }
+    with pytest.raises(OpsConfigurationError, match="exceed"):
+        OpsSettings.from_environment(excessive)
+
+    unsafe_fsync = {
+        **environment,
+        "HYPERBOT_FSYNC_EVERY_RECORDS": "1001",
+    }
+    with pytest.raises(OpsConfigurationError, match="FSYNC"):
+        OpsSettings.from_environment(unsafe_fsync)
+
+    unsafe_batch = {
+        **environment,
+        "HYPERBOT_PERSISTENCE_BATCH_SIZE": "10001",
+    }
+    with pytest.raises(OpsConfigurationError, match="BATCH"):
+        OpsSettings.from_environment(unsafe_batch)
 
 
 def test_health_is_fail_closed_for_stale_status_disconnect_and_disk(
@@ -126,12 +207,29 @@ def test_health_is_fail_closed_for_stale_status_disconnect_and_disk(
 
 
 def test_collector_runtime_publishes_health_and_stops_cleanly(tmp_path: Path) -> None:
-    async def scenario() -> tuple[object, dict[str, object], int]:
-        settings = OpsSettings.from_environment(_environment(tmp_path))
+    async def scenario() -> tuple[
+        object,
+        dict[str, object],
+        int,
+        list[dict[str, object]],
+    ]:
+        environment = _environment(tmp_path)
+        environment.pop("HYPERBOT_COLLECTOR_MARKETS")
+        environment.pop("HYPERBOT_COLLECTOR_CHANNELS")
+        environment.update(
+            {
+                "HYPERBOT_COLLECTOR_DEPTH_MARKETS": "BTC",
+                "HYPERBOT_COLLECTOR_BREADTH_MARKETS": "ETH",
+            }
+        )
+        settings = OpsSettings.from_environment(environment)
         stop = asyncio.Event()
+        subscriptions: list[dict[str, object]] = []
 
         async def handler(socket: ServerConnection) -> None:
-            await socket.recv()
+            for _ in settings.subscriptions:
+                raw = json.loads(await socket.recv())
+                subscriptions.append(raw["subscription"])
             await socket.send(
                 json.dumps(
                     {
@@ -176,12 +274,29 @@ def test_collector_runtime_publishes_health_and_stops_cleanly(tmp_path: Path) ->
         records = SegmentedEventStore(settings.data_root).read_records(
             "public-market-data"
         )
-        return metrics, running, len(records) if health.healthy else -1
+        return (
+            metrics,
+            running,
+            len(records) if health.healthy else -1,
+            subscriptions,
+        )
 
-    metrics, running, record_count = asyncio.run(scenario())
+    metrics, running, record_count, subscriptions = asyncio.run(scenario())
 
     assert running["public_only"] is True
     assert running["live_enabled"] is False
+    assert running["depth_markets"] == ["BTC"]
+    assert running["breadth_markets"] == ["ETH"]
+    assert running["subscription_count"] == 5
+    assert running["persistence_batch_size"] == 256
+    assert running["fsync_every_records"] == 100
+    assert subscriptions == [
+        {"coin": "BTC", "type": "l2Book"},
+        {"coin": "BTC", "type": "bbo"},
+        {"coin": "BTC", "type": "trades"},
+        {"coin": "ETH", "type": "bbo"},
+        {"coin": "ETH", "type": "trades"},
+    ]
     assert metrics.received_messages == 1
     assert record_count == 1
 
@@ -254,31 +369,29 @@ def test_daily_maintenance_is_idempotent_and_never_deletes_raw(
     assert second.reused
     marker = json.loads(
         (
-            settings.runtime_root
-            / "maintenance"
-            / f"{report_date.isoformat()}.json"
+            settings.runtime_root / "maintenance" / f"{report_date.isoformat()}.json"
         ).read_text(encoding="utf-8")
     )
     assert marker["raw_data_deleted"] is False
 
 
 def test_deployment_artifacts_remain_disabled_by_default() -> None:
-    environment = (PROJECT_ROOT / ".env.hyperbot.example").read_text(
-        encoding="utf-8"
-    )
-    compose = (PROJECT_ROOT / "docker-compose.hyperbot.yml").read_text(
-        encoding="utf-8"
-    )
+    environment = (PROJECT_ROOT / ".env.hyperbot.example").read_text(encoding="utf-8")
+    compose = (PROJECT_ROOT / "docker-compose.hyperbot.yml").read_text(encoding="utf-8")
     project = (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
     assert "HYPERBOT_COLLECTOR_ENABLED=false" in environment
     assert "HYPERBOT_LIVE_ENABLED=false" in environment
     assert "HYPERBOT_SHADOW_ONLY=true" in environment
+    assert "HYPERBOT_COLLECTOR_DEPTH_MARKETS=BTC,ETH,HYPE,SOL" in environment
+    assert "HYPERBOT_COLLECTOR_BREADTH_MARKETS=PUMP,ZEC,XRP" in environment
+    assert "HYPERBOT_COLLECTOR_MARKETS=" not in environment
+    assert "HYPERBOT_COLLECTOR_CHANNELS=" not in environment
+    assert "HYPERBOT_FSYNC_EVERY_RECORDS=100" in environment
+    assert "HYPERBOT_PERSISTENCE_BATCH_SIZE=256" in environment
     assert 'profiles: ["collector"]' in compose
     assert "read_only: true" in compose
-    assert sum(
-        line.strip() == "ports:" for line in compose.splitlines()
-    ) == 1
+    assert sum(line.strip() == "ports:" for line in compose.splitlines()) == 1
     assert "HYPERBOT_UI_PORT:-3002" in compose
     assert "hyperbot_ui_password" in compose
     assert "HYPERBOT_UI_AUTH_REQUIRED=true" in environment
@@ -308,9 +421,7 @@ def test_deployment_artifacts_remain_disabled_by_default() -> None:
 def test_watchdog_alerts_on_failure_cooldown_and_recovery(tmp_path: Path) -> None:
     settings = OpsSettings.from_environment(_environment(tmp_path))
     webhook_file = tmp_path / "alert_webhook_url"
-    webhook_file.write_text(
-        "https://alerts.invalid/hyperbot\n", encoding="utf-8"
-    )
+    webhook_file.write_text("https://alerts.invalid/hyperbot\n", encoding="utf-8")
     watchdog = WatchdogSettings.from_environment(
         {
             "HYPERBOT_WATCHDOG_INTERVAL_SECONDS": "10",

@@ -9,7 +9,7 @@ import json
 import os
 import re
 import time
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -44,6 +44,20 @@ class _ScanResult:
     last_record_sha256: str
 
 
+@dataclass(frozen=True, slots=True)
+class _ActiveAppendState:
+    path: Path
+    size: int
+    mtime_ns: int
+    ctime_ns: int
+    device: int
+    inode: int
+    previous_hash: str
+    next_sequence: int
+    manifest_segment_count: int
+    manifest_last_record_hash: str
+
+
 def _canonical_json(value: object) -> bytes:
     return json.dumps(
         value,
@@ -61,6 +75,31 @@ def _utc_date(timestamp_ms: int) -> str:
     return datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC).date().isoformat()
 
 
+def _encoded_event_line(
+    stream: str,
+    event: DomainEvent,
+    *,
+    recorded_at_ms: int,
+    sequence: int,
+    previous_hash: str,
+) -> tuple[str, str, bytes]:
+    payload = event_payload(event)
+    payload_sha256 = _sha256(_canonical_json(payload))
+    base_record: dict[str, JsonValue] = {
+        "schema_version": SEGMENT_SCHEMA_VERSION,
+        "stream": stream,
+        "sequence": sequence,
+        "recorded_at_ms": recorded_at_ms,
+        "previous_record_sha256": previous_hash,
+        "event_type": event_type(event),
+        "payload_sha256": payload_sha256,
+        "payload": payload,
+    }
+    record_sha256 = _sha256(_canonical_json(base_record))
+    record = {**base_record, "record_sha256": record_sha256}
+    return payload_sha256, record_sha256, _canonical_json(record) + b"\n"
+
+
 class SegmentedEventStore:
     """Rotate, validate, recover, and compress hash-chained JSONL segments."""
 
@@ -70,94 +109,169 @@ class SegmentedEventStore:
         *,
         max_segment_bytes: int = 128 * 1024 * 1024,
         fsync: bool = True,
+        fsync_every_records: int = 1,
+        always_fsync_streams: frozenset[str] = frozenset(),
         clock_ms: Callable[[], int] | None = None,
     ) -> None:
         if max_segment_bytes <= 0:
             raise ValueError("max_segment_bytes must be positive")
+        if fsync_every_records <= 0:
+            raise ValueError("fsync_every_records must be positive")
+        invalid_sync_streams = [
+            stream
+            for stream in always_fsync_streams
+            if _STREAM_PATTERN.fullmatch(stream) is None
+        ]
+        if invalid_sync_streams:
+            raise ValueError("always_fsync_streams contains an invalid stream")
         self.root = Path(root)
         self.max_segment_bytes = max_segment_bytes
         self.fsync = fsync
+        self.fsync_every_records = fsync_every_records
+        self.always_fsync_streams = always_fsync_streams
         self.clock_ms = clock_ms or (lambda: int(time.time() * 1000))
+        self._append_states: dict[str, _ActiveAppendState] = {}
+        self._pending_fsync_records: dict[str, int] = {}
         self.root.mkdir(parents=True, exist_ok=True)
 
     def append(self, stream: str, event: DomainEvent) -> AppendResult:
+        return self.append_many(stream, (event,))[0]
+
+    def append_many(
+        self,
+        stream: str,
+        events: Sequence[DomainEvent],
+    ) -> tuple[AppendResult, ...]:
+        """Append a bounded event batch under one lock and file descriptor."""
+
+        if not events:
+            return ()
         stream_dir = self._stream_dir(stream)
         stream_dir.mkdir(parents=True, exist_ok=True)
+        results: list[AppendResult] = []
         with self._lock(stream_dir):
             manifest = self._load_manifest(stream)
-            previous_hash, next_sequence, active_path, active_scan = (
-                self._recover_active(stream, manifest)
-            )
-            now_ms = self.clock_ms()
-            if now_ms < 0:
-                raise EventStoreError("clock returned a negative timestamp")
-            date = _utc_date(now_ms)
-
-            payload = event_payload(event)
-            payload_sha256 = _sha256(_canonical_json(payload))
-            base_record: dict[str, JsonValue] = {
-                "schema_version": SEGMENT_SCHEMA_VERSION,
-                "stream": stream,
-                "sequence": next_sequence,
-                "recorded_at_ms": now_ms,
-                "previous_record_sha256": previous_hash,
-                "event_type": event_type(event),
-                "payload_sha256": payload_sha256,
-                "payload": payload,
-            }
-            record_sha256 = _sha256(_canonical_json(base_record))
-            record = {**base_record, "record_sha256": record_sha256}
-            line = _canonical_json(record) + b"\n"
-
-            must_rotate = (
-                active_path is not None
-                and active_scan.count > 0
-                and (
-                    not active_path.name.startswith(date)
-                    or active_path.stat().st_size + len(line) > self.max_segment_bytes
+            cached = self._cached_append_position(stream, manifest)
+            if cached is None:
+                previous_hash, next_sequence, active_path, active_scan = (
+                    self._recover_active(stream, manifest)
                 )
-            )
-            if must_rotate and active_path is not None:
-                manifest = self._finalize_active(stream, manifest, active_path)
-                active_path = None
-
-            if active_path is None:
-                ordinal = len(self._manifest_segments(manifest)) + 1
-                active_path = stream_dir / f"{date}-{ordinal:06d}.jsonl.open"
-                previous_hash = self._manifest_last_record_hash(manifest)
-                next_sequence = self._manifest_next_sequence(manifest)
-                base_record["sequence"] = next_sequence
-                base_record["previous_record_sha256"] = previous_hash
-                record_sha256 = _sha256(_canonical_json(base_record))
-                record = {**base_record, "record_sha256": record_sha256}
-                line = _canonical_json(record) + b"\n"
-
-            descriptor = os.open(
-                active_path,
-                os.O_APPEND | os.O_CREAT | os.O_RDWR,
-                0o640,
-            )
+                active_count = active_scan.count
+            else:
+                previous_hash, next_sequence, active_path, active_count = cached
+            active_size = active_path.stat().st_size if active_path else 0
+            descriptor: int | None = None
+            descriptor_path: Path | None = None
             try:
-                byte_offset = os.lseek(descriptor, 0, os.SEEK_END)
-                view = memoryview(line)
-                while view:
-                    written = os.write(descriptor, view)
-                    if written <= 0:
-                        raise EventStoreError(
-                            f"failed to append event to {active_path}"
+                for event in events:
+                    now_ms = self.clock_ms()
+                    if now_ms < 0:
+                        raise EventStoreError("clock returned a negative timestamp")
+                    date = _utc_date(now_ms)
+                    payload_sha256, record_sha256, line = _encoded_event_line(
+                        stream,
+                        event,
+                        recorded_at_ms=now_ms,
+                        sequence=next_sequence,
+                        previous_hash=previous_hash,
+                    )
+                    must_rotate = (
+                        active_path is not None
+                        and active_count > 0
+                        and (
+                            not active_path.name.startswith(date)
+                            or active_size + len(line) > self.max_segment_bytes
                         )
-                    view = view[written:]
-                if self.fsync:
-                    os.fsync(descriptor)
-            finally:
-                os.close(descriptor)
+                    )
+                    if must_rotate and active_path is not None:
+                        if descriptor is not None:
+                            os.close(descriptor)
+                            descriptor = None
+                            descriptor_path = None
+                        manifest = self._finalize_active(
+                            stream,
+                            manifest,
+                            active_path,
+                        )
+                        self._append_states.pop(stream, None)
+                        self._pending_fsync_records.pop(stream, None)
+                        active_path = None
+                        active_size = 0
+                        active_count = 0
+                        previous_hash = self._manifest_last_record_hash(manifest)
+                        next_sequence = self._manifest_next_sequence(manifest)
+                        payload_sha256, record_sha256, line = _encoded_event_line(
+                            stream,
+                            event,
+                            recorded_at_ms=now_ms,
+                            sequence=next_sequence,
+                            previous_hash=previous_hash,
+                        )
 
-        return AppendResult(
-            path=active_path,
-            byte_offset=byte_offset,
-            bytes_written=len(line),
-            payload_sha256=payload_sha256,
-        )
+                    if active_path is None:
+                        ordinal = len(self._manifest_segments(manifest)) + 1
+                        active_path = stream_dir / f"{date}-{ordinal:06d}.jsonl.open"
+
+                    if descriptor is None or descriptor_path != active_path:
+                        if descriptor is not None:
+                            os.close(descriptor)
+                        descriptor = os.open(
+                            active_path,
+                            os.O_APPEND | os.O_CREAT | os.O_RDWR,
+                            0o640,
+                        )
+                        descriptor_path = active_path
+                        active_size = os.lseek(descriptor, 0, os.SEEK_END)
+
+                    byte_offset = active_size
+                    view = memoryview(line)
+                    while view:
+                        written = os.write(descriptor, view)
+                        if written <= 0:
+                            raise EventStoreError(
+                                f"failed to append event to {active_path}"
+                            )
+                        view = view[written:]
+                    active_size += len(line)
+                    active_count += 1
+                    previous_hash = record_sha256
+                    next_sequence += 1
+                    pending_fsync = self._pending_fsync_records.get(stream, 0) + 1
+                    should_fsync = (
+                        stream in self.always_fsync_streams
+                        or pending_fsync >= self.fsync_every_records
+                    )
+                    if self.fsync and should_fsync:
+                        os.fsync(descriptor)
+                        pending_fsync = 0
+                    self._pending_fsync_records[stream] = pending_fsync
+                    results.append(
+                        AppendResult(
+                            path=active_path,
+                            byte_offset=byte_offset,
+                            bytes_written=len(line),
+                            payload_sha256=payload_sha256,
+                        )
+                    )
+            finally:
+                if descriptor is not None:
+                    os.close(descriptor)
+            if active_path is None:
+                raise EventStoreError("event batch produced no active segment")
+            stat = active_path.stat()
+            self._append_states[stream] = _ActiveAppendState(
+                path=active_path,
+                size=stat.st_size,
+                mtime_ns=stat.st_mtime_ns,
+                ctime_ns=stat.st_ctime_ns,
+                device=stat.st_dev,
+                inode=stat.st_ino,
+                previous_hash=previous_hash,
+                next_sequence=next_sequence,
+                manifest_segment_count=len(self._manifest_segments(manifest)),
+                manifest_last_record_hash=self._manifest_last_record_hash(manifest),
+            )
+        return tuple(results)
 
     def close(self, stream: str | None = None) -> None:
         streams = [stream] if stream is not None else self._known_streams()
@@ -173,6 +287,8 @@ class SegmentedEventStore:
                 )
                 if active_path is not None and active_path.stat().st_size > 0:
                     self._finalize_active(current_stream, manifest, active_path)
+                self._append_states.pop(current_stream, None)
+                self._pending_fsync_records.pop(current_stream, None)
 
     def validate(self, stream: str) -> ValidationResult:
         stream_dir = self._stream_dir(stream)
@@ -194,15 +310,17 @@ class SegmentedEventStore:
                     raise EventIntegrityError(f"missing segment: {path}")
                 stored = path.read_bytes()
                 expected_storage_hash = segment.get("storage_sha256")
-                if not isinstance(expected_storage_hash, str) or _sha256(
-                    stored
-                ) != expected_storage_hash:
+                if (
+                    not isinstance(expected_storage_hash, str)
+                    or _sha256(stored) != expected_storage_hash
+                ):
                     raise EventIntegrityError(f"segment checksum mismatch: {path}")
                 content = gzip.decompress(stored) if path.suffix == ".gz" else stored
                 expected_content_hash = segment.get("content_sha256")
-                if not isinstance(expected_content_hash, str) or _sha256(
-                    content
-                ) != expected_content_hash:
+                if (
+                    not isinstance(expected_content_hash, str)
+                    or _sha256(content) != expected_content_hash
+                ):
                     raise EventIntegrityError(f"segment content mismatch: {path}")
                 if segment.get("previous_segment_sha256") != previous_content_hash:
                     raise EventIntegrityError(
@@ -524,6 +642,46 @@ class SegmentedEventStore:
             raise EventIntegrityError(f"multiple active segments in {stream_dir}")
         return active
 
+    def _cached_append_position(
+        self,
+        stream: str,
+        manifest: Mapping[str, JsonValue],
+    ) -> tuple[str, int, Path, int] | None:
+        state = self._append_states.get(stream)
+        if state is None:
+            return None
+        try:
+            active_paths = self._active_paths(self._stream_dir(stream))
+            stat = state.path.stat()
+        except OSError:
+            self._append_states.pop(stream, None)
+            self._pending_fsync_records.pop(stream, None)
+            return None
+        manifest_segment_count = len(self._manifest_segments(manifest))
+        manifest_last_hash = self._manifest_last_record_hash(manifest)
+        manifest_next_sequence = self._manifest_next_sequence(manifest)
+        unchanged = (
+            active_paths == [state.path]
+            and stat.st_size == state.size
+            and stat.st_mtime_ns == state.mtime_ns
+            and stat.st_ctime_ns == state.ctime_ns
+            and stat.st_dev == state.device
+            and stat.st_ino == state.inode
+            and manifest_segment_count == state.manifest_segment_count
+            and manifest_last_hash == state.manifest_last_record_hash
+            and state.next_sequence > manifest_next_sequence
+        )
+        if not unchanged:
+            self._append_states.pop(stream, None)
+            self._pending_fsync_records.pop(stream, None)
+            return None
+        return (
+            state.previous_hash,
+            state.next_sequence,
+            state.path,
+            state.next_sequence - manifest_next_sequence,
+        )
+
     def _recover_active(
         self,
         stream: str,
@@ -626,9 +784,10 @@ class SegmentedEventStore:
                     f"payload hash mismatch at {path}:{line_number}"
                 )
             record_hash = record.pop("record_sha256", None)
-            if not isinstance(record_hash, str) or _sha256(
-                _canonical_json(record)
-            ) != record_hash:
+            if (
+                not isinstance(record_hash, str)
+                or _sha256(_canonical_json(record)) != record_hash
+            ):
                 raise EventIntegrityError(
                     f"record hash mismatch at {path}:{line_number}"
                 )

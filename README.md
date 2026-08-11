@@ -56,10 +56,15 @@ Les données publiques clôturées se rapatrient avec manifest et SHA-256 :
 Le runbook complet, le smoke test et le rollback sont décrits dans
 [`docs/m7_ops_runbook.md`](docs/m7_ops_runbook.md).
 
-L'instance serveur a été activée le 11 août 2026 avec la whitelist minimale
-`BTC`. Le collector public et l'observer sont healthy ; l'interface est
+L'instance serveur a été activée le 11 août 2026. Le collector public et
+l'observer sont healthy ; l'interface est
 accessible sur `http://46.224.43.198:3002/`. Les gates M3/M5/M7 restent à
 acquérir et aucun executor live n'est déployé.
+
+La collecte utilise deux profils explicites : `depth` reçoit
+`l2Book+bbo+trades` pour quatre marchés liquides et `breadth` reçoit uniquement
+`bbo+trades` pour vingt marchés de screening. Cela conserve la preuve L2 utile
+aux replays sans multiplier inutilement le stockage sur tout l'univers.
 
 ## Données historiques
 

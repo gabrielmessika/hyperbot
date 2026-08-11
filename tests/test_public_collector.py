@@ -144,6 +144,72 @@ class _SlowStore:
         return None
 
 
+class _BatchStore:
+    def __init__(self) -> None:
+        self.batch_sizes: list[int] = []
+        self.events: list[DomainEvent] = []
+
+    def append(self, stream: str, event: DomainEvent) -> object:
+        del stream
+        self.batch_sizes.append(1)
+        self.events.append(event)
+        return None
+
+    def append_many(self, stream: str, events: list[DomainEvent]) -> object:
+        del stream
+        self.batch_sizes.append(len(events))
+        self.events.extend(events)
+        return None
+
+
+def test_persistence_writer_batches_a_busy_public_feed() -> None:
+    async def scenario() -> tuple[object, _BatchStore]:
+        stop = asyncio.Event()
+        store = _BatchStore()
+
+        async def handler(socket: ServerConnection) -> None:
+            await socket.recv()
+            for index in range(100):
+                await socket.send(
+                    json.dumps(
+                        {
+                            "channel": "bbo",
+                            "data": {
+                                "coin": "BTC",
+                                "time": index,
+                                "bbo": [None, None],
+                            },
+                        }
+                    )
+                )
+            await asyncio.sleep(0.05)
+            stop.set()
+
+        async with serve(handler, "127.0.0.1", 0) as server:
+            port = server.sockets[0].getsockname()[1]
+            collector = PublicWebSocketCollector(
+                config=CollectorConfig(
+                    subscriptions=(Subscription("bbo", "BTC"),),
+                    queue_capacity=1_000,
+                    persistence_batch_size=16,
+                    websocket_url=f"ws://127.0.0.1:{port}",
+                    heartbeat_interval_seconds=0.02,
+                    stale_after_seconds=0.1,
+                ),
+                context=_context(),
+                store=store,
+            )
+            metrics = await collector.run(stop)
+        return metrics, store
+
+    metrics, store = asyncio.run(scenario())
+
+    assert metrics.dropped_events == 0
+    assert metrics.received_messages == 100
+    assert max(store.batch_sizes) > 1
+    assert len(store.events) == metrics.persisted_events
+
+
 def test_bounded_queue_reports_overload_without_silent_blocking() -> None:
     async def scenario() -> tuple[object, _SlowStore]:
         stop = asyncio.Event()

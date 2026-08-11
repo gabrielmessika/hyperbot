@@ -33,7 +33,7 @@ pour une exposition Internet appropriée.
 
 ## Validation
 
-Les 99 tests du dépôt couvrent notamment la configuration fail-closed, les checksums, la borne
+La suite complète du dépôt couvre notamment la configuration fail-closed, les checksums, la borne
 d'historique, la non-divulgation de secrets, l'authentification HTTP, les
 headers de sécurité, le dashboard embarqué, les erreurs 400/404 et le refus des
 méthodes POST/PUT/PATCH/DELETE/OPTIONS. La régression complète M0 à M7 est

@@ -64,9 +64,7 @@ def test_segment_rotation_manifest_and_compression_preserve_replay(
     assert all(
         segment["compression"] == "gzip"
         for segment in json.loads(
-            (tmp_path / "market-data" / "manifest.json").read_text(
-                encoding="utf-8"
-            )
+            (tmp_path / "market-data" / "manifest.json").read_text(encoding="utf-8")
         )["segments"]
     )
 
@@ -89,9 +87,7 @@ def test_utc_date_rotates_even_when_size_limit_is_not_reached(
         (tmp_path / "market-data" / "manifest.json").read_text(encoding="utf-8")
     )
     assert len(manifest["segments"]) == 2
-    assert manifest["segments"][0]["utc_date"] != manifest["segments"][1][
-        "utc_date"
-    ]
+    assert manifest["segments"][0]["utc_date"] != manifest["segments"][1]["utc_date"]
 
     first_date = manifest["segments"][0]["utc_date"]
     second_date = manifest["segments"][1]["utc_date"]
@@ -138,6 +134,116 @@ def test_partial_active_line_is_removed_without_rewriting_valid_bytes(
 
     assert content.startswith(valid_prefix)
     assert len(recovered.read_records("market-data")) == 2
+
+
+def test_append_cache_avoids_rescanning_unchanged_active_segment(
+    tmp_path: Path,
+) -> None:
+    store = SegmentedEventStore(tmp_path, fsync=False, clock_ms=lambda: 1000)
+    original = store._recover_active
+    recovery_calls = 0
+
+    def counted_recovery(
+        stream: str,
+        manifest: dict[str, object],
+    ) -> object:
+        nonlocal recovery_calls
+        recovery_calls += 1
+        return original(stream, manifest)  # type: ignore[arg-type]
+
+    store._recover_active = counted_recovery  # type: ignore[method-assign,assignment]
+    for sequence in range(100):
+        store.append("market-data", _event(sequence))
+
+    assert recovery_calls == 1
+    assert store.validate("market-data").record_count == 100
+
+
+def test_group_commit_batches_market_fsync_but_can_force_control_streams(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fsync_calls: list[int] = []
+    monkeypatch.setattr(
+        "hyperbot.segmented_store.os.fsync",
+        lambda descriptor: fsync_calls.append(descriptor),
+    )
+    batched = SegmentedEventStore(
+        tmp_path / "batched",
+        fsync_every_records=3,
+        clock_ms=lambda: 1000,
+    )
+
+    batched.append("market-data", _event(0))
+    batched.append("market-data", _event(1))
+    assert fsync_calls == []
+    batched.append("market-data", _event(2))
+    assert len(fsync_calls) == 1
+    batched.append("market-data", _event(3))
+    batched.close("market-data")
+    assert len(fsync_calls) > 1
+
+    forced = SegmentedEventStore(
+        tmp_path / "forced",
+        fsync_every_records=100,
+        always_fsync_streams=frozenset({"market-data"}),
+        clock_ms=lambda: 1000,
+    )
+    before_forced = len(fsync_calls)
+    forced.append("market-data", _event(0))
+    assert len(fsync_calls) == before_forced + 1
+
+
+def test_batch_append_preserves_record_order_and_integrity(tmp_path: Path) -> None:
+    store = SegmentedEventStore(
+        tmp_path,
+        fsync=False,
+        clock_ms=iter((1000, 1001, 1002)).__next__,
+    )
+
+    results = store.append_many(
+        "market-data",
+        tuple(_event(sequence) for sequence in range(3)),
+    )
+    store.close("market-data")
+    records = store.read_records("market-data")
+
+    assert len(results) == 3
+    assert [record["sequence"] for record in records] == [0, 1, 2]
+    assert [record["payload"]["local_sequence"] for record in records] == [
+        0,
+        1,
+        2,
+    ]
+    assert store.validate("market-data").record_count == 3
+
+
+def test_append_cache_is_invalidated_by_an_external_writer(tmp_path: Path) -> None:
+    first = SegmentedEventStore(tmp_path, fsync=False, clock_ms=lambda: 1000)
+    second = SegmentedEventStore(tmp_path, fsync=False, clock_ms=lambda: 1001)
+
+    first.append("market-data", _event(0))
+    second.append("market-data", _event(1))
+    first.append("market-data", _event(2))
+
+    assert [record["sequence"] for record in first.read_records("market-data")] == [
+        0,
+        1,
+        2,
+    ]
+
+
+def test_close_detects_same_size_active_corruption_with_append_cache(
+    tmp_path: Path,
+) -> None:
+    store = SegmentedEventStore(tmp_path, fsync=False, clock_ms=lambda: 1000)
+    active = store.append("market-data", _event(0)).path
+    content = bytearray(active.read_bytes())
+    content[len(content) // 2] ^= 1
+    active.write_bytes(content)
+
+    with pytest.raises(EventIntegrityError):
+        store.close("market-data")
 
 
 def _closed_store(tmp_path: Path) -> tuple[SegmentedEventStore, Path]:

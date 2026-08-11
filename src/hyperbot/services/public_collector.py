@@ -60,6 +60,7 @@ class Subscription:
 class CollectorConfig:
     subscriptions: tuple[Subscription, ...]
     queue_capacity: int = 10_000
+    persistence_batch_size: int = 256
     heartbeat_interval_seconds: float = 20.0
     stale_after_seconds: float = 60.0
     reconnect_initial_seconds: float = 0.25
@@ -77,6 +78,8 @@ class CollectorConfig:
             raise ValueError("Hyperliquid allows at most 1,000 subscriptions")
         if self.queue_capacity <= 0:
             raise ValueError("queue_capacity must be positive")
+        if self.persistence_batch_size <= 0:
+            raise ValueError("persistence batch size must be positive")
         if self.heartbeat_interval_seconds <= 0:
             raise ValueError("heartbeat interval must be positive")
         if self.stale_after_seconds < self.heartbeat_interval_seconds:
@@ -384,11 +387,46 @@ class PublicWebSocketCollector:
             if event is None:
                 self._queue.task_done()
                 return
+            events = [event]
+            stop_after_batch = False
+            while len(events) < self.config.persistence_batch_size:
+                try:
+                    queued = self._queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
+                if queued is None:
+                    stop_after_batch = True
+                    break
+                events.append(queued)
+            await asyncio.to_thread(self._persist_events, events)
+            self._persisted_events += len(events)
+            for _ in events:
+                self._queue.task_done()
+            if stop_after_batch:
+                self._queue.task_done()
+                return
+
+    def _persist_events(self, events: Sequence[DomainEvent]) -> None:
+        groups: list[tuple[str, list[DomainEvent]]] = []
+        for event in events:
             stream = (
                 self.config.data_stream
                 if isinstance(event, PublicMarketDataEvent)
                 else self.config.control_stream
             )
-            await asyncio.to_thread(self.store.append, stream, event)
-            self._persisted_events += 1
-            self._queue.task_done()
+            if groups and groups[-1][0] == stream:
+                groups[-1][1].append(event)
+            else:
+                groups.append((stream, [event]))
+        raw_append_many = getattr(self.store, "append_many", None)
+        append_many = (
+            cast(Callable[[str, Sequence[DomainEvent]], object], raw_append_many)
+            if callable(raw_append_many)
+            else None
+        )
+        for stream, group in groups:
+            if append_many is not None:
+                append_many(stream, group)
+            else:
+                for event in group:
+                    self.store.append(stream, event)

@@ -140,6 +140,13 @@ ensure_env_setting() {
         printf '%s=%s\n' "$key" "$value" >> "$env_file"
     fi
 }
+ensure_env_default() {
+    key="$1"
+    value="$2"
+    if ! grep -q "^${key}=" "$env_file"; then
+        printf '%s=%s\n' "$key" "$value" >> "$env_file"
+    fi
+}
 if [ ! -f "$env_file" ]; then
     cp "${release}/.env.hyperbot.example" "$env_file"
     echo "Created disabled environment: $env_file"
@@ -155,6 +162,14 @@ ensure_env_setting HYPERBOT_UI_PUBLISH_HOST "0.0.0.0"
 ensure_env_setting HYPERBOT_UI_AUTH_REQUIRED "true"
 ensure_env_setting HYPERBOT_UI_AUTH_USERNAME "hyperbot"
 ensure_env_setting HYPERBOT_UI_REFRESH_SECONDS "10"
+ensure_env_default HYPERBOT_COLLECTOR_DEPTH_MARKETS \
+    "BTC,ETH,HYPE,SOL"
+ensure_env_default HYPERBOT_COLLECTOR_BREADTH_MARKETS \
+    "PUMP,ZEC,XRP,LIT,KAITO,CRV,WLD,XMR,TAO,ADA,LINK,PAXG,xyz:SKHX,xyz:CL,xyz:BRENTOIL,xyz:SPCX,xyz:SP500,xyz:XYZ100,xyz:SILVER,xyz:GOLD"
+ensure_env_default HYPERBOT_PERSISTENCE_BATCH_SIZE "256"
+ensure_env_default HYPERBOT_FSYNC_EVERY_RECORDS "100"
+sed -i '/^HYPERBOT_COLLECTOR_MARKETS=/d' "$env_file"
+sed -i '/^HYPERBOT_COLLECTOR_CHANNELS=/d' "$env_file"
 ensure_env_setting HYPERBOT_UID "$(id -u)"
 ensure_env_setting HYPERBOT_GID "$(id -g)"
 chmod 600 "$env_file"

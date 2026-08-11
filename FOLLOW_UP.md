@@ -465,6 +465,9 @@ Livré le 11 août 2026 :
   serveur et rollback ;
 - observer HTTP standard-library authentifié, API GET/HEAD sans endpoint de
   mutation et dashboard responsive sans contrôle start/stop ;
+- profils de collecte disjoints : L2/BBO/trades pour le noyau `depth`,
+  BBO/trades pour l'univers `breadth`, avec matrice exacte dans le hash de
+  configuration et refus du mélange avec les anciennes variables ;
 - port `3002/tcp` public configurable, mot de passe aléatoire hors `.env`,
   secrets Docker et volumes de l'observer strictement en lecture seule ;
 - `scripts/fetch_hyperbot_data.sh` avec manifest public, liste exacte, tailles et
@@ -491,6 +494,12 @@ Activation distante réalisée le 11 août 2026 :
 - premier rapport M3 correctement non qualifié faute de données A pour la
   veille ; gates 7/30 jours non acquises ;
 - conteneurs TRIDENT/HIP-4 observés inchangés et aucun executor HyperBot présent.
+
+Extension multi-marchés préparée le 11 août 2026 : quatre marchés `depth` et
+vingt marchés `breadth`, soit 52 subscriptions. Les 24 symboles ont été revérifiés
+sur le catalogue public courant et observés sur un smoke WebSocket de douze
+secondes : 2 787 événements persistés, zéro drop, zéro malformed et aucun marché
+manquant. Le redéploiement de cette matrice remplace la whitelist BTC minimale.
 
 ### M8 — canary, bloqué par défaut
 

@@ -44,6 +44,11 @@ def _status_payload(
         "shadow_only": settings.shadow_only,
         "markets": list(settings.markets),
         "channels": list(settings.channels),
+        "depth_markets": list(settings.depth_markets),
+        "breadth_markets": list(settings.breadth_markets),
+        "subscription_count": len(settings.subscriptions),
+        "persistence_batch_size": settings.persistence_batch_size,
+        "fsync_every_records": settings.fsync_every_records,
         "received_messages": metrics.received_messages,
         "persisted_events": metrics.persisted_events,
         "dropped_events": metrics.dropped_events,
@@ -75,14 +80,17 @@ async def run_collector_service(
         settings.config_sha256,
         TimeSource.EXCHANGE,
     )
-    store = SegmentedEventStore(settings.data_root)
+    store = SegmentedEventStore(
+        settings.data_root,
+        fsync_every_records=settings.fsync_every_records,
+        always_fsync_streams=frozenset({"collector-control"}),
+    )
     config = CollectorConfig(
         subscriptions=tuple(
-            Subscription(channel, market)
-            for market in settings.markets
-            for channel in settings.channels
+            Subscription(channel, market) for channel, market in settings.subscriptions
         ),
         queue_capacity=settings.queue_capacity,
+        persistence_batch_size=settings.persistence_batch_size,
         heartbeat_interval_seconds=settings.heartbeat_interval_seconds,
         stale_after_seconds=settings.stale_after_seconds,
         reconnect_initial_seconds=settings.reconnect_initial_seconds,

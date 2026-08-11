@@ -22,8 +22,8 @@ def _environment(tmp_path: Path) -> dict[str, str]:
         "HYPERBOT_COLLECTOR_ENABLED": "true",
         "HYPERBOT_LIVE_ENABLED": "false",
         "HYPERBOT_SHADOW_ONLY": "true",
-        "HYPERBOT_COLLECTOR_MARKETS": "BTC,ETH",
-        "HYPERBOT_COLLECTOR_CHANNELS": "bbo,trades",
+        "HYPERBOT_COLLECTOR_DEPTH_MARKETS": "BTC",
+        "HYPERBOT_COLLECTOR_BREADTH_MARKETS": "ETH",
         "HYPERBOT_DATA_ROOT": str(tmp_path / "data"),
         "HYPERBOT_RUNTIME_ROOT": str(tmp_path / "runtime"),
         "HYPERBOT_REVIEW_ROOT": str(tmp_path / "reviews"),
@@ -236,6 +236,17 @@ def test_observability_reader_combines_only_verified_bounded_snapshots(
     assert markets["configured_count"] == 2
     assert markets["markets"][0]["catalog_available"] is True  # type: ignore[index]
     assert markets["markets"][1]["catalog_available"] is False  # type: ignore[index]
+    assert markets["markets"][0]["profile"] == "depth"  # type: ignore[index]
+    assert markets["markets"][0]["channels"] == [  # type: ignore[index]
+        "l2Book",
+        "bbo",
+        "trades",
+    ]
+    assert markets["markets"][1]["profile"] == "breadth"  # type: ignore[index]
+    assert markets["markets"][1]["channels"] == [  # type: ignore[index]
+        "bbo",
+        "trades",
+    ]
     quality = overview["quality"]
     assert isinstance(quality, dict)
     assert quality["latest"]["report"]["report_date"] == "2026-08-10"  # type: ignore[index]

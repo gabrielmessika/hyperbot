@@ -276,7 +276,7 @@
 
       <section id="page-markets" class="panel-page">
         <div class="section-head"><div><h2>Whitelist active</h2><p>Marchés explicitement configurés, jamais auto-promus.</p></div><span id="market-count" class="pill neutral">0 marché</span></div>
-        <article class="card table-wrap"><table><thead><tr><th>Coin</th><th>Type / DEX</th><th>État</th><th>Oracle</th><th>Mark</th><th>Version</th><th>Canaux</th></tr></thead><tbody id="markets-body"></tbody></table></article>
+        <article class="card table-wrap"><table><thead><tr><th>Coin</th><th>Profil</th><th>Type / DEX</th><th>État</th><th>Oracle</th><th>Mark</th><th>Version</th><th>Canaux</th></tr></thead><tbody id="markets-body"></tbody></table></article>
         <div class="section-head"><div><h2>Catalogue</h2><p>Dernière capture publique et éventuels avertissements.</p></div></div>
         <article class="card"><dl id="catalog-kv" class="kv"></dl><ul id="catalog-issues" class="incident-list"></ul></article>
       </section>
@@ -407,6 +407,7 @@
       (payload.markets || []).forEach((market) => {
         const row = document.createElement("tr");
         cell(row, market.coin);
+        cell(row, market.profile || "legacy");
         cell(row, [market.market_kind, market.dex].filter(Boolean).join(" / ") || "Catalogue indisponible");
         cell(row, market.status || "—", market.status === "active" ? "good" : "warn");
         cell(row, market.oracle_px);
@@ -415,7 +416,7 @@
         cell(row, (market.channels || []).join(", "));
         body.appendChild(row);
       });
-      if (!(payload.markets || []).length) { const row = document.createElement("tr"); const item = make("td", "Aucun marché configuré", "empty"); item.colSpan = 7; row.appendChild(item); body.appendChild(row); }
+      if (!(payload.markets || []).length) { const row = document.createElement("tr"); const item = make("td", "Aucun marché configuré", "empty"); item.colSpan = 8; row.appendChild(item); body.appendChild(row); }
       const kv = $("catalog-kv"); clear(kv);
       addKv(kv, "Observation", formatTime(payload.catalog_observed_at_ms));
       addKv(kv, "Définitions configurées trouvées", (payload.markets || []).filter((market) => market.catalog_available).length);
@@ -474,6 +475,11 @@
       addKv(configKv, "Public only", configuration.live_enabled === false ? "Oui" : "Non");
       addKv(configKv, "Live enabled", String(configuration.live_enabled));
       addKv(configKv, "Shadow only", String(configuration.shadow_only));
+      addKv(configKv, "Marchés depth", (configuration.depth_markets || []).length);
+      addKv(configKv, "Marchés breadth", (configuration.breadth_markets || []).length);
+      addKv(configKv, "Subscriptions", configuration.subscription_count ?? "—");
+      addKv(configKv, "Batch persistence", configuration.persistence_batch_size ?? "—");
+      addKv(configKv, "Fsync marché", `tous les ${configuration.fsync_every_records ?? "—"} records`);
       addKv(configKv, "Contrôles UI", "Désactivés");
       addKv(configKv, "Hash configuration", configuration.config_sha256 || "—");
       const body = $("streams-body"); clear(body);

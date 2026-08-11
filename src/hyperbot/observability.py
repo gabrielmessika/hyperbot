@@ -306,13 +306,27 @@ class ObservabilityReader:
                 coin = raw.get("coin")
                 if isinstance(coin, str) and coin in self.settings.ops.markets:
                     by_coin[coin] = cast(dict[str, object], _sanitize(raw))
+        channels_by_market: dict[str, list[str]] = {
+            market: [] for market in self.settings.ops.markets
+        }
+        for channel, market in self.settings.ops.subscriptions:
+            channels_by_market.setdefault(market, []).append(channel)
+        depth_markets = set(self.settings.ops.depth_markets)
+        breadth_markets = set(self.settings.ops.breadth_markets)
         items = []
         for coin in self.settings.ops.markets:
             definition = by_coin.get(coin, {})
+            if coin in depth_markets:
+                profile = "depth"
+            elif coin in breadth_markets:
+                profile = "breadth"
+            else:
+                profile = "legacy"
             items.append(
                 {
                     "coin": coin,
-                    "channels": list(self.settings.ops.channels),
+                    "profile": profile,
+                    "channels": channels_by_market.get(coin, []),
                     "catalog_available": bool(definition),
                     "market_id": definition.get("market_id"),
                     "display_name": definition.get("display_name", coin),
@@ -490,7 +504,12 @@ class ObservabilityReader:
             "shadow_only": ops.shadow_only,
             "markets": list(ops.markets),
             "channels": list(ops.channels),
+            "depth_markets": list(ops.depth_markets),
+            "breadth_markets": list(ops.breadth_markets),
+            "subscription_count": len(ops.subscriptions),
             "queue_capacity": ops.queue_capacity,
+            "persistence_batch_size": ops.persistence_batch_size,
+            "fsync_every_records": ops.fsync_every_records,
             "heartbeat_interval_seconds": ops.heartbeat_interval_seconds,
             "stale_after_seconds": ops.stale_after_seconds,
             "health_max_age_seconds": ops.health_max_age_seconds,

@@ -102,8 +102,10 @@ Sur le serveur, éditer `/opt/hyperbot/shared/.env.hyperbot` :
 HYPERBOT_COLLECTOR_ENABLED=true
 HYPERBOT_LIVE_ENABLED=false
 HYPERBOT_SHADOW_ONLY=true
-HYPERBOT_COLLECTOR_MARKETS=BTC
-HYPERBOT_COLLECTOR_CHANNELS=l2Book,bbo,trades
+HYPERBOT_COLLECTOR_DEPTH_MARKETS=BTC,ETH,HYPE,SOL
+HYPERBOT_COLLECTOR_BREADTH_MARKETS=PUMP,ZEC,XRP,LIT,KAITO,CRV,WLD,XMR,TAO,ADA,LINK,PAXG,xyz:SKHX,xyz:CL,xyz:BRENTOIL,xyz:SPCX,xyz:SP500,xyz:XYZ100,xyz:SILVER,xyz:GOLD
+HYPERBOT_PERSISTENCE_BATCH_SIZE=256
+HYPERBOT_FSYNC_EVERY_RECORDS=100
 HYPERBOT_UI_HOST=0.0.0.0
 HYPERBOT_UI_PORT=3002
 HYPERBOT_UI_PUBLISH_HOST=0.0.0.0
@@ -144,9 +146,22 @@ Reporter ensuite l'identifiant `coin` exact dans la whitelist, puis démarrer :
 /opt/hyperbot/current/scripts/hyperbot_server.sh ui-health
 ```
 
+Le profil `depth` souscrit `l2Book`, `bbo` et `trades`. Le profil `breadth`
+souscrit seulement `bbo` et `trades`. Les deux listes doivent être disjointes ;
+la présence simultanée des anciennes variables `HYPERBOT_COLLECTOR_MARKETS` ou
+`HYPERBOT_COLLECTOR_CHANNELS` provoque un refus fail-closed.
+
 L'ajout ou le retrait d'un marché exige une modification explicite de
 `.env.hyperbot` et un `restart`. Un nouveau hash de configuration et un nouveau
 `run_id` sont alors produits ; aucune rotation implicite n'est autorisée.
+Les outcomes `#...` expirant quotidiennement ne sont pas placés dans cette
+whitelist statique : leur rotation devra rester séparée et revue manuellement.
+
+La persistance groupe jusqu'à 256 événements et fsync les données de marché
+tous les 100 records ; les contrôles de connexion/gap/shutdown restent fsyncés
+immédiatement. Un arrêt propre valide et fsync le reliquat. Augmenter ces valeurs
+élargit la fenêtre de perte possible en cas de panne électrique et exige une
+nouvelle mesure de débit ainsi qu'une review explicite.
 
 ### Accès public au dashboard
 

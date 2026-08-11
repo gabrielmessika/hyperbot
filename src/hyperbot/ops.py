@@ -15,7 +15,9 @@ from typing import cast
 
 from hyperbot.services.public_collector import ALLOWED_CHANNELS
 
-OPS_SCHEMA_VERSION = 1
+OPS_SCHEMA_VERSION = 2
+DEPTH_CHANNELS = ("l2Book", "bbo", "trades")
+BREADTH_CHANNELS = ("bbo", "trades")
 _MARKET_PATTERN = re.compile(r"[A-Za-z0-9#][A-Za-z0-9:#._-]{0,127}")
 _FORBIDDEN_SECRET_NAMES = (
     "HYPERBOT_PRIVATE_KEY",
@@ -88,6 +90,92 @@ def _runtime_path(environment: Mapping[str, str], name: str, default: str) -> Pa
     return path
 
 
+def _validate_markets(markets: tuple[str, ...]) -> None:
+    invalid = [
+        market for market in markets if _MARKET_PATTERN.fullmatch(market) is None
+    ]
+    if invalid:
+        raise OpsConfigurationError(f"invalid collector markets: {sorted(invalid)}")
+
+
+def _subscriptions(
+    environment: Mapping[str, str],
+) -> tuple[
+    tuple[str, ...],
+    tuple[str, ...],
+    tuple[str, ...],
+    tuple[str, ...],
+    tuple[tuple[str, str], ...],
+]:
+    profile_names = (
+        "HYPERBOT_COLLECTOR_DEPTH_MARKETS",
+        "HYPERBOT_COLLECTOR_BREADTH_MARKETS",
+    )
+    if any(name in environment for name in profile_names):
+        legacy_names = (
+            "HYPERBOT_COLLECTOR_MARKETS",
+            "HYPERBOT_COLLECTOR_CHANNELS",
+        )
+        if any(environment.get(name, "").strip() for name in legacy_names):
+            raise OpsConfigurationError(
+                "collector profile and legacy subscription settings cannot be mixed"
+            )
+        depth_markets = _csv(
+            environment,
+            "HYPERBOT_COLLECTOR_DEPTH_MARKETS",
+            "",
+        )
+        breadth_markets = _csv(
+            environment,
+            "HYPERBOT_COLLECTOR_BREADTH_MARKETS",
+            "",
+        )
+        overlap = sorted(set(depth_markets) & set(breadth_markets))
+        if overlap:
+            raise OpsConfigurationError(
+                f"collector depth/breadth markets overlap: {overlap}"
+            )
+        markets = (*depth_markets, *breadth_markets)
+        if not markets:
+            raise OpsConfigurationError(
+                "at least one collector profile market is required"
+            )
+        _validate_markets(markets)
+        subscriptions = tuple(
+            (channel, market) for market in depth_markets for channel in DEPTH_CHANNELS
+        ) + tuple(
+            (channel, market)
+            for market in breadth_markets
+            for channel in BREADTH_CHANNELS
+        )
+        channels = tuple(dict.fromkeys(channel for channel, _ in subscriptions))
+        return (
+            markets,
+            channels,
+            depth_markets,
+            breadth_markets,
+            subscriptions,
+        )
+
+    markets = _csv(environment, "HYPERBOT_COLLECTOR_MARKETS", "BTC")
+    if not markets:
+        raise OpsConfigurationError("at least one collector market is required")
+    _validate_markets(markets)
+    channels = _csv(
+        environment,
+        "HYPERBOT_COLLECTOR_CHANNELS",
+        ",".join(DEPTH_CHANNELS),
+    )
+    if not channels or not set(channels).issubset(ALLOWED_CHANNELS):
+        raise OpsConfigurationError(
+            "collector channels must be selected from l2Book,bbo,trades"
+        )
+    subscriptions = tuple(
+        (channel, market) for market in markets for channel in channels
+    )
+    return markets, channels, (), (), subscriptions
+
+
 @dataclass(frozen=True, slots=True)
 class OpsSettings:
     """Public-only settings shared by collector and maintenance services."""
@@ -97,10 +185,15 @@ class OpsSettings:
     shadow_only: bool
     markets: tuple[str, ...]
     channels: tuple[str, ...]
+    depth_markets: tuple[str, ...]
+    breadth_markets: tuple[str, ...]
+    subscriptions: tuple[tuple[str, str], ...]
     data_root: Path
     runtime_root: Path
     review_root: Path
     queue_capacity: int
+    persistence_batch_size: int
+    fsync_every_records: int
     heartbeat_interval_seconds: float
     stale_after_seconds: float
     reconnect_initial_seconds: float
@@ -127,9 +220,7 @@ class OpsSettings:
                     f"{name} must not be exposed to HyperBot public services"
                 )
 
-        collector_enabled = _boolean(
-            values, "HYPERBOT_COLLECTOR_ENABLED", "false"
-        )
+        collector_enabled = _boolean(values, "HYPERBOT_COLLECTOR_ENABLED", "false")
         live_enabled = _boolean(values, "HYPERBOT_LIVE_ENABLED", "false")
         shadow_only = _boolean(values, "HYPERBOT_SHADOW_ONLY", "true")
         if live_enabled:
@@ -143,26 +234,13 @@ class OpsSettings:
                 "collector activation requires HYPERBOT_COLLECTOR_ENABLED=true"
             )
 
-        markets = _csv(values, "HYPERBOT_COLLECTOR_MARKETS", "BTC")
-        if not markets:
-            raise OpsConfigurationError("at least one collector market is required")
-        invalid_markets = [
-            market for market in markets if _MARKET_PATTERN.fullmatch(market) is None
-        ]
-        if invalid_markets:
-            raise OpsConfigurationError(
-                f"invalid collector markets: {sorted(invalid_markets)}"
-            )
-
-        channels = _csv(
-            values,
-            "HYPERBOT_COLLECTOR_CHANNELS",
-            "l2Book,bbo,trades",
-        )
-        if not channels or not set(channels).issubset(ALLOWED_CHANNELS):
-            raise OpsConfigurationError(
-                "collector channels must be selected from l2Book,bbo,trades"
-            )
+        (
+            markets,
+            channels,
+            depth_markets,
+            breadth_markets,
+            subscriptions,
+        ) = _subscriptions(values)
 
         heartbeat = _float(
             values,
@@ -191,12 +269,8 @@ class OpsSettings:
         minimum_retention_days = _integer(
             values, "HYPERBOT_MINIMUM_RETENTION_DAYS", "60", minimum=30
         )
-        hour = _integer(
-            values, "HYPERBOT_MAINTENANCE_HOUR_UTC", "0", minimum=0
-        )
-        minute = _integer(
-            values, "HYPERBOT_MAINTENANCE_MINUTE_UTC", "15", minimum=0
-        )
+        hour = _integer(values, "HYPERBOT_MAINTENANCE_HOUR_UTC", "0", minimum=0)
+        minute = _integer(values, "HYPERBOT_MAINTENANCE_MINUTE_UTC", "15", minimum=0)
         if hour > 23 or minute > 59:
             raise OpsConfigurationError("maintenance UTC time is invalid")
 
@@ -206,15 +280,26 @@ class OpsSettings:
             shadow_only=shadow_only,
             markets=markets,
             channels=channels,
-            data_root=_runtime_path(
-                values, "HYPERBOT_DATA_ROOT", "data/raw/collector"
-            ),
+            depth_markets=depth_markets,
+            breadth_markets=breadth_markets,
+            subscriptions=subscriptions,
+            data_root=_runtime_path(values, "HYPERBOT_DATA_ROOT", "data/raw/collector"),
             runtime_root=_runtime_path(values, "HYPERBOT_RUNTIME_ROOT", "runtime"),
-            review_root=_runtime_path(
-                values, "HYPERBOT_REVIEW_ROOT", "data/reviews"
-            ),
+            review_root=_runtime_path(values, "HYPERBOT_REVIEW_ROOT", "data/reviews"),
             queue_capacity=_integer(
                 values, "HYPERBOT_QUEUE_CAPACITY", "10000", minimum=100
+            ),
+            persistence_batch_size=_integer(
+                values,
+                "HYPERBOT_PERSISTENCE_BATCH_SIZE",
+                "256",
+                minimum=1,
+            ),
+            fsync_every_records=_integer(
+                values,
+                "HYPERBOT_FSYNC_EVERY_RECORDS",
+                "100",
+                minimum=1,
             ),
             heartbeat_interval_seconds=heartbeat,
             stale_after_seconds=stale,
@@ -242,8 +327,14 @@ class OpsSettings:
                 values, "HYPERBOT_MAINTENANCE_POLL_SECONDS", "60", minimum=10
             ),
         )
-        if len(settings.markets) * len(settings.channels) > 1_000:
+        if len(settings.subscriptions) > 1_000:
             raise OpsConfigurationError("configured subscriptions exceed 1,000")
+        if settings.persistence_batch_size > 10_000:
+            raise OpsConfigurationError(
+                "HYPERBOT_PERSISTENCE_BATCH_SIZE must be <= 10000"
+            )
+        if settings.fsync_every_records > 1_000:
+            raise OpsConfigurationError("HYPERBOT_FSYNC_EVERY_RECORDS must be <= 1000")
         return settings
 
     @property
@@ -260,9 +351,9 @@ class OpsSettings:
         payload["data_root"] = str(self.data_root)
         payload["runtime_root"] = str(self.runtime_root)
         payload["review_root"] = str(self.review_root)
-        encoded = json.dumps(
-            payload, separators=(",", ":"), sort_keys=True
-        ).encode("utf-8")
+        encoded = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode(
+            "utf-8"
+        )
         return hashlib.sha256(encoded).hexdigest()
 
 
