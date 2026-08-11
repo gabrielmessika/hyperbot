@@ -276,7 +276,13 @@ def test_deployment_artifacts_remain_disabled_by_default() -> None:
     assert "HYPERBOT_SHADOW_ONLY=true" in environment
     assert 'profiles: ["collector"]' in compose
     assert "read_only: true" in compose
-    assert not any(line.strip() == "ports:" for line in compose.splitlines())
+    assert sum(
+        line.strip() == "ports:" for line in compose.splitlines()
+    ) == 1
+    assert "HYPERBOT_UI_PORT:-3002" in compose
+    assert "hyperbot_ui_password" in compose
+    assert "HYPERBOT_UI_AUTH_REQUIRED=true" in environment
+    assert "HYPERBOT_UI_AUTH_PASSWORD=" not in environment
     assert "HYPERBOT_ALERT_WEBHOOK_URL" not in compose
     assert "TRIDENT_SECRET_KEY" not in compose
     assert "hyperliquid-python-sdk" not in project

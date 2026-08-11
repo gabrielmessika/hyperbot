@@ -40,7 +40,7 @@ Les statuts utilisés sont : `À faire`, `En cours`, `Terminé`, `Bloqué`.
 | M5 | fair value outcomes et scanner HIP-3 | Terminé | benchmarks OOS sans fuite temporelle |
 | M6 | stratégies de quote et superviseur de risque | Terminé | intentions uniquement, caps testés |
 | M7 | runner shadow et observabilité | Terminé | logiciel livré ; gate 14 jours en attente |
-| M7-Ops | déploiement collector public et preuves M3 | Terminé | outillage livré ; activation distante en attente |
+| M7-Ops | déploiement, preuves M3, API et dashboard | Terminé | outillage livré ; activation distante en attente |
 | M8 | canary monétaire | Bloqué | autorisation utilisateur + gates statistiques |
 
 ## 4. Lot M1 livré
@@ -454,8 +454,8 @@ Livré le 11 août 2026 :
 - runtime continu SIGTERM, métriques de connexion et statut atomique ;
 - configuration `.env.hyperbot.example` désactivée par défaut, guards live/shadow
   et rejet des secrets de signature HyperBot/TRIDENT ;
-- Dockerfile non-root et Compose sous profil explicite `collector`, sans port,
-  avec filesystem read-only, ressources et logs bornés ;
+- Dockerfile non-root et Compose sous profil explicite `collector`, avec
+  filesystem read-only, ressources et logs bornés ;
 - maintenance UTC quotidienne idempotente, lecture des seuls segments clôturés,
   rapport M3 checksumé et compression lossless sans suppression des données A ;
 - healthcheck fail-closed sur fraîcheur, connexion, feed stale, hash et disque ;
@@ -463,10 +463,15 @@ Livré le 11 août 2026 :
   sans socket Docker ni valeur sensible dans ses statuts ;
 - déploiement par releases sous `/opt/hyperbot`, activation distincte, commandes
   serveur et rollback ;
+- observer HTTP standard-library authentifié, API GET/HEAD sans endpoint de
+  mutation et dashboard responsive sans contrôle start/stop ;
+- port `3002/tcp` public configurable, mot de passe aléatoire hors `.env`,
+  secrets Docker et volumes de l'observer strictement en lecture seule ;
 - `scripts/fetch_hyperbot_data.sh` avec manifest public, liste exacte, tailles et
   SHA-256 ; exclusion des segments ouverts, symlinks, `.env` et données TRIDENT ;
 - runbook `docs/m7_ops_runbook.md` et rapport
-  `reports/m7_ops/implementation_report.md`.
+  `reports/m7_ops/implementation_report.md`, complétés par le rapport UI/API
+  `reports/m7_ops_ui/implementation_report.md`.
 
 La whitelist reste manuelle. Le premier déploiement doit uniquement lancer le
 collector et sa maintenance M3. Le runner shadow M7 reste inactif avant les gates
@@ -520,10 +525,10 @@ et rapports. Le run dérivé courant occupe environ 1,9 Gio sous
 `data/legacy_imports/` et reste ignoré par Git. Une exécution sans accès à
 TRIDENT reste possible pour le package, les tests et le collector.
 
-Le format segmenté et l'outillage M7-Ops sont stabilisés côté logiciel, mais aucun
-service serveur `hyperbot-collector` n'est encore installé ou activé. Le script
-de fetch HyperBot reste séparé de `scripts/fetch_all_data.sh`. Aucun script
-TRIDENT n'a été modifié.
+Le format segmenté et l'outillage M7-Ops sont stabilisés côté logiciel, y compris
+l'observer public `3002`, mais aucun service serveur HyperBot n'est encore
+installé ou activé. Le script de fetch HyperBot reste séparé de
+`scripts/fetch_all_data.sh`. Aucun script TRIDENT n'a été modifié.
 
 ## 11. Questions ouvertes non bloquantes
 

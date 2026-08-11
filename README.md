@@ -34,6 +34,19 @@ démarrer de service :
 
 Après revue de la whitelist et activation explicite sur le serveur, les commandes
 `scripts/hyperbot_server.sh` gèrent start/stop/status/health/logs/quality/catalog.
+Ces contrôles restent exclusivement opérateur et ne sont jamais exposés dans
+l'interface web.
+
+M7-Ops inclut aussi une interface d'observation et une API strictement en lecture
+seule sur le port public `3002`. Après activation et ouverture du firewall :
+
+```text
+http://<serveur>:3002/
+```
+
+L'authentification est obligatoire hors loopback. Le mot de passe aléatoire est
+créé dans `/opt/hyperbot/shared/ui_password`, hors Git et hors `.env`. La route
+`/health` est publique ; le dashboard et les routes `/api/*` sont protégés.
 Les données publiques clôturées se rapatrient avec manifest et SHA-256 :
 
 ```bash

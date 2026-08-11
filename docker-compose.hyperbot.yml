@@ -107,6 +107,50 @@ services:
     mem_limit: ${HYPERBOT_WATCHDOG_MEMORY:-128m}
     logging: *bounded-logging
 
+  observer:
+    profiles: ["collector"]
+    image: hyperbot:${HYPERBOT_IMAGE_TAG:-local}
+    container_name: hyperbot-observer
+    command: ["python", "scripts/run_observer_service.py"]
+    environment:
+      <<: *hyperbot-environment
+      HYPERBOT_UI_HOST: ${HYPERBOT_UI_HOST:-0.0.0.0}
+      HYPERBOT_UI_PORT: ${HYPERBOT_UI_PORT:-3002}
+      HYPERBOT_UI_AUTH_REQUIRED: ${HYPERBOT_UI_AUTH_REQUIRED:-true}
+      HYPERBOT_UI_AUTH_USERNAME: ${HYPERBOT_UI_AUTH_USERNAME:-hyperbot}
+      HYPERBOT_UI_AUTH_PASSWORD_FILE: /run/secrets/hyperbot_ui_password
+      HYPERBOT_UI_REFRESH_SECONDS: ${HYPERBOT_UI_REFRESH_SECONDS:-10}
+    user: "${HYPERBOT_UID:-1000}:${HYPERBOT_GID:-1000}"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    volumes:
+      - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/data:/app/data:ro
+      - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/runtime:/app/runtime:ro
+      - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/reports:/app/reports:ro
+    secrets:
+      - hyperbot_ui_password
+    ports:
+      - "${HYPERBOT_UI_PUBLISH_HOST:-0.0.0.0}:${HYPERBOT_UI_PORT:-3002}:${HYPERBOT_UI_PORT:-3002}"
+    depends_on:
+      collector:
+        condition: service_started
+    restart: unless-stopped
+    stop_grace_period: 20s
+    healthcheck:
+      test: ["CMD", "python", "scripts/hyperbot_ui_healthcheck.py"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    cpus: ${HYPERBOT_OBSERVER_CPUS:-0.5}
+    mem_limit: ${HYPERBOT_OBSERVER_MEMORY:-256m}
+    logging: *bounded-logging
+
 secrets:
   hyperbot_alert_webhook:
     file: ${HYPERBOT_ALERT_WEBHOOK_FILE:-./shared/alert_webhook_url}
+  hyperbot_ui_password:
+    file: ${HYPERBOT_UI_AUTH_PASSWORD_FILE:-./shared/ui_password}

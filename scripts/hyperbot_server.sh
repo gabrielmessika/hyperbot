@@ -5,7 +5,8 @@ usage() {
     cat <<'EOF'
 Usage: ./scripts/hyperbot_server.sh COMMAND
 
-Commands: config, start, stop, restart, status, logs, health, quality, catalog
+Commands: config, start, stop, restart, status, logs, health, ui-health,
+          quality, catalog
 EOF
 }
 
@@ -47,8 +48,14 @@ case "$command" in
     stop) compose stop ;;
     restart) assert_safe_activation; compose up -d --build --force-recreate ;;
     status) compose ps ;;
-    logs) compose logs --tail "${HYPERBOT_LOG_LINES:-300}" collector maintenance watchdog ;;
+    logs)
+        compose logs --tail "${HYPERBOT_LOG_LINES:-300}" \
+            collector maintenance watchdog observer
+        ;;
     health) compose exec -T collector python scripts/hyperbot_healthcheck.py ;;
+    ui-health)
+        compose exec -T observer python scripts/hyperbot_ui_healthcheck.py
+        ;;
     quality)
         assert_safe_activation
         compose run --rm --no-deps maintenance \

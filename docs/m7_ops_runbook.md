@@ -14,7 +14,9 @@ Les protections sont cumulatives :
 - le processus refuse `live_enabled=true` ou `shadow_only=false` ;
 - la présence d'une clé HyperBot ou de `TRIDENT_SECRET_KEY` fait échouer le
   démarrage ;
-- aucun port hôte n'est publié ;
+- seul le port UI/API `3002/tcp` est publié ; il ne donne accès qu'à des lectures ;
+- l'authentification du dashboard et de `/api/*` est obligatoire sur le bind
+  public ; seul `/health` reste accessible sans identifiants ;
 - les conteneurs sont non-root, read-only, sans capability et avec ressources
   bornées ;
 - un watchdog séparé observe le statut partagé sans accès au socket Docker ;
@@ -33,6 +35,7 @@ Le déploiement utilise exclusivement :
 ├── releases/<release>/
 └── shared/
     ├── .env.hyperbot
+    ├── ui_password
     ├── data/
     ├── logs/
     ├── reports/
@@ -41,7 +44,9 @@ Le déploiement utilise exclusivement :
 
 Il ne lit et n'écrit rien sous `/opt/trident`, `/opt/trident-hip4` ou dans les
 volumes Docker correspondants. Le projet Compose porte le nom stable
-`hyperbot` et n'expose aucun port.
+`hyperbot`. Son unique publication réseau est `0.0.0.0:3002` vers le service
+observer. Les volumes data/runtime/reports de cet observer sont montés en
+lecture seule.
 
 ## 3. Préflight local
 
@@ -74,8 +79,9 @@ Cette commande :
 1. crée un release immuable sous `/opt/hyperbot/releases/` ;
 2. initialise les répertoires partagés ;
 3. crée, seulement s'il n'existe pas, un `.env.hyperbot` désactivé et mode 600 ;
-4. valide la configuration Compose et construit l'image ;
-5. positionne le lien `current` sans démarrer le collector.
+4. crée un mot de passe UI aléatoire mode 600 sans l'afficher dans les logs ;
+5. valide la configuration Compose et construit l'image ;
+6. positionne le lien `current` sans démarrer le collector.
 
 Un déploiement ne copie jamais `.env`, `data/`, `runtime/`, `logs/` ou les
 archives TRIDENT : il utilise `git archive` sur le commit courant.
@@ -90,6 +96,12 @@ HYPERBOT_LIVE_ENABLED=false
 HYPERBOT_SHADOW_ONLY=true
 HYPERBOT_COLLECTOR_MARKETS=BTC
 HYPERBOT_COLLECTOR_CHANNELS=l2Book,bbo,trades
+HYPERBOT_UI_HOST=0.0.0.0
+HYPERBOT_UI_PORT=3002
+HYPERBOT_UI_PUBLISH_HOST=0.0.0.0
+HYPERBOT_UI_AUTH_REQUIRED=true
+HYPERBOT_UI_AUTH_USERNAME=hyperbot
+HYPERBOT_UI_AUTH_PASSWORD_FILE=/opt/hyperbot/shared/ui_password
 ```
 
 `HYPERBOT_UID` et `HYPERBOT_GID` doivent correspondre au compte de déploiement.
@@ -121,11 +133,62 @@ Reporter ensuite l'identifiant `coin` exact dans la whitelist, puis démarrer :
 /opt/hyperbot/current/scripts/hyperbot_server.sh start
 /opt/hyperbot/current/scripts/hyperbot_server.sh status
 /opt/hyperbot/current/scripts/hyperbot_server.sh health
+/opt/hyperbot/current/scripts/hyperbot_server.sh ui-health
 ```
 
 L'ajout ou le retrait d'un marché exige une modification explicite de
 `.env.hyperbot` et un `restart`. Un nouveau hash de configuration et un nouveau
 `run_id` sont alors produits ; aucune rotation implicite n'est autorisée.
+
+### Accès public au dashboard
+
+Si UFW est actif, ouvrir explicitement le port après avoir choisi la politique
+d'accès réseau appropriée :
+
+```bash
+sudo ufw allow 3002/tcp
+sudo ufw status
+```
+
+Le dashboard devient accessible sur `http://<adresse-publique>:3002/`. Le nom
+d'utilisateur initial est `hyperbot`. Lire le mot de passe depuis un terminal
+administrateur, sans le recopier dans `.env` :
+
+```bash
+cat /opt/hyperbot/shared/ui_password
+```
+
+Basic Auth protège l'accès mais ne chiffre pas HTTP. Pour un accès à travers
+Internet, placer le port derrière un reverse proxy TLS, un VPN ou une allowlist
+IP. Ne jamais publier une copie du fichier `ui_password`. Une rotation se fait
+en remplaçant ce fichier par une valeur d'au moins 16 caractères puis en
+recréant le service `observer`.
+
+L'interface ne contient aucun bouton start/stop/restart. Toute méthode autre que
+GET ou HEAD retourne `405 read_only_api`, et il n'existe aucun endpoint d'ordre,
+de changement de configuration ou de contrôle de processus.
+
+### API de lecture
+
+| Route | Auth | Contenu |
+|---|---|---|
+| `/health` | non | santé du seul service observer |
+| `/api/overview` | oui | snapshot agrégé du dashboard |
+| `/api/status` | oui | collector, maintenance, watchdog et guards |
+| `/api/markets` | oui | whitelist et dernier catalogue vérifié |
+| `/api/quality/latest` | oui | dernier rapport M3 checksumé |
+| `/api/quality/history?limit=30` | oui | historique borné et progression 7/30 jours |
+| `/api/incidents` | oui | incidents health/maintenance/qualité |
+| `/api/storage` | oui | réserve disque et manifests append-only |
+| `/api/shadow` | oui | dernière preuve M7 si elle existe |
+| `/api/config` | oui | configuration non sensible effective |
+| `/api/endpoints` | oui | contrat des routes de lecture |
+
+Exemple :
+
+```bash
+curl --fail --user hyperbot http://127.0.0.1:3002/api/status
+```
 
 ## 6. Exploitation quotidienne
 
@@ -134,6 +197,7 @@ Commandes disponibles :
 ```bash
 ./scripts/hyperbot_server.sh status
 ./scripts/hyperbot_server.sh health
+./scripts/hyperbot_server.sh ui-health
 ./scripts/hyperbot_server.sh logs
 ./scripts/hyperbot_server.sh quality --date YYYY-MM-DD
 ./scripts/hyperbot_server.sh catalog
@@ -211,15 +275,19 @@ Après la première installation :
 
 1. `docker compose ... config --quiet` réussit ;
 2. aucun conteneur HyperBot ne tourne avant activation ;
-3. après activation, `collector` est healthy et `maintenance`/`watchdog` sont
-   running ;
+3. après activation, `collector` et `observer` sont healthy, tandis que
+   `maintenance`/`watchdog` sont running ;
 4. le statut indique `public_only=true`, `live_enabled=false`, aucun drop ;
 5. un arrêt SIGTERM produit un événement `shutdown` et clôture les segments ;
 6. un redémarrage reprend avec un nouveau `run_id` sans altérer les anciens
    segments ;
 7. le rapport M3 de la veille et son SHA-256 sont présents ;
 8. un fetch local passe la vérification intégrale ;
-9. TRIDENT A/C et HIP-4 conservent leurs conteneurs, volumes et healthchecks
+9. `/health` répond sans auth, `/api/status` exige l'auth et une requête POST
+   retourne 405 ;
+10. le dashboard est joignable de l'extérieur sur le port 3002 et ne présente
+   aucun contrôle start/stop ;
+11. TRIDENT A/C et HIP-4 conservent leurs conteneurs, volumes et healthchecks
    inchangés.
 
 Le smoke test ne doit envoyer aucun ordre. Le runner shadow M7 ne sera déployé

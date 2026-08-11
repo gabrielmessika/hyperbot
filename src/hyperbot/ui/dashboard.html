@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>HyperBot — Observabilité</title>
+  <style>
+    :root {
+      --bg: #071018;
+      --panel: #0c1822;
+      --panel-2: #10212d;
+      --line: #203746;
+      --text: #eaf4f6;
+      --muted: #8ca5ae;
+      --cyan: #4fd1c5;
+      --blue: #5da9e9;
+      --amber: #f5b942;
+      --red: #ff6b6b;
+      --green: #57d68d;
+      --radius: 14px;
+      --shadow: 0 16px 45px rgba(0, 0, 0, .28);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% -10%, rgba(79, 209, 197, .13), transparent 30%),
+        radial-gradient(circle at 90% 0%, rgba(93, 169, 233, .09), transparent 28%),
+        var(--bg);
+      font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button { font: inherit; }
+    .shell { width: min(1500px, 100%); margin: 0 auto; padding: 0 26px 54px; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 18px 0 14px;
+      background: linear-gradient(180deg, rgba(7, 16, 24, .98) 70%, rgba(7, 16, 24, 0));
+      backdrop-filter: blur(10px);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 1px solid rgba(79, 209, 197, .55);
+      border-radius: 10px;
+      color: var(--cyan);
+      background: rgba(79, 209, 197, .08);
+      font-weight: 900;
+      letter-spacing: -.04em;
+    }
+    .brand h1 { margin: 0; font-size: 18px; letter-spacing: .01em; }
+    .brand p { margin: 1px 0 0; color: var(--muted); font-size: 12px; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .readonly {
+      padding: 5px 9px;
+      border: 1px solid rgba(93, 169, 233, .4);
+      border-radius: 999px;
+      color: #a8d8ff;
+      background: rgba(93, 169, 233, .08);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+    }
+    .refresh {
+      cursor: pointer;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 8px 12px;
+      color: var(--text);
+      background: var(--panel);
+    }
+    .refresh:hover { border-color: var(--cyan); }
+    .refresh:disabled { cursor: wait; opacity: .55; }
+    .nav {
+      display: flex;
+      gap: 4px;
+      margin: 8px 0 22px;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--line);
+    }
+    .nav button {
+      cursor: pointer;
+      white-space: nowrap;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      padding: 10px 14px;
+      color: var(--muted);
+      background: transparent;
+    }
+    .nav button.active { color: var(--text); border-color: var(--cyan); }
+    .banner {
+      display: none;
+      margin-bottom: 16px;
+      padding: 11px 14px;
+      border: 1px solid rgba(255, 107, 107, .45);
+      border-radius: 10px;
+      color: #ffd7d7;
+      background: rgba(255, 107, 107, .1);
+    }
+    .banner.visible { display: block; }
+    .panel-page { display: none; }
+    .panel-page.active { display: block; }
+    .hero-grid, .grid { display: grid; gap: 14px; }
+    .hero-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 17px;
+      background: linear-gradient(145deg, rgba(16, 33, 45, .95), rgba(10, 23, 32, .95));
+      box-shadow: var(--shadow);
+    }
+    .metric-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .metric-value { margin-top: 7px; font-size: clamp(22px, 3vw, 31px); font-weight: 800; letter-spacing: -.03em; }
+    .metric-foot { margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 26px 0 12px;
+    }
+    .section-head h2 { margin: 0; font-size: 16px; }
+    .section-head p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 9px;
+      color: var(--muted);
+      background: rgba(255,255,255,.025);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .good { color: var(--green) !important; }
+    .warn { color: var(--amber) !important; }
+    .bad { color: var(--red) !important; }
+    .neutral { color: var(--muted) !important; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 11px 10px; border-bottom: 1px solid rgba(32, 55, 70, .72); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
+    td { font-variant-numeric: tabular-nums; }
+    tbody tr:last-child td { border-bottom: 0; }
+    code { color: #b9e5e1; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+    .incident-list, .endpoint-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .incident {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(32, 55, 70, .65);
+    }
+    .incident:last-child { border: 0; }
+    .incident-source { color: var(--muted); font-size: 11px; }
+    .empty { padding: 22px 4px; color: var(--muted); text-align: center; }
+    .flow { display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; gap: 8px; }
+    .flow-step { border: 1px solid var(--line); border-radius: 10px; padding: 12px; text-align: center; background: rgba(7,16,24,.45); }
+    .flow-step b { display: block; margin-bottom: 2px; }
+    .flow-arrow { display: none; color: var(--muted); }
+    .calendar { display: grid; grid-template-columns: repeat(15, minmax(20px, 1fr)); gap: 6px; }
+    .day {
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      min-width: 20px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--muted);
+      background: #0a151e;
+      font-size: 9px;
+    }
+    .day.good { border-color: rgba(87,214,141,.5); background: rgba(87,214,141,.13); }
+    .day.bad { border-color: rgba(255,107,107,.45); background: rgba(255,107,107,.1); }
+    .progress { height: 8px; margin: 12px 0 5px; overflow: hidden; border-radius: 999px; background: #071018; }
+    .progress span { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--cyan), var(--blue)); transition: width .35s ease; }
+    .kv { display: grid; grid-template-columns: minmax(150px, .7fr) 1fr; gap: 0 18px; }
+    .kv dt, .kv dd { margin: 0; padding: 9px 0; border-bottom: 1px solid rgba(32,55,70,.6); }
+    .kv dt { color: var(--muted); }
+    .kv dd { text-align: right; overflow-wrap: anywhere; }
+    .timestamp { color: var(--muted); font-size: 11px; }
+    footer { margin-top: 35px; color: var(--muted); font-size: 11px; text-align: center; }
+    @media (max-width: 1050px) {
+      .hero-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid.three { grid-template-columns: 1fr 1fr; }
+      .calendar { grid-template-columns: repeat(10, minmax(20px, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .shell { padding: 0 14px 35px; }
+      .topbar { align-items: flex-start; }
+      .brand p, .readonly { display: none; }
+      .hero-grid, .grid.two, .grid.three { grid-template-columns: 1fr; }
+      .calendar { grid-template-columns: repeat(6, minmax(20px, 1fr)); }
+      .flow { grid-template-columns: 1fr; }
+      .flow-arrow { display: block; text-align: center; }
+      .kv { grid-template-columns: 1fr; }
+      .kv dd { padding-top: 0; text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">HB</div>
+        <div><h1>HyperBot</h1><p>Observabilité de la collecte publique</p></div>
+      </div>
+      <div class="top-actions">
+        <span class="readonly">READ ONLY</span>
+        <span id="global-status" class="pill neutral">Chargement</span>
+        <button id="refresh" class="refresh" type="button">Actualiser</button>
+      </div>
+    </header>
+
+    <nav class="nav" aria-label="Sections">
+      <button type="button" class="active" data-page="overview">Vue globale</button>
+      <button type="button" data-page="markets">Marchés</button>
+      <button type="button" data-page="quality">Qualité M3</button>
+      <button type="button" data-page="system">Système</button>
+      <button type="button" data-page="shadow">Shadow M7</button>
+      <button type="button" data-page="api">API</button>
+    </nav>
+
+    <div id="error" class="banner" role="alert"></div>
+
+    <main>
+      <section id="page-overview" class="panel-page active">
+        <div class="hero-grid">
+          <article class="card"><div class="metric-label">Collector</div><div id="metric-collector" class="metric-value">—</div><div id="metric-feed" class="metric-foot">Flux public</div></article>
+          <article class="card"><div class="metric-label">Messages persistés</div><div id="metric-events" class="metric-value">—</div><div id="metric-drops" class="metric-foot">Drops : —</div></article>
+          <article class="card"><div class="metric-label">Gate M3</div><div id="metric-gate" class="metric-value">— / 30</div><div id="metric-gate-stage" class="metric-foot">Jours consécutifs</div></article>
+          <article class="card"><div class="metric-label">Réserve disque</div><div id="metric-disk" class="metric-value">—</div><div id="metric-storage" class="metric-foot">Données collectées : —</div></article>
+        </div>
+
+        <div class="section-head"><div><h2>Chaîne d’observation</h2><p>Aucun chemin d’ordre n’est présent dans ce service.</p></div><span class="pill good">Public only</span></div>
+        <article class="card flow">
+          <div class="flow-step"><b>Hyperliquid</b><span class="timestamp">WebSocket public</span></div><span class="flow-arrow">↓</span>
+          <div class="flow-step"><b>Collector M2</b><span class="timestamp">Append-only</span></div><span class="flow-arrow">↓</span>
+          <div class="flow-step"><b>Qualité M3</b><span class="timestamp">Rapport UTC</span></div><span class="flow-arrow">↓</span>
+          <div class="flow-step"><b>UI M7-Ops</b><span class="timestamp">Lecture seule</span></div>
+        </article>
+
+        <div class="grid two">
+          <div>
+            <div class="section-head"><div><h2>Incidents actifs</h2><p>Health, maintenance et dernière preuve M3.</p></div><span id="incident-count" class="pill neutral">0</span></div>
+            <article class="card"><ul id="incident-list" class="incident-list"><li class="empty">Chargement…</li></ul></article>
+          </div>
+          <div>
+            <div class="section-head"><div><h2>Services</h2><p>États publiés dans le runtime partagé.</p></div></div>
+            <article class="card table-wrap"><table><thead><tr><th>Service</th><th>État</th><th>Dernière mise à jour</th></tr></thead><tbody id="services-body"></tbody></table></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-markets" class="panel-page">
+        <div class="section-head"><div><h2>Whitelist active</h2><p>Marchés explicitement configurés, jamais auto-promus.</p></div><span id="market-count" class="pill neutral">0 marché</span></div>
+        <article class="card table-wrap"><table><thead><tr><th>Coin</th><th>Type / DEX</th><th>État</th><th>Oracle</th><th>Mark</th><th>Version</th><th>Canaux</th></tr></thead><tbody id="markets-body"></tbody></table></article>
+        <div class="section-head"><div><h2>Catalogue</h2><p>Dernière capture publique et éventuels avertissements.</p></div></div>
+        <article class="card"><dl id="catalog-kv" class="kv"></dl><ul id="catalog-issues" class="incident-list"></ul></article>
+      </section>
+
+      <section id="page-quality" class="panel-page">
+        <div class="grid two">
+          <div>
+            <div class="section-head"><div><h2>Progression de la gate</h2><p>7 jours initiaux, puis 30 jours de preuve A.</p></div></div>
+            <article class="card"><div id="gate-stage" class="metric-value">—</div><div class="progress"><span id="gate-progress"></span></div><div id="gate-caption" class="metric-foot">—</div></article>
+          </div>
+          <div>
+            <div class="section-head"><div><h2>Dernière journée</h2><p>Verdict du rapport checksumé.</p></div></div>
+            <article class="card"><div id="latest-day" class="metric-value">—</div><div id="latest-verdict" class="metric-foot">Aucun rapport</div></article>
+          </div>
+        </div>
+        <div class="section-head"><div><h2>Historique 30 jours</h2><p>Vert : qualifié. Rouge : incomplet ou incident.</p></div></div>
+        <article class="card"><div id="quality-calendar" class="calendar"></div></article>
+        <div class="section-head"><div><h2>Métriques par marché</h2><p>Couverture, latence, gaps, spread et activité.</p></div></div>
+        <article class="card table-wrap"><table><thead><tr><th>Marché</th><th>Couverture</th><th>Latence p50/p95/p99</th><th>Gaps majeurs</th><th>Spread p50</th><th>Trades</th><th>Notional</th></tr></thead><tbody id="quality-body"></tbody></table></article>
+      </section>
+
+      <section id="page-system" class="panel-page">
+        <div class="grid two">
+          <div>
+            <div class="section-head"><div><h2>Stockage</h2><p>Occupation et réserve fail-closed.</p></div></div>
+            <article class="card"><dl id="storage-kv" class="kv"></dl></article>
+          </div>
+          <div>
+            <div class="section-head"><div><h2>Garde-fous</h2><p>Configuration publique effective.</p></div></div>
+            <article class="card"><dl id="config-kv" class="kv"></dl></article>
+          </div>
+        </div>
+        <div class="section-head"><div><h2>Streams append-only</h2><p>Manifestes et segments clôturés.</p></div></div>
+        <article class="card table-wrap"><table><thead><tr><th>Stream</th><th>Manifest</th><th>Segments</th><th>Records clôturés</th><th>Segment actif</th><th>Période</th></tr></thead><tbody id="streams-body"></tbody></table></article>
+      </section>
+
+      <section id="page-shadow" class="panel-page">
+        <div class="section-head"><div><h2>Qualification Shadow M7</h2><p>Le logiciel existe, mais son déploiement reste conditionné aux gates M3/M5.</p></div><span class="pill warn">Canary bloqué</span></div>
+        <div class="grid three">
+          <article class="card"><div class="metric-label">Runner</div><div id="shadow-runner" class="metric-value">Inactif</div><div class="metric-foot">Aucun envoi d’ordre</div></article>
+          <article class="card"><div class="metric-label">Jours qualifiés</div><div id="shadow-days" class="metric-value">0 / 14</div><div class="metric-foot">Consécutifs requis</div></article>
+          <article class="card"><div class="metric-label">Canary</div><div id="shadow-canary" class="metric-value bad">Non autorisé</div><div class="metric-foot">M8 reste bloqué</div></article>
+        </div>
+        <div class="section-head"><div><h2>Dernière preuve shadow</h2></div></div>
+        <article class="card"><dl id="shadow-kv" class="kv"></dl></article>
+      </section>
+
+      <section id="page-api" class="panel-page">
+        <div class="section-head"><div><h2>API de lecture</h2><p>Authentification identique à cette interface. Méthodes GET/HEAD uniquement.</p></div><span class="pill good">No mutation</span></div>
+        <article class="card"><ul id="endpoint-list" class="endpoint-list"></ul></article>
+      </section>
+    </main>
+
+    <footer><span id="last-refresh">Jamais actualisé</span> · Port 3002 · HyperBot observer</footer>
+  </div>
+
+  <script>
+    "use strict";
+    const $ = (id) => document.getElementById(id);
+    const text = (id, value) => { $(id).textContent = value ?? "—"; };
+    const clear = (element) => element.replaceChildren();
+    const make = (tag, value, className) => {
+      const element = document.createElement(tag);
+      if (value !== undefined && value !== null) element.textContent = String(value);
+      if (className) element.className = className;
+      return element;
+    };
+    const formatNumber = (value) => Number.isFinite(Number(value)) ? new Intl.NumberFormat("fr-FR").format(Number(value)) : "—";
+    const formatBytes = (value) => {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return "—";
+      const units = ["o", "Kio", "Mio", "Gio", "Tio"];
+      let size = number, index = 0;
+      while (size >= 1024 && index < units.length - 1) { size /= 1024; index += 1; }
+      return `${size.toLocaleString("fr-FR", { maximumFractionDigits: index ? 1 : 0 })} ${units[index]}`;
+    };
+    const formatTime = (value) => {
+      const number = Number(value);
+      return Number.isFinite(number) && number > 0 ? new Date(number).toLocaleString("fr-FR", { timeZone: "UTC" }) + " UTC" : "—";
+    };
+    const statusClass = (healthy) => healthy === true ? "good" : healthy === false ? "bad" : "neutral";
+    const cell = (row, value, className) => row.appendChild(make("td", value ?? "—", className));
+    const addKv = (root, label, value) => { root.append(make("dt", label), make("dd", value ?? "—")); };
+
+    function activatePage(name) {
+      document.querySelectorAll(".nav button").forEach((button) => button.classList.toggle("active", button.dataset.page === name));
+      document.querySelectorAll(".panel-page").forEach((panel) => panel.classList.toggle("active", panel.id === `page-${name}`));
+      history.replaceState(null, "", `#${name}`);
+    }
+    document.querySelectorAll(".nav button").forEach((button) => button.addEventListener("click", () => activatePage(button.dataset.page)));
+    const initialPage = location.hash.replace("#", "");
+    if (["overview", "markets", "quality", "system", "shadow", "api"].includes(initialPage)) activatePage(initialPage);
+
+    function renderServices(status) {
+      const body = $("services-body"); clear(body);
+      [
+        ["Collector", status.collector],
+        ["Maintenance", status.maintenance],
+        ["Watchdog", status.watchdog],
+        ["Observer", { state: "running", updated_at_ms: status.generated_at_ms }]
+      ].forEach(([name, service]) => {
+        const row = document.createElement("tr");
+        const state = service?.state || "indisponible";
+        cell(row, name);
+        cell(row, state, state === "running" || state === "completed" || state === "healthy" ? "good" : "bad");
+        cell(row, formatTime(service?.updated_at_ms));
+        body.appendChild(row);
+      });
+    }
+
+    function renderIncidents(payload) {
+      const list = $("incident-list"); clear(list);
+      const incidents = payload.incidents || [];
+      text("incident-count", `${payload.count || 0} incident${payload.count === 1 ? "" : "s"}`);
+      if (!incidents.length) { list.appendChild(make("li", "Aucun incident actif.", "empty good")); return; }
+      incidents.forEach((incident) => {
+        const item = make("li", null, "incident");
+        item.append(make("span", incident.severity || "info", incident.severity === "critical" ? "bad" : "warn"));
+        const detail = make("div");
+        detail.append(make("b", incident.code || "incident"), make("div", `${incident.source || "runtime"}${incident.report_date ? ` · ${incident.report_date}` : ""}`, "incident-source"));
+        item.appendChild(detail); list.appendChild(item);
+      });
+    }
+
+    function renderMarkets(payload) {
+      text("market-count", `${payload.configured_count || 0} marché${payload.configured_count === 1 ? "" : "s"}`);
+      const body = $("markets-body"); clear(body);
+      (payload.markets || []).forEach((market) => {
+        const row = document.createElement("tr");
+        cell(row, market.coin);
+        cell(row, [market.market_kind, market.dex].filter(Boolean).join(" / ") || "Catalogue indisponible");
+        cell(row, market.status || "—", market.status === "active" ? "good" : "warn");
+        cell(row, market.oracle_px);
+        cell(row, market.mark_px);
+        cell(row, market.definition_version ? `v${market.definition_version}` : "—");
+        cell(row, (market.channels || []).join(", "));
+        body.appendChild(row);
+      });
+      if (!(payload.markets || []).length) { const row = document.createElement("tr"); const item = make("td", "Aucun marché configuré", "empty"); item.colSpan = 7; row.appendChild(item); body.appendChild(row); }
+      const kv = $("catalog-kv"); clear(kv);
+      addKv(kv, "Observation", formatTime(payload.catalog_observed_at_ms));
+      addKv(kv, "Définitions configurées trouvées", (payload.markets || []).filter((market) => market.catalog_available).length);
+      const issues = $("catalog-issues"); clear(issues);
+      (payload.catalog_issues || []).forEach((issue) => issues.appendChild(make("li", `${issue.request_type || "catalogue"} — ${issue.detail || "problème"}`, "incident warn")));
+      if (!(payload.catalog_issues || []).length) issues.appendChild(make("li", "Aucun avertissement catalogue.", "empty good"));
+    }
+
+    function renderQuality(quality) {
+      const latest = quality.latest || {};
+      const report = latest.report || null;
+      const history = quality.history || {};
+      const gate = history.gate || {};
+      const consecutive = Number(gate.consecutive_qualified_days || 0);
+      text("metric-gate", `${consecutive} / 30`);
+      text("metric-gate-stage", gate.stage || "Aucune preuve");
+      text("gate-stage", gate.stage || "Aucune preuve");
+      $("gate-progress").style.width = `${Math.min(100, consecutive / 30 * 100)}%`;
+      text("gate-caption", `${consecutive} jour(s) consécutif(s) · ${gate.observed_days || 0} observé(s)`);
+      text("latest-day", report?.report_date || "—");
+      text("latest-verdict", !report ? "Aucun rapport disponible" : report.qualified_day ? "Journée qualifiée" : `Non qualifiée · ${(report.qualification_reasons || []).join(", ")}`);
+      $("latest-verdict").className = `metric-foot ${report ? statusClass(report.qualified_day) : "neutral"}`;
+      const calendar = $("quality-calendar"); clear(calendar);
+      [...(history.days || [])].reverse().forEach((day) => {
+        const tile = make("div", String(day.report_date || "").slice(8), `day ${statusClass(day.qualified_day)}`);
+        tile.title = `${day.report_date}: ${day.qualified_day ? "qualifié" : "non qualifié"}`;
+        calendar.appendChild(tile);
+      });
+      if (!(history.days || []).length) calendar.appendChild(make("div", "Aucun historique M3", "empty"));
+      const body = $("quality-body"); clear(body);
+      (report?.markets || []).forEach((market) => {
+        const row = document.createElement("tr");
+        cell(row, market.coin);
+        cell(row, `${market.coverage_pct ?? "—"}%`, Number(market.coverage_pct) >= 99 ? "good" : "bad");
+        cell(row, [market.latency_p50_ms, market.latency_p95_ms, market.latency_p99_ms].map((value) => value ?? "—").join(" / ") + " ms");
+        cell(row, market.major_gap_count);
+        cell(row, market.spread_p50_bps == null ? "—" : `${market.spread_p50_bps} bps`);
+        cell(row, formatNumber(market.trade_count));
+        cell(row, market.trade_notional_usd == null ? "—" : `$${formatNumber(market.trade_notional_usd)}`);
+        body.appendChild(row);
+      });
+      if (!(report?.markets || []).length) { const row = document.createElement("tr"); const item = make("td", "Aucune métrique quotidienne", "empty"); item.colSpan = 7; row.appendChild(item); body.appendChild(row); }
+    }
+
+    function renderStorage(storage, configuration) {
+      const free = storage.disk_free_bytes;
+      text("metric-disk", formatBytes(free));
+      text("metric-storage", `Données collectées : ${formatBytes(storage.total_bytes)}`);
+      $("metric-disk").className = `metric-value ${Number(free) >= Number(storage.minimum_free_bytes) ? "good" : "bad"}`;
+      const storageKv = $("storage-kv"); clear(storageKv);
+      addKv(storageKv, "Données HyperBot", formatBytes(storage.total_bytes));
+      addKv(storageKv, "Espace libre", formatBytes(storage.disk_free_bytes));
+      addKv(storageKv, "Seuil minimum", formatBytes(storage.minimum_free_bytes));
+      addKv(storageKv, "Rétention minimale", `${storage.minimum_retention_days || "—"} jours`);
+      const configKv = $("config-kv"); clear(configKv);
+      addKv(configKv, "Public only", configuration.live_enabled === false ? "Oui" : "Non");
+      addKv(configKv, "Live enabled", String(configuration.live_enabled));
+      addKv(configKv, "Shadow only", String(configuration.shadow_only));
+      addKv(configKv, "Contrôles UI", "Désactivés");
+      addKv(configKv, "Hash configuration", configuration.config_sha256 || "—");
+      const body = $("streams-body"); clear(body);
+      (storage.streams || []).forEach((stream) => {
+        const row = document.createElement("tr");
+        cell(row, stream.stream);
+        cell(row, stream.manifest_valid ? "Valide" : "Indisponible", statusClass(stream.manifest_valid));
+        cell(row, formatNumber(stream.closed_segment_count));
+        cell(row, formatNumber(stream.closed_record_count));
+        cell(row, formatBytes(stream.active_bytes));
+        cell(row, [stream.first_utc_date, stream.last_utc_date].filter(Boolean).join(" → ") || "—");
+        body.appendChild(row);
+      });
+    }
+
+    function renderShadow(shadow) {
+      text("shadow-runner", shadow.runner_deployed ? "Actif" : "Inactif");
+      const report = shadow.latest_report || {};
+      const days = shadow.consecutive_qualified_days || 0;
+      text("shadow-days", `${days} / ${shadow.required_consecutive_days || 14}`);
+      text("shadow-canary", shadow.canary_authorized ? "Autorisé" : "Non autorisé");
+      const kv = $("shadow-kv"); clear(kv);
+      addKv(kv, "Phase", shadow.phase || (shadow.available ? "rapport disponible" : "software_ready_not_deployed"));
+      addKv(kv, "Dernier rapport", report.report_date || "Aucun");
+      addKv(kv, "Journée qualifiée", report.qualified_day == null ? "—" : String(report.qualified_day));
+      addKv(kv, "Canary autorisé", "false");
+    }
+
+    function renderApi() {
+      const routes = ["/health", "/api/overview", "/api/status", "/api/markets", "/api/quality/latest", "/api/quality/history?limit=30", "/api/incidents", "/api/storage", "/api/shadow", "/api/config", "/api/endpoints"];
+      const list = $("endpoint-list"); clear(list);
+      routes.forEach((route) => { const item = make("li"); item.append(make("code", `GET ${route}`)); list.appendChild(item); });
+    }
+
+    function render(payload) {
+      const status = payload.status || {};
+      const collector = status.collector || {};
+      const health = status.collector_health || {};
+      const healthy = health.healthy === true;
+      text("global-status", healthy ? "Sain" : "Incident");
+      $("global-status").className = `pill ${statusClass(healthy)}`;
+      text("metric-collector", collector.state || "Indisponible");
+      $("metric-collector").className = `metric-value ${healthy ? "good" : "bad"}`;
+      text("metric-feed", collector.connected ? `Connecté · dernier message ${formatTime(collector.last_message_receive_ms)}` : "Flux déconnecté");
+      text("metric-events", formatNumber(collector.persisted_events));
+      text("metric-drops", `Drops : ${formatNumber(collector.dropped_events)} · Reconnexions : ${formatNumber(collector.reconnects)}`);
+      renderServices(status);
+      renderIncidents(payload.incidents || {});
+      renderMarkets(payload.markets || {});
+      renderQuality(payload.quality || {});
+      renderStorage(payload.storage || {}, payload.configuration || {});
+      renderShadow(payload.shadow || {});
+      renderApi();
+      text("last-refresh", `Actualisé ${new Date().toLocaleTimeString("fr-FR")} · source ${formatTime(status.generated_at_ms)}`);
+    }
+
+    async function refresh() {
+      const button = $("refresh");
+      button.disabled = true;
+      $("error").classList.remove("visible");
+      try {
+        const response = await fetch("/api/overview?limit=30", { cache: "no-store", headers: { "Accept": "application/json" } });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        render(await response.json());
+      } catch (error) {
+        $("error").textContent = `Impossible de charger l’observabilité : ${error.message}`;
+        $("error").classList.add("visible");
+        text("global-status", "API indisponible");
+        $("global-status").className = "pill bad";
+      } finally {
+        button.disabled = false;
+      }
+    }
+    $("refresh").addEventListener("click", refresh);
+    renderApi();
+    refresh();
+    window.setInterval(refresh, __HYPERBOT_REFRESH_MS__);
+  </script>
+</body>
+</html>

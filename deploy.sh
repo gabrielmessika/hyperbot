@@ -111,6 +111,18 @@ remote test ! -e "$REMOTE_RELEASE"
 remote mkdir "$REMOTE_RELEASE"
 remote touch "$REMOTE_DIR/shared/alert_webhook_url"
 remote chmod 600 "$REMOTE_DIR/shared/alert_webhook_url"
+remote bash -s -- "$REMOTE_DIR/shared/ui_password" <<'REMOTE_SECRET'
+set -euo pipefail
+password_file="$1"
+if [ ! -s "$password_file" ]; then
+    command -v openssl >/dev/null 2>&1 || {
+        echo "openssl is required to generate the UI password" >&2
+        exit 1
+    }
+    openssl rand -base64 -out "$password_file" 32
+fi
+chmod 600 "$password_file"
+REMOTE_SECRET
 git archive --format=tar HEAD | remote tar -xf - -C "$REMOTE_RELEASE"
 
 remote bash -s -- "$REMOTE_DIR" "$REMOTE_RELEASE" "$START_COLLECTOR" <<'REMOTE_INSTALL'
@@ -119,15 +131,33 @@ install_root="$1"
 release="$2"
 start_collector="$3"
 env_file="${install_root}/shared/.env.hyperbot"
+ensure_env_setting() {
+    key="$1"
+    value="$2"
+    if grep -q "^${key}=" "$env_file"; then
+        sed -i "s|^${key}=.*|${key}=${value}|" "$env_file"
+    else
+        printf '%s=%s\n' "$key" "$value" >> "$env_file"
+    fi
+}
 if [ ! -f "$env_file" ]; then
     cp "${release}/.env.hyperbot.example" "$env_file"
-    sed -i "s|^HYPERBOT_HOST_SHARED_DIR=.*|HYPERBOT_HOST_SHARED_DIR=${install_root}/shared|" "$env_file"
-    sed -i "s|^HYPERBOT_ALERT_WEBHOOK_FILE=.*|HYPERBOT_ALERT_WEBHOOK_FILE=${install_root}/shared/alert_webhook_url|" "$env_file"
-    sed -i "s|^HYPERBOT_UID=.*|HYPERBOT_UID=$(id -u)|" "$env_file"
-    sed -i "s|^HYPERBOT_GID=.*|HYPERBOT_GID=$(id -g)|" "$env_file"
-    chmod 600 "$env_file"
     echo "Created disabled environment: $env_file"
 fi
+ensure_env_setting HYPERBOT_HOST_SHARED_DIR "${install_root}/shared"
+ensure_env_setting HYPERBOT_ALERT_WEBHOOK_FILE \
+    "${install_root}/shared/alert_webhook_url"
+ensure_env_setting HYPERBOT_UI_AUTH_PASSWORD_FILE \
+    "${install_root}/shared/ui_password"
+ensure_env_setting HYPERBOT_UI_HOST "0.0.0.0"
+ensure_env_setting HYPERBOT_UI_PORT "3002"
+ensure_env_setting HYPERBOT_UI_PUBLISH_HOST "0.0.0.0"
+ensure_env_setting HYPERBOT_UI_AUTH_REQUIRED "true"
+ensure_env_setting HYPERBOT_UI_AUTH_USERNAME "hyperbot"
+ensure_env_setting HYPERBOT_UI_REFRESH_SECONDS "10"
+ensure_env_setting HYPERBOT_UID "$(id -u)"
+ensure_env_setting HYPERBOT_GID "$(id -g)"
+chmod 600 "$env_file"
 docker compose --env-file "$env_file" -p hyperbot \
     -f "${release}/docker-compose.hyperbot.yml" --profile collector config --quiet
 docker compose --env-file "$env_file" -p hyperbot \
@@ -155,4 +185,6 @@ else
     echo "Release selected but collector left disabled/stopped."
 fi
 echo "HyperBot release ready: $release"
+echo "Dashboard/API configured on public TCP port 3002 (authentication required)."
+echo "UI password file: ${install_root}/shared/ui_password"
 REMOTE_INSTALL
