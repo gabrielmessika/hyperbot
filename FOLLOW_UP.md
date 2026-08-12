@@ -524,6 +524,22 @@ anomalies du dernier rapport M3. Le compteur principal ne mélange plus une
 preuve qualité historique avec l'état courant ; l'API et l'UI exposent la date,
 le verdict et le nombre d'anomalies dans un bloc distinct.
 
+Le 12 août 2026, la première journée multi-marchés complète a révélé un second
+défaut de passage à l'échelle : M3 matérialisait plusieurs fois les millions
+d'événements de la journée et dépassait la limite mémoire de 512 Mio. Docker a
+tué puis relancé `maintenance` en boucle, tandis que l'ancien statut `completed`
+du 10 août masquait l'incident. Le conteneur a été stoppé isolément à 963
+redémarrages ; le collector est resté healthy, sans drop sur son run courant.
+
+Le correctif lit et authentifie désormais chaque segment en flux, agrège les
+métriques dans des structures compactes, spill les spreads temporairement et
+publie des heartbeats d'analyse/compression. Une tentative interrompue n'est
+plus répétée automatiquement pour la même date sans reprise opérateur. L'API et
+le dashboard signalent maintenant une maintenance failed, stale, sur la mauvaise
+date ou overdue, et l'état global ne peut plus rester `Sain` en présence de cet
+incident. Le rapport d'implémentation et de validation se trouve dans
+`reports/m7_ops/maintenance_oom_fix_report.md`.
+
 ### M8 — canary, bloqué par défaut
 
 Ce lot ne peut pas commencer à la suite d'un simple développement. Il exige :

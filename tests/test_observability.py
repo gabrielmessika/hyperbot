@@ -6,6 +6,7 @@ import http.client
 import json
 import threading
 import time
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -68,7 +69,13 @@ def _settings_with_snapshots(tmp_path: Path) -> ObserverSettings:
     )
     atomic_write_json(
         settings.ops.runtime_root / "maintenance_status.json",
-        {"state": "idle", "last_completed_date": "2026-08-10"},
+        {
+            "state": "completed",
+            "report_date": (
+                datetime.now(tz=UTC).date() - timedelta(days=1)
+            ).isoformat(),
+            "updated_at_ms": now_ms,
+        },
     )
     atomic_write_json(
         settings.ops.runtime_root / "watchdog_status.json",
@@ -320,6 +327,43 @@ def test_incidents_separate_active_failures_from_quality_anomalies(
     assert failed_quality["count"] == 2
 
 
+def test_maintenance_health_detects_stale_and_overdue_reports(
+    tmp_path: Path,
+) -> None:
+    settings = _settings_with_snapshots(tmp_path)
+    reader = ObservabilityReader(settings)
+    now = datetime(2026, 8, 12, 6, tzinfo=UTC)
+    now_ms = int(now.timestamp() * 1_000)
+
+    atomic_write_json(
+        settings.ops.runtime_root / "maintenance_status.json",
+        {
+            "state": "running",
+            "report_date": "2026-08-11",
+            "updated_at_ms": now_ms - 10 * 60 * 1_000,
+        },
+    )
+    stale = reader.incidents(now_ms=now_ms)
+
+    assert [
+        item["code"] for item in stale["incidents"] if item["source"] == "maintenance"
+    ] == ["maintenance_stale"]
+
+    atomic_write_json(
+        settings.ops.runtime_root / "maintenance_status.json",
+        {
+            "state": "completed",
+            "report_date": "2026-08-10",
+            "updated_at_ms": now_ms,
+        },
+    )
+    overdue = reader.incidents(now_ms=now_ms)
+
+    assert [
+        item["code"] for item in overdue["incidents"] if item["source"] == "maintenance"
+    ] == ["maintenance_overdue"]
+
+
 def test_http_dashboard_and_api_are_authenticated_and_strictly_read_only(
     tmp_path: Path,
 ) -> None:
@@ -358,6 +402,8 @@ def test_http_dashboard_and_api_are_authenticated_and_strictly_read_only(
             assert "incidents opérationnels actifs" in ui
             assert "anomalies du dernier rapport m3" in ui
             assert "ces anomalies ne sont pas des incidents actifs" in ui
+            assert "maintenance_health" in ui
+            assert "active_count" in ui
             assert "/api/overview" in ui
             assert "/api/start" not in ui
             assert "/api/stop" not in ui

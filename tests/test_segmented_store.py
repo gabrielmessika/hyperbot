@@ -98,6 +98,30 @@ def test_utc_date_rotates_even_when_size_limit_is_not_reached(
     assert [record["sequence"] for record in second] == [1]
 
 
+def test_date_reader_streams_closed_segment_instead_of_reading_it_whole(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store, _ = _closed_store(tmp_path)
+    assert store.compress_closed_segments("market-data") == 1
+    manifest = json.loads(
+        (tmp_path / "market-data" / "manifest.json").read_text(encoding="utf-8")
+    )
+    segment = tmp_path / "market-data" / manifest["segments"][0]["path"]
+    original_read_bytes = Path.read_bytes
+
+    def guarded_read_bytes(path: Path) -> bytes:
+        if path == segment:
+            raise AssertionError("closed segment must be streamed")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", guarded_read_bytes)
+
+    records = list(store.iter_records_for_utc_date("market-data", "1970-01-01"))
+
+    assert [record["sequence"] for record in records] == [0, 1]
+
+
 def test_date_reader_refuses_a_mutable_active_segment(tmp_path: Path) -> None:
     store = SegmentedEventStore(
         tmp_path,

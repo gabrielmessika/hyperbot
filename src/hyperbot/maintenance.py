@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from dataclasses import dataclass
 from datetime import date
+from itertools import chain
 from pathlib import Path
 from typing import cast
 
@@ -132,26 +134,70 @@ def run_daily_maintenance(
     report_markdown = settings.review_root / f"{stem}.md"
     store = SegmentedEventStore(settings.data_root)
     date_value = report_date.isoformat()
-    market_events = [
-        market_event_from_payload(cast(dict[str, object], record["payload"]))
-        for record in store.iter_records_for_utc_date(
-            "public-market-data", date_value
+    started_at_ms = generated_at_ms
+    processed_market_events = 0
+
+    def update_running_status(
+        *,
+        stage: str,
+        processed_events: int | None = None,
+        compressed_segments: int = 0,
+    ) -> None:
+        effective_processed_events = (
+            processed_market_events if processed_events is None else processed_events
         )
-    ]
+        atomic_write_json(
+            settings.maintenance_status_path,
+            {
+                "schema_version": OPS_SCHEMA_VERSION,
+                "state": "running",
+                "stage": stage,
+                "report_date": date_value,
+                "run_id": run_id,
+                "started_at_ms": started_at_ms,
+                "updated_at_ms": int(time.time() * 1_000),
+                "processed_market_events": effective_processed_events,
+                "compressed_segments": compressed_segments,
+                "config_sha256": settings.config_sha256,
+                "minimum_retention_days": settings.minimum_retention_days,
+                "raw_data_deleted": False,
+            },
+        )
+
+    update_running_status(stage="quality_analysis")
+    raw_market_events = (
+        market_event_from_payload(cast(dict[str, object], record["payload"]))
+        for record in store.iter_records_for_utc_date("public-market-data", date_value)
+    )
     control_events = [
         control_event_from_payload(cast(dict[str, object], record["payload"]))
         for record in store.iter_records_for_utc_date("collector-control", date_value)
     ]
+    first_market_event = next(raw_market_events, None)
+    market_events = (
+        chain((first_market_event,), raw_market_events)
+        if first_market_event is not None
+        else iter(())
+    )
     source_context = (
-        market_events[0].context
-        if market_events
+        first_market_event.context
+        if first_market_event is not None
         else control_events[0].context
         if control_events
         else None
     )
+
+    def report_progress(processed_events: int) -> None:
+        nonlocal processed_market_events
+        processed_market_events = processed_events
+        update_running_status(
+            stage="quality_analysis",
+            processed_events=processed_market_events,
+        )
+
     report = DailyQualityAnalyzer(
         QualityConfig(expected_markets=settings.markets)
-    ).analyze(
+    ).analyze_ordered(
         report_date=report_date,
         market_events=market_events,
         control_events=control_events,
@@ -161,6 +207,8 @@ def run_daily_maintenance(
         source_config_hash=(
             source_context.config_hash if source_context else settings.config_sha256
         ),
+        spill_root=settings.runtime_root / "quality-spill",
+        progress=report_progress,
     )
     if report_json.exists() or report_markdown.exists():
         if not report_markdown.is_file() or not _valid_existing_report(report_json):
@@ -170,19 +218,40 @@ def run_daily_maintenance(
             report, settings.review_root
         )
 
-    compressed = sum(
-        store.compress_closed_segments(stream)
-        for stream in ("public-market-data", "collector-control")
+    compressed = 0
+    update_running_status(
+        stage="compression",
+        processed_events=processed_market_events,
+        compressed_segments=compressed,
     )
+    for stream in ("public-market-data", "collector-control"):
+        compressed_before_stream = compressed
+
+        def compression_progress(
+            stream_count: int,
+            base_count: int = compressed_before_stream,
+        ) -> None:
+            update_running_status(
+                stage="compression",
+                processed_events=processed_market_events,
+                compressed_segments=base_count + stream_count,
+            )
+
+        compressed += store.compress_closed_segments(
+            stream,
+            progress=compression_progress,
+        )
     marker_payload = {
         "schema_version": OPS_SCHEMA_VERSION,
         "report_date": date_value,
         "completed_at_ms": generated_at_ms,
+        "started_at_ms": started_at_ms,
         "config_sha256": settings.config_sha256,
         "report_json": str(report_json),
         "report_markdown": str(report_markdown),
         "report_sha256": hashlib.sha256(report_json.read_bytes()).hexdigest(),
         "compressed_segments": compressed,
+        "processed_market_events": processed_market_events,
         "qualified_day": report.qualified_day,
         "minimum_retention_days": settings.minimum_retention_days,
         "raw_data_deleted": False,
@@ -193,7 +262,7 @@ def run_daily_maintenance(
         {
             **marker_payload,
             "state": "completed",
-            "updated_at_ms": generated_at_ms,
+            "updated_at_ms": int(time.time() * 1_000),
         },
     )
     return MaintenanceResult(

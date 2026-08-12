@@ -10,7 +10,7 @@ import shutil
 import time
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
@@ -24,6 +24,8 @@ from hyperbot.ops import (
 
 MAX_JSON_BYTES = 32 * 1024 * 1024
 MAX_HISTORY_DAYS = 90
+MAINTENANCE_STALE_MINIMUM_MS = 5 * 60 * 1_000
+MAINTENANCE_COMPLETION_GRACE_MS = 60 * 60 * 1_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -274,6 +276,7 @@ class ObservabilityReader:
     def status(self, *, now_ms: int | None = None) -> dict[str, object]:
         checked_at_ms = int(time.time() * 1_000) if now_ms is None else now_ms
         health = self._collector_health(checked_at_ms)
+        maintenance = self._status_file("maintenance_status.json")
         return {
             "generated_at_ms": checked_at_ms,
             "service": "hyperbot-observer",
@@ -285,7 +288,11 @@ class ObservabilityReader:
             "shadow_only": True,
             "collector_health": asdict(health),
             "collector": self._status_file("collector_status.json"),
-            "maintenance": self._status_file("maintenance_status.json"),
+            "maintenance": maintenance,
+            "maintenance_health": self._maintenance_health(
+                maintenance,
+                checked_at_ms=checked_at_ms,
+            ),
             "watchdog": self._status_file("watchdog_status.json"),
         }
 
@@ -400,9 +407,9 @@ class ObservabilityReader:
             "streams": streams,
         }
 
-    def incidents(self) -> dict[str, object]:
+    def incidents(self, *, now_ms: int | None = None) -> dict[str, object]:
         incidents: list[dict[str, object]] = []
-        status = self.status()
+        status = self.status(now_ms=now_ms)
         health = status["collector_health"]
         if isinstance(health, dict):
             for reason in health.get("reasons", []):
@@ -414,15 +421,21 @@ class ObservabilityReader:
                     }
                 )
         maintenance = status.get("maintenance")
-        if isinstance(maintenance, dict) and maintenance.get("state") == "failed":
-            incidents.append(
-                {
-                    "severity": "critical",
-                    "source": "maintenance",
-                    "code": "maintenance_failed",
-                    "detail": maintenance.get("error"),
-                }
-            )
+        maintenance_health = status.get("maintenance_health")
+        if isinstance(maintenance_health, dict):
+            reasons = maintenance_health.get("reasons", [])
+            if isinstance(reasons, list):
+                for reason in reasons:
+                    if not isinstance(reason, str):
+                        continue
+                    incident: dict[str, object] = {
+                        "severity": "critical",
+                        "source": "maintenance",
+                        "code": reason,
+                    }
+                    if reason == "maintenance_failed" and isinstance(maintenance, dict):
+                        incident["detail"] = maintenance.get("error")
+                    incidents.append(incident)
 
         quality_anomalies: list[dict[str, object]] = []
         latest = self.quality_latest()
@@ -577,6 +590,59 @@ class ObservabilityReader:
                 free_bytes=0,
                 config_sha256=self.settings.ops.config_sha256,
             )
+
+    def _maintenance_health(
+        self,
+        status: dict[str, object] | None,
+        *,
+        checked_at_ms: int,
+    ) -> dict[str, object]:
+        payload = status or {}
+        state = payload.get("state")
+        updated_at_ms = payload.get("updated_at_ms")
+        status_age_ms = (
+            max(checked_at_ms - updated_at_ms, 0)
+            if isinstance(updated_at_ms, int)
+            else None
+        )
+        now = datetime.fromtimestamp(checked_at_ms / 1_000, tz=UTC)
+        scheduled = now.replace(
+            hour=self.settings.ops.maintenance_hour_utc,
+            minute=self.settings.ops.maintenance_minute_utc,
+            second=0,
+            microsecond=0,
+        )
+        expected_report_date: str | None = None
+        if checked_at_ms >= int(scheduled.timestamp() * 1_000) + (
+            MAINTENANCE_COMPLETION_GRACE_MS
+        ):
+            expected_report_date = (now.date() - timedelta(days=1)).isoformat()
+
+        reasons: list[str] = []
+        stale_after_ms = max(
+            MAINTENANCE_STALE_MINIMUM_MS,
+            self.settings.ops.maintenance_poll_seconds * 5 * 1_000,
+        )
+        report_date = payload.get("report_date")
+        if state == "failed":
+            reasons.append("maintenance_failed")
+        elif state == "running":
+            if status_age_ms is None or status_age_ms > stale_after_ms:
+                reasons.append("maintenance_stale")
+            if expected_report_date is not None and report_date != expected_report_date:
+                reasons.append("maintenance_wrong_report_date")
+        elif expected_report_date is not None and report_date != expected_report_date:
+            reasons.append("maintenance_overdue")
+        return {
+            "healthy": not reasons,
+            "reasons": reasons,
+            "state": state,
+            "report_date": report_date,
+            "expected_report_date": expected_report_date,
+            "status_age_ms": status_age_ms,
+            "stale_after_ms": stale_after_ms,
+            "checked_at_ms": checked_at_ms,
+        }
 
     def _stream_storage(self, stream: str) -> dict[str, object]:
         stream_root = self.settings.ops.data_root / stream

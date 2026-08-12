@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+from array import array
 from collections import Counter
-from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import asdict, dataclass
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from pathlib import Path
-from typing import cast
+from tempfile import TemporaryDirectory
+from typing import TextIO, cast
 
 from hyperbot.models import (
     CollectorControlEvent,
@@ -158,6 +160,14 @@ def _percentile(values: Sequence[Decimal], percentile: Decimal) -> Decimal | Non
     if not values:
         return None
     ordered = sorted(values)
+    return _ordered_percentile(ordered, percentile)
+
+
+def _ordered_percentile(
+    ordered: Sequence[Decimal], percentile: Decimal
+) -> Decimal | None:
+    if not ordered:
+        return None
     if len(ordered) == 1:
         return ordered[0]
     position = percentile * Decimal(len(ordered) - 1)
@@ -168,8 +178,25 @@ def _percentile(values: Sequence[Decimal], percentile: Decimal) -> Decimal | Non
 
 
 def _integer_percentile(values: Sequence[int], percentile: Decimal) -> int | None:
-    result = _percentile([Decimal(value) for value in values], percentile)
-    return int(result.to_integral_value()) if result is not None else None
+    if not values:
+        return None
+    ordered = sorted(values)
+    return _ordered_integer_percentile(ordered, percentile)
+
+
+def _ordered_integer_percentile(
+    ordered: Sequence[int], percentile: Decimal
+) -> int | None:
+    if not ordered:
+        return None
+    if len(ordered) == 1:
+        return ordered[0]
+    position = percentile * Decimal(len(ordered) - 1)
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    weight = position - lower
+    result = Decimal(ordered[lower]) + Decimal(ordered[upper] - ordered[lower]) * weight
+    return int(result.to_integral_value())
 
 
 def _merge_intervals(
@@ -212,10 +239,14 @@ def _collector_outages(
         }:
             if start is None:
                 start = timestamp
-        elif control.kind in {
-            CollectorControlKind.CONNECTED,
-            CollectorControlKind.RECONNECTED,
-        } and start is not None:
+        elif (
+            control.kind
+            in {
+                CollectorControlKind.CONNECTED,
+                CollectorControlKind.RECONNECTED,
+            }
+            and start is not None
+        ):
             outages.append((start, timestamp))
             start = None
     if start is not None:
@@ -234,15 +265,23 @@ def _collector_sessions(
     sessions: list[tuple[int, int]] = []
     for control in sorted(controls, key=lambda item: item.receive_ts_ms):
         timestamp = min(max(control.receive_ts_ms, window_begin_ms), window_end_ms)
-        if control.kind in {
-            CollectorControlKind.CONNECTED,
-            CollectorControlKind.RECONNECTED,
-        } and start is None:
+        if (
+            control.kind
+            in {
+                CollectorControlKind.CONNECTED,
+                CollectorControlKind.RECONNECTED,
+            }
+            and start is None
+        ):
             start = timestamp
-        elif control.kind in {
-            CollectorControlKind.DISCONNECTED,
-            CollectorControlKind.SHUTDOWN,
-        } and start is not None:
+        elif (
+            control.kind
+            in {
+                CollectorControlKind.DISCONNECTED,
+                CollectorControlKind.SHUTDOWN,
+            }
+            and start is not None
+        ):
             sessions.append((start, timestamp))
             start = None
     if start is not None:
@@ -321,6 +360,58 @@ def _trade_notional(event: PublicMarketDataEvent) -> Decimal:
     return price * size
 
 
+@dataclass(slots=True)
+class _OrderedMarketAccumulator:
+    coin: str
+    previous_book_ts_ms: int
+    spread_handle: TextIO
+    message_count: int = 0
+    channel_counts: Counter[str] = field(default_factory=Counter)
+    last_receive_ts_ms: int | None = None
+    latency_values: array[int] = field(default_factory=lambda: array("q"))
+    negative_latency_count: int = 0
+    gaps: list[QualityGap] = field(default_factory=list)
+    bid_depth_sum: Decimal = Decimal(0)
+    bid_depth_count: int = 0
+    ask_depth_sum: Decimal = Decimal(0)
+    ask_depth_count: int = 0
+    trade_count: int = 0
+    trade_notional_usd: Decimal = Decimal(0)
+
+
+def _gap_between(
+    *,
+    coin: str,
+    previous: int,
+    current: int,
+    config: QualityConfig,
+    outages: Sequence[tuple[int, int]],
+    sessions: Sequence[tuple[int, int]],
+) -> QualityGap | None:
+    gap_begin = previous + config.stale_after_ms
+    if current <= gap_begin:
+        return None
+    interval = (gap_begin, current)
+    duration = current - gap_begin
+    if _overlaps(interval, outages):
+        cause = GapCause.COLLECTOR_OUTAGE
+    elif not any(
+        session_begin <= gap_begin and current <= session_end
+        for session_begin, session_end in sessions
+    ):
+        cause = GapCause.COLLECTOR_NOT_RUNNING
+    else:
+        cause = GapCause.MARKET_STALE
+    return QualityGap(
+        coin=coin,
+        begin_ts_ms=gap_begin,
+        end_ts_ms=current,
+        duration_ms=duration,
+        cause=cause,
+        major=duration >= config.major_gap_ms,
+    )
+
+
 class DailyQualityAnalyzer:
     def __init__(self, config: QualityConfig) -> None:
         self.config = config
@@ -336,6 +427,8 @@ class DailyQualityAnalyzer:
         code_version: str,
         source_config_hash: str,
     ) -> DailyQualityReport:
+        """Analyze arbitrary iterables after ordering them deterministically."""
+
         window_begin = int(
             datetime.combine(report_date, datetime.min.time(), tzinfo=UTC).timestamp()
             * 1000
@@ -348,11 +441,56 @@ class DailyQualityAnalyzer:
             ).timestamp()
             * 1000
         )
-        selected_market_events = tuple(
+        selected_market_events = sorted(
+            (
+                event
+                for event in market_events
+                if window_begin <= event.receive_ts_ms < window_end
+                and event.coin in self.config.expected_markets
+            ),
+            key=lambda item: (item.receive_ts_ms, item.local_sequence),
+        )
+        selected_controls = tuple(
             event
-            for event in market_events
-            if window_begin <= event.receive_ts_ms < window_end
-            and event.coin in self.config.expected_markets
+            for event in control_events
+            if window_begin <= event.receive_ts_ms <= window_end
+        )
+        return self.analyze_ordered(
+            report_date=report_date,
+            market_events=selected_market_events,
+            control_events=selected_controls,
+            generated_at_ms=generated_at_ms,
+            run_id=run_id,
+            code_version=code_version,
+            source_config_hash=source_config_hash,
+        )
+
+    def analyze_ordered(
+        self,
+        *,
+        report_date: date,
+        market_events: Iterable[PublicMarketDataEvent],
+        control_events: Iterable[CollectorControlEvent],
+        generated_at_ms: int,
+        run_id: str,
+        code_version: str,
+        source_config_hash: str,
+        spill_root: str | Path | None = None,
+        progress: Callable[[int], None] | None = None,
+    ) -> DailyQualityReport:
+        """Analyze receive-time-ordered events with bounded resident memory."""
+
+        window_begin = int(
+            datetime.combine(report_date, datetime.min.time(), tzinfo=UTC).timestamp()
+            * 1000
+        )
+        window_end = int(
+            datetime.combine(
+                report_date + timedelta(days=1),
+                datetime.min.time(),
+                tzinfo=UTC,
+            ).timestamp()
+            * 1000
         )
         selected_controls = tuple(
             event
@@ -361,131 +499,177 @@ class DailyQualityAnalyzer:
         )
         outages = _collector_outages(selected_controls, window_begin, window_end)
         sessions = _collector_sessions(selected_controls, window_begin, window_end)
-        events_by_market: dict[str, list[PublicMarketDataEvent]] = {
-            coin: [] for coin in self.config.expected_markets
-        }
-        for event in selected_market_events:
-            events_by_market[event.coin].append(event)
-
-        all_gaps: list[QualityGap] = []
-        market_metrics: list[MarketQuality] = []
-        for coin in self.config.expected_markets:
-            events = sorted(
-                events_by_market[coin],
-                key=lambda item: (item.receive_ts_ms, item.local_sequence),
-            )
-            book_timestamps = sorted(
-                {
-                    event.receive_ts_ms
-                    for event in events
-                    if event.channel in _REQUIRED_BOOK_CHANNELS
-                }
-            )
-            boundaries = [window_begin, *book_timestamps, window_end]
-            coin_gaps: list[QualityGap] = []
-            for previous, current in zip(boundaries, boundaries[1:], strict=False):
-                gap_begin = previous + self.config.stale_after_ms
-                if current <= gap_begin:
-                    continue
-                interval = (gap_begin, current)
-                duration = current - gap_begin
-                if _overlaps(interval, outages):
-                    cause = GapCause.COLLECTOR_OUTAGE
-                elif not any(
-                    session_begin <= gap_begin and current <= session_end
-                    for session_begin, session_end in sessions
-                ):
-                    cause = GapCause.COLLECTOR_NOT_RUNNING
-                else:
-                    cause = GapCause.MARKET_STALE
-                coin_gaps.append(
-                    QualityGap(
-                        coin=coin,
-                        begin_ts_ms=gap_begin,
-                        end_ts_ms=current,
-                        duration_ms=duration,
-                        cause=cause,
-                        major=duration >= self.config.major_gap_ms,
+        spill_parent = Path(spill_root) if spill_root is not None else None
+        if spill_parent is not None:
+            spill_parent.mkdir(parents=True, exist_ok=True)
+        with TemporaryDirectory(
+            prefix=f"m3-{report_date.isoformat()}-",
+            dir=spill_parent,
+        ) as temporary:
+            temporary_root = Path(temporary)
+            accumulators: dict[str, _OrderedMarketAccumulator] = {}
+            handles: list[TextIO] = []
+            try:
+                for index, coin in enumerate(self.config.expected_markets):
+                    handle = (temporary_root / f"{index:04d}.spreads").open(
+                        "w+", encoding="ascii"
                     )
-                )
-            all_gaps.extend(coin_gaps)
-            stale_duration = sum(gap.duration_ms for gap in coin_gaps)
-            window_duration = window_end - window_begin
-            coverage = (
-                Decimal(max(0, window_duration - stale_duration))
-                / Decimal(window_duration)
-                * 100
-            ).quantize(Decimal("0.001"))
-            latency_values: list[int] = []
-            negative_latency_count = 0
-            spreads: list[Decimal] = []
-            bid_depths: list[Decimal] = []
-            ask_depths: list[Decimal] = []
-            for event in events:
-                if event.exchange_ts_ms is not None:
-                    latency = event.receive_ts_ms - event.exchange_ts_ms
-                    if latency < 0:
-                        negative_latency_count += 1
-                    else:
-                        latency_values.append(latency)
-                spread, bid_depth, ask_depth = _book_metrics(event)
-                if spread is not None:
-                    spreads.append(spread)
-                if bid_depth is not None:
-                    bid_depths.append(bid_depth)
-                if ask_depth is not None:
-                    ask_depths.append(ask_depth)
-            channel_counts = Counter(event.channel for event in events)
-            trades = [event for event in events if event.channel == "trades"]
-            market_metrics.append(
-                MarketQuality(
-                    coin=coin,
-                    message_count=len(events),
-                    channel_counts=tuple(sorted(channel_counts.items())),
-                    coverage_pct=coverage,
-                    latency_p50_ms=_integer_percentile(
-                        latency_values, Decimal("0.50")
-                    ),
-                    latency_p95_ms=_integer_percentile(
-                        latency_values, Decimal("0.95")
-                    ),
-                    latency_p99_ms=_integer_percentile(
-                        latency_values, Decimal("0.99")
-                    ),
-                    negative_latency_count=negative_latency_count,
-                    gap_count=len(coin_gaps),
-                    major_gap_count=sum(gap.major for gap in coin_gaps),
-                    collector_outage_gap_count=sum(
-                        gap.cause is GapCause.COLLECTOR_OUTAGE for gap in coin_gaps
-                    ),
-                    collector_not_running_gap_count=sum(
-                        gap.cause is GapCause.COLLECTOR_NOT_RUNNING
-                        for gap in coin_gaps
-                    ),
-                    market_stale_gap_count=sum(
-                        gap.cause is GapCause.MARKET_STALE for gap in coin_gaps
-                    ),
-                    stale_duration_ms=stale_duration,
-                    spread_p10_bps=_percentile(spreads, Decimal("0.10")),
-                    spread_p50_bps=_percentile(spreads, Decimal("0.50")),
-                    spread_p90_bps=_percentile(spreads, Decimal("0.90")),
-                    average_bid_depth=(
-                        sum(bid_depths, Decimal(0)) / len(bid_depths)
-                        if bid_depths
-                        else None
-                    ),
-                    average_ask_depth=(
-                        sum(ask_depths, Decimal(0)) / len(ask_depths)
-                        if ask_depths
-                        else None
-                    ),
-                    trade_count=len(trades),
-                    trade_notional_usd=sum(
-                        (_trade_notional(event) for event in trades),
-                        Decimal(0),
-                    ),
-                )
-            )
+                    handles.append(handle)
+                    accumulators[coin] = _OrderedMarketAccumulator(
+                        coin=coin,
+                        previous_book_ts_ms=window_begin,
+                        spread_handle=handle,
+                    )
+
+                processed_events = 0
+                for event in market_events:
+                    processed_events += 1
+                    if progress is not None and processed_events % 50_000 == 0:
+                        progress(processed_events)
+                    if not (
+                        window_begin <= event.receive_ts_ms < window_end
+                        and event.coin in accumulators
+                    ):
+                        continue
+                    accumulator = accumulators[event.coin]
+                    if (
+                        accumulator.last_receive_ts_ms is not None
+                        and event.receive_ts_ms < accumulator.last_receive_ts_ms
+                    ):
+                        raise ValueError(
+                            "ordered quality analysis received decreasing timestamps "
+                            f"for {event.coin}"
+                        )
+                    accumulator.last_receive_ts_ms = event.receive_ts_ms
+                    accumulator.message_count += 1
+                    accumulator.channel_counts[event.channel] += 1
+                    if event.exchange_ts_ms is not None:
+                        latency = event.receive_ts_ms - event.exchange_ts_ms
+                        if latency < 0:
+                            accumulator.negative_latency_count += 1
+                        else:
+                            accumulator.latency_values.append(latency)
+
+                    if event.channel in _REQUIRED_BOOK_CHANNELS:
+                        if event.receive_ts_ms > accumulator.previous_book_ts_ms:
+                            gap = _gap_between(
+                                coin=event.coin,
+                                previous=accumulator.previous_book_ts_ms,
+                                current=event.receive_ts_ms,
+                                config=self.config,
+                                outages=outages,
+                                sessions=sessions,
+                            )
+                            if gap is not None:
+                                accumulator.gaps.append(gap)
+                            accumulator.previous_book_ts_ms = event.receive_ts_ms
+                        spread, bid_depth, ask_depth = _book_metrics(event)
+                        if spread is not None:
+                            accumulator.spread_handle.write(f"{spread}\n")
+                        if bid_depth is not None:
+                            accumulator.bid_depth_sum += bid_depth
+                            accumulator.bid_depth_count += 1
+                        if ask_depth is not None:
+                            accumulator.ask_depth_sum += ask_depth
+                            accumulator.ask_depth_count += 1
+                    if event.channel == "trades":
+                        accumulator.trade_count += 1
+                        accumulator.trade_notional_usd += _trade_notional(event)
+
+                if progress is not None:
+                    progress(processed_events)
+                for accumulator in accumulators.values():
+                    final_gap = _gap_between(
+                        coin=accumulator.coin,
+                        previous=accumulator.previous_book_ts_ms,
+                        current=window_end,
+                        config=self.config,
+                        outages=outages,
+                        sessions=sessions,
+                    )
+                    if final_gap is not None:
+                        accumulator.gaps.append(final_gap)
+                    accumulator.spread_handle.flush()
+                    accumulator.spread_handle.seek(0)
+
+                all_gaps: list[QualityGap] = []
+                market_metrics: list[MarketQuality] = []
+                window_duration = window_end - window_begin
+                for coin in self.config.expected_markets:
+                    accumulator = accumulators[coin]
+                    spreads = sorted(
+                        Decimal(line.strip())
+                        for line in accumulator.spread_handle
+                        if line.strip()
+                    )
+                    latencies = sorted(accumulator.latency_values)
+                    all_gaps.extend(accumulator.gaps)
+                    stale_duration = sum(gap.duration_ms for gap in accumulator.gaps)
+                    coverage = (
+                        Decimal(max(0, window_duration - stale_duration))
+                        / Decimal(window_duration)
+                        * 100
+                    ).quantize(Decimal("0.001"))
+                    market_metrics.append(
+                        MarketQuality(
+                            coin=coin,
+                            message_count=accumulator.message_count,
+                            channel_counts=tuple(
+                                sorted(accumulator.channel_counts.items())
+                            ),
+                            coverage_pct=coverage,
+                            latency_p50_ms=_ordered_integer_percentile(
+                                latencies, Decimal("0.50")
+                            ),
+                            latency_p95_ms=_ordered_integer_percentile(
+                                latencies, Decimal("0.95")
+                            ),
+                            latency_p99_ms=_ordered_integer_percentile(
+                                latencies, Decimal("0.99")
+                            ),
+                            negative_latency_count=(accumulator.negative_latency_count),
+                            gap_count=len(accumulator.gaps),
+                            major_gap_count=sum(gap.major for gap in accumulator.gaps),
+                            collector_outage_gap_count=sum(
+                                gap.cause is GapCause.COLLECTOR_OUTAGE
+                                for gap in accumulator.gaps
+                            ),
+                            collector_not_running_gap_count=sum(
+                                gap.cause is GapCause.COLLECTOR_NOT_RUNNING
+                                for gap in accumulator.gaps
+                            ),
+                            market_stale_gap_count=sum(
+                                gap.cause is GapCause.MARKET_STALE
+                                for gap in accumulator.gaps
+                            ),
+                            stale_duration_ms=stale_duration,
+                            spread_p10_bps=_ordered_percentile(
+                                spreads, Decimal("0.10")
+                            ),
+                            spread_p50_bps=_ordered_percentile(
+                                spreads, Decimal("0.50")
+                            ),
+                            spread_p90_bps=_ordered_percentile(
+                                spreads, Decimal("0.90")
+                            ),
+                            average_bid_depth=(
+                                accumulator.bid_depth_sum / accumulator.bid_depth_count
+                                if accumulator.bid_depth_count
+                                else None
+                            ),
+                            average_ask_depth=(
+                                accumulator.ask_depth_sum / accumulator.ask_depth_count
+                                if accumulator.ask_depth_count
+                                else None
+                            ),
+                            trade_count=accumulator.trade_count,
+                            trade_notional_usd=accumulator.trade_notional_usd,
+                        )
+                    )
+            finally:
+                for current_handle in handles:
+                    current_handle.close()
+
         reasons: list[str] = []
         for market in market_metrics:
             if market.coverage_pct < self.config.minimum_coverage_pct:
@@ -587,12 +771,15 @@ def write_daily_quality_report(
     if json_path.exists() or markdown_path.exists():
         raise FileExistsError(f"quality report already exists: {stem}")
     payload = quality_report_payload(report)
-    json_bytes = json.dumps(
-        payload,
-        ensure_ascii=False,
-        indent=2,
-        sort_keys=True,
-    ).encode("utf-8") + b"\n"
+    json_bytes = (
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ).encode("utf-8")
+        + b"\n"
+    )
     json_path.write_bytes(json_bytes)
     json_path.with_suffix(".json.sha256").write_text(
         f"{hashlib.sha256(json_bytes).hexdigest()}  {json_path.name}\n",

@@ -34,6 +34,25 @@ def _scheduled_date(settings: OpsSettings, now: datetime) -> date | None:
     return now.date() - timedelta(days=1)
 
 
+def _automatic_attempt_blocked(settings: OpsSettings, target: date) -> bool:
+    """Do not repeat an interrupted daily attempt until an operator retries it."""
+
+    marker = settings.runtime_root / "maintenance" / f"{target.isoformat()}.json"
+    if marker.is_file() and not marker.is_symlink():
+        return False
+    try:
+        status = json.loads(
+            settings.maintenance_status_path.read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError):
+        return False
+    return (
+        isinstance(status, dict)
+        and status.get("report_date") == target.isoformat()
+        and status.get("state") in {"running", "failed"}
+    )
+
+
 def main() -> int:
     args = _arguments()
     try:
@@ -49,9 +68,23 @@ def main() -> int:
 
     signal.signal(signal.SIGINT, request_stop)
     signal.signal(signal.SIGTERM, request_stop)
+    reported_blocked_dates: set[date] = set()
     while not stopped:
         now = datetime.now(tz=UTC)
         target = args.date or _scheduled_date(settings, now)
+        if (
+            target is not None
+            and not args.once
+            and _automatic_attempt_blocked(settings, target)
+        ):
+            if target not in reported_blocked_dates:
+                print(
+                    "maintenance retry blocked after an interrupted attempt; "
+                    f"operator review required for {target.isoformat()}",
+                    file=sys.stderr,
+                )
+                reported_blocked_dates.add(target)
+            target = None
         if target is not None:
             try:
                 result = run_daily_maintenance(

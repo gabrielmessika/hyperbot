@@ -376,15 +376,16 @@
     function renderServices(status) {
       const body = $("services-body"); clear(body);
       [
-        ["Collector", status.collector],
-        ["Maintenance", status.maintenance],
-        ["Watchdog", status.watchdog],
-        ["Observer", { state: "running", updated_at_ms: status.generated_at_ms }]
-      ].forEach(([name, service]) => {
+        ["Collector", status.collector, status.collector_health?.healthy],
+        ["Maintenance", status.maintenance, status.maintenance_health?.healthy],
+        ["Watchdog", status.watchdog, status.watchdog?.healthy],
+        ["Observer", { state: "running", updated_at_ms: status.generated_at_ms }, true]
+      ].forEach(([name, service, explicitHealth]) => {
         const row = document.createElement("tr");
         const state = service?.state || "indisponible";
+        const serviceHealthy = explicitHealth == null ? ["running", "completed", "healthy"].includes(state) : explicitHealth === true;
         cell(row, name);
-        cell(row, state, state === "running" || state === "completed" || state === "healthy" ? "good" : "bad");
+        cell(row, state, serviceHealthy ? "good" : "bad");
         cell(row, formatTime(service?.updated_at_ms));
         body.appendChild(row);
       });
@@ -542,8 +543,9 @@
       const collector = status.collector || {};
       const health = status.collector_health || {};
       const healthy = health.healthy === true;
-      text("global-status", healthy ? "Sain" : "Incident");
-      $("global-status").className = `pill ${statusClass(healthy)}`;
+      const operationallyHealthy = healthy && Number(payload.incidents?.active_count || 0) === 0;
+      text("global-status", operationallyHealthy ? "Sain" : "Incident");
+      $("global-status").className = `pill ${statusClass(operationallyHealthy)}`;
       text("metric-collector", collector.state || "Indisponible");
       $("metric-collector").className = `metric-value ${healthy ? "good" : "bad"}`;
       text("metric-feed", collector.connected ? `Connecté · dernier message ${formatTime(collector.last_message_receive_ms)}` : "Flux déconnecté");

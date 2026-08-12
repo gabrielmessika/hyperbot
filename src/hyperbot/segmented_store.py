@@ -71,6 +71,14 @@ def _sha256(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _utc_date(timestamp_ms: int) -> str:
     return datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC).date().isoformat()
 
@@ -416,14 +424,9 @@ class SegmentedEventStore:
             path = stream_dir / path_name
             if not path.is_file():
                 raise EventIntegrityError(f"missing segment: {path}")
-            stored = path.read_bytes()
             storage_hash = segment.get("storage_sha256")
-            if not isinstance(storage_hash, str) or _sha256(stored) != storage_hash:
+            if not isinstance(storage_hash, str) or _file_sha256(path) != storage_hash:
                 raise EventIntegrityError(f"segment checksum mismatch: {path}")
-            content = gzip.decompress(stored) if path.suffix == ".gz" else stored
-            content_hash = segment.get("content_sha256")
-            if not isinstance(content_hash, str) or _sha256(content) != content_hash:
-                raise EventIntegrityError(f"segment content mismatch: {path}")
             previous_record_hash: object = (
                 GENESIS_HASH
                 if index == 0
@@ -441,31 +444,23 @@ class SegmentedEventStore:
             expected_sequence = segment.get("first_sequence")
             if not isinstance(expected_sequence, int):
                 raise EventIntegrityError(f"first sequence is invalid: {path}")
-            scan = self._scan_content(
-                content,
+            yield from self._iter_validated_segment_records(
+                path,
                 stream=stream,
                 previous_hash=previous_record_hash,
                 expected_sequence=expected_sequence,
-                path=path,
+                segment=segment,
             )
-            expected_fields = {
-                "record_count": scan.count,
-                "first_sequence": scan.first_sequence,
-                "last_sequence": scan.last_sequence,
-                "begin_recorded_at_ms": scan.begin_recorded_at_ms,
-                "end_recorded_at_ms": scan.end_recorded_at_ms,
-                "first_record_sha256": scan.first_record_sha256,
-                "last_record_sha256": scan.last_record_sha256,
-            }
-            for field, expected in expected_fields.items():
-                if segment.get(field) != expected:
-                    raise EventIntegrityError(f"{field} mismatch: {path}")
-            yield from self._decode_records(content)
 
     def read_records(self, stream: str) -> list[dict[str, object]]:
         return list(self.iter_records(stream))
 
-    def compress_closed_segments(self, stream: str) -> int:
+    def compress_closed_segments(
+        self,
+        stream: str,
+        *,
+        progress: Callable[[int], None] | None = None,
+    ) -> int:
         """Validate and compress immutable segments without blocking live appends."""
 
         stream_dir = self._stream_dir(stream)
@@ -547,6 +542,8 @@ class SegmentedEventStore:
                     self._write_manifest(stream, latest_manifest)
                     path.unlink()
                     compressed += 1
+                    if progress is not None:
+                        progress(compressed)
             finally:
                 temporary.unlink(missing_ok=True)
 
@@ -578,9 +575,7 @@ class SegmentedEventStore:
         if not isinstance(previous_record_hash, str):
             raise EventIntegrityError(f"previous record hash is invalid: {path}")
         previous_content_hash: object = (
-            GENESIS_HASH
-            if index == 0
-            else segments[index - 1].get("content_sha256")
+            GENESIS_HASH if index == 0 else segments[index - 1].get("content_sha256")
         )
         if segment.get("previous_segment_sha256") != previous_content_hash:
             raise EventIntegrityError(f"segment chain mismatch: {path}")
@@ -901,6 +896,122 @@ class SegmentedEventStore:
             first_record_sha256=first_record_hash,
             last_record_sha256=current_previous,
         )
+
+    def _iter_validated_segment_records(
+        self,
+        path: Path,
+        *,
+        stream: str,
+        previous_hash: str,
+        expected_sequence: int,
+        segment: Mapping[str, JsonValue],
+    ) -> Iterator[dict[str, object]]:
+        """Validate and decode one closed segment without loading it in memory."""
+
+        content_digest = hashlib.sha256()
+        current_previous = previous_hash
+        first_record_hash: str | None = None
+        begin_recorded_at_ms: int | None = None
+        end_recorded_at_ms: int | None = None
+        count = 0
+        opener = gzip.open if path.suffix == ".gz" else Path.open
+        try:
+            with opener(path, "rb") as handle:
+                for line_number, line in enumerate(handle, start=1):
+                    content_digest.update(line)
+                    if not line.endswith(b"\n"):
+                        raise EventIntegrityError(f"partial final line in {path}")
+                    try:
+                        decoded = json.loads(line)
+                    except json.JSONDecodeError as exc:
+                        raise EventIntegrityError(
+                            f"invalid JSON at {path}:{line_number}"
+                        ) from exc
+                    if not isinstance(decoded, dict):
+                        raise EventIntegrityError(
+                            f"invalid record at {path}:{line_number}"
+                        )
+                    record = cast(dict[str, object], decoded)
+                    if record.get("schema_version") != SEGMENT_SCHEMA_VERSION:
+                        raise EventIntegrityError(
+                            f"invalid schema at {path}:{line_number}"
+                        )
+                    if record.get("stream") != stream:
+                        raise EventIntegrityError(
+                            f"stream mismatch at {path}:{line_number}"
+                        )
+                    if record.get("sequence") != expected_sequence + count:
+                        raise EventIntegrityError(
+                            f"sequence gap at {path}:{line_number}"
+                        )
+                    recorded_at_ms = record.get("recorded_at_ms")
+                    if not isinstance(recorded_at_ms, int) or recorded_at_ms < 0:
+                        raise EventIntegrityError(
+                            f"record timestamp is invalid at {path}:{line_number}"
+                        )
+                    if record.get("previous_record_sha256") != current_previous:
+                        raise EventIntegrityError(
+                            f"record chain mismatch at {path}:{line_number}"
+                        )
+                    payload = record.get("payload")
+                    payload_hash = record.get("payload_sha256")
+                    if not isinstance(payload, dict) or not isinstance(
+                        payload_hash, str
+                    ):
+                        raise EventIntegrityError(
+                            f"invalid payload at {path}:{line_number}"
+                        )
+                    if _sha256(_canonical_json(payload)) != payload_hash:
+                        raise EventIntegrityError(
+                            f"payload hash mismatch at {path}:{line_number}"
+                        )
+                    record_hash = record.get("record_sha256")
+                    base_record = dict(record)
+                    base_record.pop("record_sha256", None)
+                    if (
+                        not isinstance(record_hash, str)
+                        or _sha256(_canonical_json(base_record)) != record_hash
+                    ):
+                        raise EventIntegrityError(
+                            f"record hash mismatch at {path}:{line_number}"
+                        )
+                    if first_record_hash is None:
+                        first_record_hash = record_hash
+                        begin_recorded_at_ms = recorded_at_ms
+                    end_recorded_at_ms = recorded_at_ms
+                    current_previous = record_hash
+                    count += 1
+                    yield record
+        except (gzip.BadGzipFile, EOFError) as exc:
+            raise EventIntegrityError(f"invalid gzip segment: {path}") from exc
+
+        content_hash = segment.get("content_sha256")
+        if (
+            not isinstance(content_hash, str)
+            or content_digest.hexdigest() != content_hash
+        ):
+            raise EventIntegrityError(f"segment content mismatch: {path}")
+        scan = _ScanResult(
+            count=count,
+            first_sequence=expected_sequence if count else None,
+            last_sequence=expected_sequence + count - 1 if count else None,
+            begin_recorded_at_ms=begin_recorded_at_ms,
+            end_recorded_at_ms=end_recorded_at_ms,
+            first_record_sha256=first_record_hash,
+            last_record_sha256=current_previous,
+        )
+        expected_fields = {
+            "record_count": scan.count,
+            "first_sequence": scan.first_sequence,
+            "last_sequence": scan.last_sequence,
+            "begin_recorded_at_ms": scan.begin_recorded_at_ms,
+            "end_recorded_at_ms": scan.end_recorded_at_ms,
+            "first_record_sha256": scan.first_record_sha256,
+            "last_record_sha256": scan.last_record_sha256,
+        }
+        for field, expected in expected_fields.items():
+            if segment.get(field) != expected:
+                raise EventIntegrityError(f"{field} mismatch: {path}")
 
     def _finalize_active(
         self,

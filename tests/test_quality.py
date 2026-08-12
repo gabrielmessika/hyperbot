@@ -164,10 +164,60 @@ def test_daily_json_markdown_and_checksum_are_written(tmp_path: Path) -> None:
 
     assert decoded["dataset_tier"] == "A"
     assert decoded["quality_config_hash"] == analyzer.config.sha256
-    assert markdown_path.read_text(encoding="utf-8").startswith(
-        "# Qualité des données"
-    )
+    assert markdown_path.read_text(encoding="utf-8").startswith("# Qualité des données")
     assert json_path.with_suffix(".json.sha256").is_file()
+
+
+def test_ordered_analysis_matches_batch_and_cleans_spill_files(
+    tmp_path: Path,
+) -> None:
+    analyzer = DailyQualityAnalyzer(
+        QualityConfig(
+            expected_markets=("BTC",),
+            stale_after_ms=500,
+            major_gap_ms=1_000,
+        )
+    )
+    events = [
+        _market_event(timestamp=DAY_BEGIN + 100, sequence=0, latency_ms=5),
+        _market_event(timestamp=DAY_BEGIN + 600, sequence=1, latency_ms=15),
+        _market_event(
+            timestamp=DAY_BEGIN + 700,
+            sequence=2,
+            channel="trades",
+            payload={"coin": "BTC", "px": "100", "sz": "0.25"},
+        ),
+    ]
+    controls = [
+        _control(CollectorControlKind.CONNECTED, DAY_BEGIN),
+        _control(CollectorControlKind.SHUTDOWN, DAY_BEGIN + DAY_MS),
+    ]
+    expected = analyzer.analyze(
+        report_date=REPORT_DATE,
+        market_events=events,
+        control_events=controls,
+        generated_at_ms=DAY_BEGIN + DAY_MS,
+        run_id="quality-batch",
+        code_version="test",
+        source_config_hash="d" * 64,
+    )
+    progress: list[int] = []
+
+    actual = analyzer.analyze_ordered(
+        report_date=REPORT_DATE,
+        market_events=iter(events),
+        control_events=iter(controls),
+        generated_at_ms=DAY_BEGIN + DAY_MS,
+        run_id="quality-batch",
+        code_version="test",
+        source_config_hash="d" * 64,
+        spill_root=tmp_path,
+        progress=progress.append,
+    )
+
+    assert actual == expected
+    assert progress[-1] == len(events)
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_time_outside_a_collector_session_is_not_market_inactivity() -> None:

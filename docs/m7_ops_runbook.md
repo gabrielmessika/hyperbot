@@ -253,6 +253,26 @@ lit que les segments UTC clôturés, refuse un segment encore mutable, écrit de
 rapports déterministes et checksumés, puis compresse sans supprimer les données
 brutes. Une deuxième exécution de la même journée réutilise la preuve valide.
 
+L'analyse journalière lit et valide les segments en flux. Les latences restent
+dans des tableaux numériques compacts et les spreads utilisent un spill
+temporaire sous `runtime/quality-spill/`, supprimé à la fin du calcul. Le statut
+`maintenance_status.json` publie un heartbeat pendant l'analyse et après chaque
+segment compressé. L'observer déclare un incident si ce heartbeat devient stale
+ou si le rapport attendu n'est toujours pas terminé après la grâce opératoire.
+
+Après une interruption brutale sans marker final, le service continu ne retente
+pas indéfiniment la même date. Il reste actif mais fail-closed et exige une revue,
+puis une relance explicite :
+
+```bash
+./scripts/hyperbot_server.sh quality --date YYYY-MM-DD
+```
+
+Cette commande `--once` est la seule reprise automatique contournée ; elle
+revalide intégralement les segments et réutilise un rapport déjà checksumé avant
+de reprendre la compression. Vérifier ensuite `status`, `health`, `ui-health` et
+le marker quotidien. Ne jamais supprimer un segment brut pour débloquer M3.
+
 Le healthcheck échoue notamment pour :
 
 - statut absent ou stale ;
@@ -261,6 +281,11 @@ Le healthcheck échoue notamment pour :
 - divergence du hash de configuration ;
 - garde live/shadow incorrecte ;
 - réserve disque sous le seuil.
+
+Le healthcheck Docker du collector reste volontairement centré sur le flux. La
+santé globale de l'interface combine ce résultat avec les incidents de
+maintenance `maintenance_failed`, `maintenance_stale`,
+`maintenance_wrong_report_date` et `maintenance_overdue`.
 
 Le watchdog attend 120 secondes au démarrage, alerte sur transition vers
 `unhealthy`, répète après un cooldown de 15 minutes et notifie le retour à
