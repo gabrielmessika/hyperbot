@@ -23,6 +23,9 @@ fermés n'a pas progressé.
 - latences et valeurs de spread spillées dans des fichiers temporaires par
   marché, puis triées par blocs de 50 000 valeurs et fusionnées en flux pour
   conserver les percentiles exacts sans pic mémoire final ;
+- agrégats de gaps exhaustifs en mémoire constante et détails individuels bornés
+  à 1 000 par marché dans le rapport M3 v2 ; le JSON publie le total exact, le
+  nombre de détails retenus, la limite et un indicateur de troncature ;
 - heartbeats atomiques pendant l'analyse et après chaque segment compressé ;
 - statut persistant `running` avant le travail : après un kill brutal, le service
   refuse de boucler sur la même date et attend une reprise `quality --date` ;
@@ -39,10 +42,12 @@ change pas le modèle de qualité M3 et ne déploie ni runner shadow ni executor
 - lecture UTC testée sur segment gzip sans chargement intégral ;
 - tests de maintenance idempotente et de compression conservés ;
 - tests des incidents stale et overdue ajoutés ;
+- test de troncature forcée : comptes, durées et gaps majeurs restent exacts
+  lorsque les détails sérialisés sont bornés ;
 - benchmark synthétique final avec tri externe : 200 000 événements BBO,
   15,916 secondes et pic Python mesuré à 8,475 Mio avec `tracemalloc` ; ce
   résultat mesure le chemin logiciel, pas le débit garanti du serveur ;
-- suite complète, lint, types et syntaxe shell à exécuter avant déploiement.
+- suite complète : 114 tests réussis ; Ruff et Mypy sans erreur.
 
 ## Reprise serveur attendue
 
@@ -56,5 +61,9 @@ en preuve valide par le correctif.
 Un premier redéploiement du correctif streaming a parcouru les 3 156 388 records
 du 11 août avec 157 Mio observés, mais la matérialisation finale des listes de
 percentiles a encore dépassé 512 Mio. Le garde-fou de reprise a limité cet essai
-à un seul restart au lieu d'une nouvelle boucle. Le tri externe par blocs décrit
-ci-dessus est le correctif final à valider sur ces mêmes données.
+à un seul restart au lieu d'une nouvelle boucle. Après ajout du tri externe, un
+second essai a terminé la passe et les percentiles avec environ 107 Mio observés,
+mais a encore dépassé 512 Mio en matérialisant puis en copiant des centaines de
+milliers de détails de gaps pour le JSON. Les agrégats exacts et détails bornés
+décrits ci-dessus corrigent cette dernière allocation ; ils restent à valider
+sur ces mêmes données avant de déclarer l'incident clos.

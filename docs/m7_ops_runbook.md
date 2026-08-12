@@ -256,6 +256,10 @@ brutes. Une deuxième exécution de la même journée réutilise la preuve valid
 L'analyse journalière lit et valide les segments en flux. Latences et spreads
 utilisent un spill temporaire sous `runtime/quality-spill/`, puis un tri externe
 exact par blocs bornés ; tous les fichiers temporaires sont supprimés à la fin.
+Les compteurs, durées et causes de gaps restent exhaustifs. Le rapport M3 v2
+borne seulement les détails individuels à 1 000 par marché et expose
+`total_gap_count`, `retained_gap_detail_count`, `gap_detail_limit_per_market` et
+`gap_details_truncated` pour rendre tout échantillonnage explicite.
 Le statut `maintenance_status.json` publie un heartbeat pendant l'analyse et
 après chaque segment compressé. L'observer déclare un incident si ce heartbeat
 devient stale ou si le rapport attendu n'est toujours pas terminé après la grâce

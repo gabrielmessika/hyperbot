@@ -538,6 +538,11 @@ streaming avait encore OOM au tri final après les 3 156 388 records ; le garde-
 a limité l'essai à un restart avant le correctif de tri par blocs. La maintenance
 publie aussi des heartbeats d'analyse/compression. Une tentative interrompue
 n'est plus répétée automatiquement pour la même date sans reprise opérateur.
+Le second essai a confirmé un dernier pic après l'analyse : le rapport gardait
+chaque gap individuel puis le dupliquait pendant la sérialisation. Le schéma M3
+v2 conserve désormais les compteurs, durées, causes et verdicts exhaustifs, mais
+borne à 1 000 par marché les détails de gaps retenus dans le JSON ; le nombre
+total, le nombre retenu, la limite et l'indicateur de troncature sont explicites.
 L'API et le dashboard signalent maintenant une maintenance failed, stale, sur
 la mauvaise date ou overdue, et l'état global ne peut plus rester `Sain` en
 présence de cet incident. Le rapport d'implémentation et de validation se trouve

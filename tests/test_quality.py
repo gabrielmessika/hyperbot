@@ -164,8 +164,10 @@ def test_daily_json_markdown_and_checksum_are_written(tmp_path: Path) -> None:
     json_path, markdown_path = write_daily_quality_report(report, tmp_path)
     decoded = json.loads(json_path.read_text(encoding="utf-8"))
 
+    assert decoded["schema_version"] == 2
     assert decoded["dataset_tier"] == "A"
     assert decoded["quality_config_hash"] == analyzer.config.sha256
+    assert decoded["retained_gap_detail_count"] == len(decoded["gaps"])
     assert markdown_path.read_text(encoding="utf-8").startswith("# Qualité des données")
     assert json_path.with_suffix(".json.sha256").is_file()
 
@@ -222,6 +224,44 @@ def test_ordered_analysis_matches_batch_and_cleans_spill_files(
     assert actual == expected
     assert progress[-1] == len(events)
     assert list(tmp_path.iterdir()) == []
+
+
+def test_gap_details_are_bounded_without_losing_exact_aggregates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("hyperbot.quality._MAX_GAP_DETAILS_PER_MARKET", 1)
+    analyzer = DailyQualityAnalyzer(
+        QualityConfig(
+            expected_markets=("BTC",),
+            stale_after_ms=100,
+            major_gap_ms=500,
+        )
+    )
+
+    report = analyzer.analyze_ordered(
+        report_date=REPORT_DATE,
+        market_events=iter(
+            [
+                _market_event(timestamp=DAY_BEGIN + 1_000, sequence=0),
+                _market_event(timestamp=DAY_BEGIN + 2_000, sequence=1),
+            ]
+        ),
+        control_events=iter([]),
+        generated_at_ms=DAY_BEGIN + DAY_MS,
+        run_id="quality-bounded-gaps",
+        code_version="test",
+        source_config_hash="d" * 64,
+    )
+
+    market = report.markets[0]
+    assert market.gap_count == 3
+    assert market.major_gap_count == 3
+    assert market.stale_duration_ms == DAY_MS - 300
+    assert report.total_gap_count == market.gap_count
+    assert report.retained_gap_detail_count == 1
+    assert len(report.gaps) == 1
+    assert report.gap_details_truncated
+    assert report.gap_detail_limit_per_market == 1
 
 
 def test_time_outside_a_collector_session_is_not_market_inactivity() -> None:

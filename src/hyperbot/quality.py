@@ -24,9 +24,10 @@ from hyperbot.models import (
     TimeSource,
 )
 
-QUALITY_SCHEMA_VERSION = 1
+QUALITY_SCHEMA_VERSION = 2
 _REQUIRED_BOOK_CHANNELS = frozenset({"l2Book", "bbo"})
 _PERCENTILE_SORT_CHUNK_VALUES = 50_000
+_MAX_GAP_DETAILS_PER_MARKET = 1_000
 _Numeric = TypeVar("_Numeric", int, Decimal)
 
 
@@ -133,6 +134,10 @@ class DailyQualityReport:
     window_end_ms: int
     collector_outage_count: int
     collector_outage_duration_ms: int
+    total_gap_count: int
+    retained_gap_detail_count: int
+    gap_details_truncated: bool
+    gap_detail_limit_per_market: int
     gaps: tuple[QualityGap, ...]
     markets: tuple[MarketQuality, ...]
     qualified_day: bool
@@ -384,13 +389,39 @@ class _OrderedMarketAccumulator:
     latency_count: int = 0
     spread_count: int = 0
     negative_latency_count: int = 0
-    gaps: list[QualityGap] = field(default_factory=list)
+    gap_count: int = 0
+    major_gap_count: int = 0
+    collector_outage_gap_count: int = 0
+    collector_not_running_gap_count: int = 0
+    market_stale_gap_count: int = 0
+    stale_duration_ms: int = 0
+    retained_gaps: list[QualityGap] = field(default_factory=list)
     bid_depth_sum: Decimal = Decimal(0)
     bid_depth_count: int = 0
     ask_depth_sum: Decimal = Decimal(0)
     ask_depth_count: int = 0
     trade_count: int = 0
     trade_notional_usd: Decimal = Decimal(0)
+
+
+def _record_gap(
+    accumulator: _OrderedMarketAccumulator,
+    gap: QualityGap,
+) -> None:
+    """Record exact aggregates while bounding serialized gap details."""
+
+    accumulator.gap_count += 1
+    accumulator.stale_duration_ms += gap.duration_ms
+    if gap.major:
+        accumulator.major_gap_count += 1
+    if gap.cause is GapCause.COLLECTOR_OUTAGE:
+        accumulator.collector_outage_gap_count += 1
+    elif gap.cause is GapCause.COLLECTOR_NOT_RUNNING:
+        accumulator.collector_not_running_gap_count += 1
+    else:
+        accumulator.market_stale_gap_count += 1
+    if len(accumulator.retained_gaps) < _MAX_GAP_DETAILS_PER_MARKET:
+        accumulator.retained_gaps.append(gap)
 
 
 def _external_percentiles(
@@ -676,7 +707,7 @@ class DailyQualityAnalyzer:
                                 sessions=sessions,
                             )
                             if gap is not None:
-                                accumulator.gaps.append(gap)
+                                _record_gap(accumulator, gap)
                             accumulator.previous_book_ts_ms = event.receive_ts_ms
                         spread, bid_depth, ask_depth = _book_metrics(event)
                         if spread is not None:
@@ -704,7 +735,7 @@ class DailyQualityAnalyzer:
                         sessions=sessions,
                     )
                     if final_gap is not None:
-                        accumulator.gaps.append(final_gap)
+                        _record_gap(accumulator, final_gap)
                     accumulator.spread_handle.flush()
                     accumulator.latency_handle.flush()
 
@@ -736,10 +767,9 @@ class DailyQualityAnalyzer:
                         chunk_prefix=f"{coin.replace(':', '_')}-spread",
                         progress=percentile_progress,
                     )
-                    all_gaps.extend(accumulator.gaps)
-                    stale_duration = sum(gap.duration_ms for gap in accumulator.gaps)
+                    all_gaps.extend(accumulator.retained_gaps)
                     coverage = (
-                        Decimal(max(0, window_duration - stale_duration))
+                        Decimal(max(0, window_duration - accumulator.stale_duration_ms))
                         / Decimal(window_duration)
                         * 100
                     ).quantize(Decimal("0.001"))
@@ -755,21 +785,16 @@ class DailyQualityAnalyzer:
                             latency_p95_ms=latency_percentiles[1],
                             latency_p99_ms=latency_percentiles[2],
                             negative_latency_count=(accumulator.negative_latency_count),
-                            gap_count=len(accumulator.gaps),
-                            major_gap_count=sum(gap.major for gap in accumulator.gaps),
-                            collector_outage_gap_count=sum(
-                                gap.cause is GapCause.COLLECTOR_OUTAGE
-                                for gap in accumulator.gaps
+                            gap_count=accumulator.gap_count,
+                            major_gap_count=accumulator.major_gap_count,
+                            collector_outage_gap_count=(
+                                accumulator.collector_outage_gap_count
                             ),
-                            collector_not_running_gap_count=sum(
-                                gap.cause is GapCause.COLLECTOR_NOT_RUNNING
-                                for gap in accumulator.gaps
+                            collector_not_running_gap_count=(
+                                accumulator.collector_not_running_gap_count
                             ),
-                            market_stale_gap_count=sum(
-                                gap.cause is GapCause.MARKET_STALE
-                                for gap in accumulator.gaps
-                            ),
-                            stale_duration_ms=stale_duration,
+                            market_stale_gap_count=(accumulator.market_stale_gap_count),
+                            stale_duration_ms=accumulator.stale_duration_ms,
                             spread_p10_bps=spread_percentiles[0],
                             spread_p50_bps=spread_percentiles[1],
                             spread_p90_bps=spread_percentiles[2],
@@ -799,6 +824,7 @@ class DailyQualityAnalyzer:
                 reasons.append(f"major_gap:{market.coin}")
             if market.negative_latency_count > 0:
                 reasons.append(f"negative_latency:{market.coin}")
+        total_gap_count = sum(market.gap_count for market in market_metrics)
         return DailyQualityReport(
             schema_version=QUALITY_SCHEMA_VERSION,
             report_date=report_date.isoformat(),
@@ -812,6 +838,10 @@ class DailyQualityAnalyzer:
             window_end_ms=window_end,
             collector_outage_count=len(outages),
             collector_outage_duration_ms=sum(end - begin for begin, end in outages),
+            total_gap_count=total_gap_count,
+            retained_gap_detail_count=len(all_gaps),
+            gap_details_truncated=total_gap_count > len(all_gaps),
+            gap_detail_limit_per_market=_MAX_GAP_DETAILS_PER_MARKET,
             gaps=tuple(all_gaps),
             markets=tuple(market_metrics),
             qualified_day=not reasons,
@@ -913,7 +943,13 @@ def write_daily_quality_report(
         f"- niveau : `{report.dataset_tier.value}` ;",
         f"- journée qualifiée : `{str(report.qualified_day).lower()}` ;",
         f"- pannes collector : {report.collector_outage_count} ;",
-        f"- durée de panne : {report.collector_outage_duration_ms} ms.",
+        f"- durée de panne : {report.collector_outage_duration_ms} ms ;",
+        f"- gaps exacts : {report.total_gap_count} ;",
+        (
+            "- détails de gaps conservés : "
+            f"{report.retained_gap_detail_count} "
+            f"(tronqués : {str(report.gap_details_truncated).lower()})."
+        ),
         "",
         "| Marché | Couverture | Latence p50/p95/p99 | Gaps majeurs | Trades |",
         "|---|---:|---:|---:|---:|",
