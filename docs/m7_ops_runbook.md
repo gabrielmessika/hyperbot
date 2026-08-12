@@ -260,6 +260,10 @@ Les compteurs, durées et causes de gaps restent exhaustifs. Le rapport M3 v2
 borne seulement les détails individuels à 1 000 par marché et expose
 `total_gap_count`, `retained_gap_detail_count`, `gap_detail_limit_per_market` et
 `gap_details_truncated` pour rendre tout échantillonnage explicite.
+La compression lit et écrit les segments par blocs de 1 Mio, puis compare en
+flux le hash du gzip et le hash du contenu décompressé aux valeurs du manifeste.
+Elle ne matérialise jamais un segment complet et ne publie le `.gz` qu'après une
+nouvelle vérification du segment source sous verrou.
 Le statut `maintenance_status.json` publie un heartbeat pendant l'analyse et
 après chaque segment compressé. L'observer déclare un incident si ce heartbeat
 devient stale ou si le rapport attendu n'est toujours pas terminé après la grâce

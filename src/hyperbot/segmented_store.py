@@ -79,6 +79,17 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _gzip_content_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    try:
+        with gzip.open(path, "rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except (gzip.BadGzipFile, EOFError) as exc:
+        raise EventIntegrityError(f"invalid gzip segment: {path}") from exc
+    return digest.hexdigest()
+
+
 def _utc_date(timestamp_ms: int) -> str:
     return datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC).date().isoformat()
 
@@ -488,33 +499,47 @@ class SegmentedEventStore:
             path = stream_dir / path_name
             if path.parent != stream_dir:
                 raise EventIntegrityError("segment path escapes its stream")
-            try:
-                stored = path.read_bytes()
-            except OSError as exc:
-                raise EventIntegrityError(f"missing segment: {path}") from exc
-            content = self._validate_closed_segment_snapshot(
+            self._validate_closed_segment_stream(
                 stream=stream,
                 segments=segments,
                 index=index,
                 path=path,
-                stored=stored,
             )
+            expected_content_hash = segment.get("content_sha256")
+            expected_storage_hash = segment.get("storage_sha256")
+            if not isinstance(expected_content_hash, str) or not isinstance(
+                expected_storage_hash, str
+            ):
+                raise EventIntegrityError(f"segment checksum is invalid: {path}")
             gzip_path = path.with_suffix(path.suffix + ".gz")
             temporary = gzip_path.with_suffix(gzip_path.suffix + ".tmp")
             try:
-                with temporary.open("wb") as raw_handle:
-                    with gzip.GzipFile(
-                        filename="",
-                        mode="wb",
-                        fileobj=raw_handle,
-                        mtime=0,
-                    ) as gzip_handle:
-                        gzip_handle.write(content)
-                    raw_handle.flush()
-                    if self.fsync:
-                        os.fsync(raw_handle.fileno())
-                compressed_bytes = temporary.read_bytes()
-                if gzip.decompress(compressed_bytes) != content:
+                source_digest = hashlib.sha256()
+                try:
+                    with (
+                        path.open("rb") as source_handle,
+                        temporary.open("wb") as raw_handle,
+                    ):
+                        with gzip.GzipFile(
+                            filename="",
+                            mode="wb",
+                            fileobj=raw_handle,
+                            mtime=0,
+                        ) as gzip_handle:
+                            for chunk in iter(
+                                lambda: source_handle.read(1024 * 1024), b""
+                            ):
+                                source_digest.update(chunk)
+                                gzip_handle.write(chunk)
+                        raw_handle.flush()
+                        if self.fsync:
+                            os.fsync(raw_handle.fileno())
+                except OSError as exc:
+                    raise EventIntegrityError(f"missing segment: {path}") from exc
+                if source_digest.hexdigest() != expected_storage_hash:
+                    raise EventIntegrityError(f"segment checksum mismatch: {path}")
+                compressed_hash = _file_sha256(temporary)
+                if _gzip_content_sha256(temporary) != expected_content_hash:
                     raise EventIntegrityError(f"gzip verification failed: {path}")
                 with self._lock(stream_dir):
                     latest_manifest = self._load_manifest(stream)
@@ -525,7 +550,7 @@ class SegmentedEventStore:
                     ):
                         continue
                     try:
-                        current_storage_hash = _sha256(path.read_bytes())
+                        current_storage_hash = _file_sha256(path)
                     except OSError as exc:
                         raise EventIntegrityError(f"missing segment: {path}") from exc
                     if current_storage_hash != segment.get("storage_sha256"):
@@ -535,7 +560,7 @@ class SegmentedEventStore:
                     os.replace(temporary, gzip_path)
                     updated = dict(segment)
                     updated["path"] = gzip_path.name
-                    updated["storage_sha256"] = _sha256(compressed_bytes)
+                    updated["storage_sha256"] = compressed_hash
                     updated["compression"] = "gzip"
                     latest_segments[index] = updated
                     latest_manifest["segments"] = cast(JsonValue, latest_segments)
@@ -547,26 +572,22 @@ class SegmentedEventStore:
             finally:
                 temporary.unlink(missing_ok=True)
 
-    def _validate_closed_segment_snapshot(
+    def _validate_closed_segment_stream(
         self,
         *,
         stream: str,
         segments: Sequence[Mapping[str, JsonValue]],
         index: int,
         path: Path,
-        stored: bytes,
-    ) -> bytes:
+    ) -> None:
         segment = segments[index]
         storage_hash = segment.get("storage_sha256")
-        if not isinstance(storage_hash, str) or _sha256(stored) != storage_hash:
-            raise EventIntegrityError(f"segment checksum mismatch: {path}")
         try:
-            content = gzip.decompress(stored) if path.suffix == ".gz" else stored
-        except gzip.BadGzipFile as exc:
-            raise EventIntegrityError(f"invalid gzip segment: {path}") from exc
-        content_hash = segment.get("content_sha256")
-        if not isinstance(content_hash, str) or _sha256(content) != content_hash:
-            raise EventIntegrityError(f"segment content mismatch: {path}")
+            actual_storage_hash = _file_sha256(path)
+        except OSError as exc:
+            raise EventIntegrityError(f"missing segment: {path}") from exc
+        if not isinstance(storage_hash, str) or actual_storage_hash != storage_hash:
+            raise EventIntegrityError(f"segment checksum mismatch: {path}")
         previous_record_hash: object = (
             GENESIS_HASH
             if index == 0
@@ -582,26 +603,14 @@ class SegmentedEventStore:
         expected_sequence = segment.get("first_sequence")
         if not isinstance(expected_sequence, int):
             raise EventIntegrityError(f"first sequence is invalid: {path}")
-        scan = self._scan_content(
-            content,
+        for _record in self._iter_validated_segment_records(
+            path,
             stream=stream,
             previous_hash=previous_record_hash,
             expected_sequence=expected_sequence,
-            path=path,
-        )
-        expected_fields = {
-            "record_count": scan.count,
-            "first_sequence": scan.first_sequence,
-            "last_sequence": scan.last_sequence,
-            "begin_recorded_at_ms": scan.begin_recorded_at_ms,
-            "end_recorded_at_ms": scan.end_recorded_at_ms,
-            "first_record_sha256": scan.first_record_sha256,
-            "last_record_sha256": scan.last_record_sha256,
-        }
-        for field, expected in expected_fields.items():
-            if segment.get(field) != expected:
-                raise EventIntegrityError(f"{field} mismatch: {path}")
-        return content
+            segment=segment,
+        ):
+            pass
 
     def _stream_dir(self, stream: str) -> Path:
         if not _STREAM_PATTERN.fullmatch(stream):

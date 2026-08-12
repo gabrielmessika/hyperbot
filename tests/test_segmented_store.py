@@ -156,22 +156,39 @@ def test_compression_validates_closed_content_and_allows_live_append(
     store.append("market-data", _event(1))
     store.close("market-data")
     external = SegmentedEventStore(tmp_path, fsync=False, clock_ms=lambda: 1002)
-    original_scan = store._scan_content
+    original_validation = store._validate_closed_segment_stream
     appended = False
 
-    def append_while_validating(*args: object, **kwargs: object) -> object:
+    def append_while_validating(*args: object, **kwargs: object) -> None:
         nonlocal appended
         if not appended:
             external.append("market-data", _event(2))
             appended = True
-        return original_scan(*args, **kwargs)  # type: ignore[arg-type]
+        original_validation(*args, **kwargs)  # type: ignore[arg-type]
 
-    store._scan_content = append_while_validating  # type: ignore[method-assign]
+    store._validate_closed_segment_stream = append_while_validating  # type: ignore[method-assign]
 
     assert store.compress_closed_segments("market-data") == 2
     assert appended
     external.close("market-data")
     assert store.validate("market-data").record_count == 3
+
+
+def test_compression_streams_segment_and_gzip_verification(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store, segment = _closed_store(tmp_path)
+    original_read_bytes = Path.read_bytes
+
+    def guarded_read_bytes(path: Path) -> bytes:
+        if path == segment or path.name.endswith((".jsonl.gz", ".jsonl.gz.tmp")):
+            raise AssertionError("compression payloads must be streamed")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", guarded_read_bytes)
+
+    assert store.compress_closed_segments("market-data") == 1
 
 
 def test_compression_refuses_a_corrupted_closed_segment(tmp_path: Path) -> None:

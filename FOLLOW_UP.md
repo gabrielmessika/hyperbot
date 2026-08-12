@@ -543,6 +543,11 @@ chaque gap individuel puis le dupliquait pendant la sérialisation. Le schéma M
 v2 conserve désormais les compteurs, durées, causes et verdicts exhaustifs, mais
 borne à 1 000 par marché les détails de gaps retenus dans le JSON ; le nombre
 total, le nombre retenu, la limite et l'indicateur de troncature sont explicites.
+Ce rapport v2 a franchi la sérialisation serveur, puis la compression historique
+a exposé un plateau de 445 Mio : elle chargeait encore simultanément segment
+brut, gzip et décompression de contrôle. La compression copie maintenant les
+segments par blocs et vérifie en flux leurs hash de stockage, de contenu et de
+décompression avant la publication atomique.
 L'API et le dashboard signalent maintenant une maintenance failed, stale, sur
 la mauvaise date ou overdue, et l'état global ne peut plus rester `Sain` en
 présence de cet incident. Le rapport d'implémentation et de validation se trouve

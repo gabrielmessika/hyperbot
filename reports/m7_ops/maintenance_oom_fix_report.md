@@ -26,6 +26,8 @@ fermés n'a pas progressé.
 - agrégats de gaps exhaustifs en mémoire constante et détails individuels bornés
   à 1 000 par marché dans le rapport M3 v2 ; le JSON publie le total exact, le
   nombre de détails retenus, la limite et un indicateur de troncature ;
+- compression gzip copiée par blocs de 1 Mio et vérifiée en flux, sans conserver
+  simultanément le segment brut, le gzip et sa décompression complète ;
 - heartbeats atomiques pendant l'analyse et après chaque segment compressé ;
 - statut persistant `running` avant le travail : après un kill brutal, le service
   refuse de boucler sur la même date et attend une reprise `quality --date` ;
@@ -44,6 +46,8 @@ change pas le modèle de qualité M3 et ne déploie ni runner shadow ni executor
 - tests des incidents stale et overdue ajoutés ;
 - test de troncature forcée : comptes, durées et gaps majeurs restent exacts
   lorsque les détails sérialisés sont bornés ;
+- test interdisant `Path.read_bytes()` sur le segment source, le gzip temporaire
+  et le gzip publié pendant la compression ;
 - benchmark synthétique final avec tri externe : 200 000 événements BBO,
   15,916 secondes et pic Python mesuré à 8,475 Mio avec `tracemalloc` ; ce
   résultat mesure le chemin logiciel, pas le débit garanti du serveur ;
@@ -65,5 +69,7 @@ percentiles a encore dépassé 512 Mio. Le garde-fou de reprise a limité cet es
 second essai a terminé la passe et les percentiles avec environ 107 Mio observés,
 mais a encore dépassé 512 Mio en matérialisant puis en copiant des centaines de
 milliers de détails de gaps pour le JSON. Les agrégats exacts et détails bornés
-décrits ci-dessus corrigent cette dernière allocation ; ils restent à valider
-sur ces mêmes données avant de déclarer l'incident clos.
+décrits ci-dessus ont ensuite franchi la création du rapport réel. Cette reprise
+a révélé un plateau distinct de 445 Mio pendant la compression historique des
+segments de 128 Mio ; la copie et les validations gzip en flux décrites ci-dessus
+suppriment aussi ce dernier risque avant la validation finale.
