@@ -547,7 +547,10 @@ Ce rapport v2 a franchi la sérialisation serveur, puis la compression historiqu
 a exposé un plateau de 445 Mio : elle chargeait encore simultanément segment
 brut, gzip et décompression de contrôle. La compression copie maintenant les
 segments par blocs et vérifie en flux leurs hash de stockage, de contenu et de
-décompression avant la publication atomique.
+décompression avant la publication atomique. Après un crash post-rapport, une
+reprise opérateur réutilise désormais uniquement un rapport checksumé dont le
+schéma, la date, le run, le tier A et la configuration qualité correspondent,
+puis reprend directement la compression.
 L'API et le dashboard signalent maintenant une maintenance failed, stale, sur
 la mauvaise date ou overdue, et l'état global ne peut plus rester `Sain` en
 présence de cet incident. Le rapport d'implémentation et de validation se trouve

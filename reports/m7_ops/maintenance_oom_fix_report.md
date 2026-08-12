@@ -28,6 +28,9 @@ fermés n'a pas progressé.
   nombre de détails retenus, la limite et un indicateur de troncature ;
 - compression gzip copiée par blocs de 1 Mio et vérifiée en flux, sans conserver
   simultanément le segment brut, le gzip et sa décompression complète ;
+- reprise post-rapport sans recalcul : le rapport existant n'est accepté que si
+  son checksum, son schéma v2, sa date, son `run_id`, son tier A et son hash de
+  configuration qualité correspondent ;
 - heartbeats atomiques pendant l'analyse et après chaque segment compressé ;
 - statut persistant `running` avant le travail : après un kill brutal, le service
   refuse de boucler sur la même date et attend une reprise `quality --date` ;
@@ -48,6 +51,8 @@ change pas le modèle de qualité M3 et ne déploie ni runner shadow ni executor
   lorsque les détails sérialisés sont bornés ;
 - test interdisant `Path.read_bytes()` sur le segment source, le gzip temporaire
   et le gzip publié pendant la compression ;
+- test de reprise qui interdit toute nouvelle analyse lorsqu'un rapport
+  compatible et checksumé existe déjà sans marker final ;
 - benchmark synthétique final avec tri externe : 200 000 événements BBO,
   15,916 secondes et pic Python mesuré à 8,475 Mio avec `tracemalloc` ; ce
   résultat mesure le chemin logiciel, pas le débit garanti du serveur ;

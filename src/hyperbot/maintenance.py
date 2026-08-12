@@ -14,6 +14,7 @@ from typing import cast
 from hyperbot import __version__
 from hyperbot.ops import OPS_SCHEMA_VERSION, OpsSettings, atomic_write_json
 from hyperbot.quality import (
+    QUALITY_SCHEMA_VERSION,
     DailyQualityAnalyzer,
     QualityConfig,
     control_event_from_payload,
@@ -110,6 +111,66 @@ def _reuse_completed_day(
     )
 
 
+def _recover_existing_quality_report(
+    *,
+    report_json: Path,
+    report_markdown: Path,
+    report_date: date,
+    run_id: str,
+    quality_config_hash: str,
+) -> tuple[int, bool] | None:
+    paths_exist = any(
+        path.exists() or path.is_symlink()
+        for path in (
+            report_json,
+            report_json.with_suffix(".json.sha256"),
+            report_markdown,
+        )
+    )
+    if not paths_exist:
+        return None
+    if (
+        report_markdown.is_symlink()
+        or not report_markdown.is_file()
+        or not _valid_existing_report(report_json)
+    ):
+        raise RuntimeError(f"existing quality report is invalid: {report_json}")
+    try:
+        payload = json.loads(report_json.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            f"existing quality report is invalid: {report_json}"
+        ) from exc
+    expected_fields = {
+        "schema_version": QUALITY_SCHEMA_VERSION,
+        "report_date": report_date.isoformat(),
+        "run_id": run_id,
+        "quality_config_hash": quality_config_hash,
+        "dataset_tier": "A",
+    }
+    if not isinstance(payload, dict) or any(
+        payload.get(field) != expected for field, expected in expected_fields.items()
+    ):
+        raise RuntimeError(f"existing quality report is incompatible: {report_json}")
+    qualified_day = payload.get("qualified_day")
+    markets = payload.get("markets")
+    if not isinstance(qualified_day, bool) or not isinstance(markets, list):
+        raise RuntimeError(f"existing quality report is invalid: {report_json}")
+    processed_market_events = 0
+    for market in markets:
+        if not isinstance(market, dict):
+            raise RuntimeError(f"existing quality report is invalid: {report_json}")
+        message_count = market.get("message_count")
+        if (
+            not isinstance(message_count, int)
+            or isinstance(message_count, bool)
+            or message_count < 0
+        ):
+            raise RuntimeError(f"existing quality report is invalid: {report_json}")
+        processed_market_events += message_count
+    return processed_market_events, qualified_day
+
+
 def run_daily_maintenance(
     settings: OpsSettings,
     *,
@@ -136,6 +197,18 @@ def run_daily_maintenance(
     date_value = report_date.isoformat()
     started_at_ms = generated_at_ms
     processed_market_events = 0
+    quality_config = QualityConfig(expected_markets=settings.markets)
+    recovered_report = _recover_existing_quality_report(
+        report_json=report_json,
+        report_markdown=report_markdown,
+        report_date=report_date,
+        run_id=run_id,
+        quality_config_hash=quality_config.sha256,
+    )
+    report_reused = recovered_report is not None
+    qualified_day = recovered_report[1] if recovered_report is not None else False
+    if recovered_report is not None:
+        processed_market_events = recovered_report[0]
 
     def update_running_status(
         *,
@@ -164,59 +237,61 @@ def run_daily_maintenance(
             },
         )
 
-    update_running_status(stage="quality_analysis")
-    raw_market_events = (
-        market_event_from_payload(cast(dict[str, object], record["payload"]))
-        for record in store.iter_records_for_utc_date("public-market-data", date_value)
-    )
-    control_events = [
-        control_event_from_payload(cast(dict[str, object], record["payload"]))
-        for record in store.iter_records_for_utc_date("collector-control", date_value)
-    ]
-    first_market_event = next(raw_market_events, None)
-    market_events = (
-        chain((first_market_event,), raw_market_events)
-        if first_market_event is not None
-        else iter(())
-    )
-    source_context = (
-        first_market_event.context
-        if first_market_event is not None
-        else control_events[0].context
-        if control_events
-        else None
-    )
-
-    def report_progress(processed_events: int) -> None:
-        nonlocal processed_market_events
-        processed_market_events = processed_events
-        update_running_status(
-            stage="quality_analysis",
-            processed_events=processed_market_events,
+    if recovered_report is None:
+        update_running_status(stage="quality_analysis")
+        raw_market_events = (
+            market_event_from_payload(cast(dict[str, object], record["payload"]))
+            for record in store.iter_records_for_utc_date(
+                "public-market-data", date_value
+            )
+        )
+        control_events = [
+            control_event_from_payload(cast(dict[str, object], record["payload"]))
+            for record in store.iter_records_for_utc_date(
+                "collector-control", date_value
+            )
+        ]
+        first_market_event = next(raw_market_events, None)
+        market_events = (
+            chain((first_market_event,), raw_market_events)
+            if first_market_event is not None
+            else iter(())
+        )
+        source_context = (
+            first_market_event.context
+            if first_market_event is not None
+            else control_events[0].context
+            if control_events
+            else None
         )
 
-    report = DailyQualityAnalyzer(
-        QualityConfig(expected_markets=settings.markets)
-    ).analyze_ordered(
-        report_date=report_date,
-        market_events=market_events,
-        control_events=control_events,
-        generated_at_ms=generated_at_ms,
-        run_id=run_id,
-        code_version=source_context.code_version if source_context else __version__,
-        source_config_hash=(
-            source_context.config_hash if source_context else settings.config_sha256
-        ),
-        spill_root=settings.runtime_root / "quality-spill",
-        progress=report_progress,
-    )
-    if report_json.exists() or report_markdown.exists():
-        if not report_markdown.is_file() or not _valid_existing_report(report_json):
-            raise RuntimeError(f"existing quality report is invalid: {report_json}")
-    else:
+        def report_progress(processed_events: int) -> None:
+            nonlocal processed_market_events
+            processed_market_events = processed_events
+            update_running_status(
+                stage="quality_analysis",
+                processed_events=processed_market_events,
+            )
+
+        report = DailyQualityAnalyzer(quality_config).analyze_ordered(
+            report_date=report_date,
+            market_events=market_events,
+            control_events=control_events,
+            generated_at_ms=generated_at_ms,
+            run_id=run_id,
+            code_version=(
+                source_context.code_version if source_context else __version__
+            ),
+            source_config_hash=(
+                source_context.config_hash if source_context else settings.config_sha256
+            ),
+            spill_root=settings.runtime_root / "quality-spill",
+            progress=report_progress,
+        )
         report_json, report_markdown = write_daily_quality_report(
             report, settings.review_root
         )
+        qualified_day = report.qualified_day
 
     compressed = 0
     update_running_status(
@@ -252,7 +327,8 @@ def run_daily_maintenance(
         "report_sha256": hashlib.sha256(report_json.read_bytes()).hexdigest(),
         "compressed_segments": compressed,
         "processed_market_events": processed_market_events,
-        "qualified_day": report.qualified_day,
+        "qualified_day": qualified_day,
+        "report_reused": report_reused,
         "minimum_retention_days": settings.minimum_retention_days,
         "raw_data_deleted": False,
     }
@@ -270,6 +346,6 @@ def run_daily_maintenance(
         report_json=report_json,
         report_markdown=report_markdown,
         compressed_segments=compressed,
-        reused=False,
-        qualified_day=report.qualified_day,
+        reused=report_reused,
+        qualified_day=qualified_day,
     )

@@ -26,6 +26,7 @@ from hyperbot.ops import (
     atomic_write_json,
     evaluate_collector_health,
 )
+from hyperbot.quality import DailyQualityAnalyzer
 from hyperbot.segmented_store import SegmentedEventStore
 from hyperbot.services.collector_runtime import run_collector_service
 from hyperbot.watchdog import WatchdogSettings, alert_payload, should_alert
@@ -338,6 +339,7 @@ def test_collector_runtime_publishes_health_and_stops_cleanly(tmp_path: Path) ->
 
 def test_daily_maintenance_is_idempotent_and_never_deletes_raw(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings = OpsSettings.from_environment(_environment(tmp_path))
     report_date = date(2026, 8, 10)
@@ -401,6 +403,28 @@ def test_daily_maintenance_is_idempotent_and_never_deletes_raw(
     assert first.compressed_segments == 2
     assert len(list(settings.data_root.rglob("*.gz"))) == 2
     assert not first.qualified_day
+    marker_path = (
+        settings.runtime_root / "maintenance" / f"{report_date.isoformat()}.json"
+    )
+    marker_path.unlink()
+
+    def unexpected_analysis(*args: object, **kwargs: object) -> object:
+        raise AssertionError("a checksummed compatible report must be reused")
+
+    monkeypatch.setattr(
+        DailyQualityAnalyzer,
+        "analyze_ordered",
+        unexpected_analysis,
+    )
+    recovered = run_daily_maintenance(
+        settings,
+        report_date=report_date,
+        generated_at_ms=1_786_406_450_000,
+    )
+    assert recovered.reused
+    assert recovered.report_json == first.report_json
+    assert recovered.compressed_segments == 0
+
     assert second.reused
     changed_settings = replace(settings, fsync_every_records=101)
     third = run_daily_maintenance(
@@ -410,11 +434,7 @@ def test_daily_maintenance_is_idempotent_and_never_deletes_raw(
     )
     assert third.reused
     assert third.report_json == first.report_json
-    marker = json.loads(
-        (
-            settings.runtime_root / "maintenance" / f"{report_date.isoformat()}.json"
-        ).read_text(encoding="utf-8")
-    )
+    marker = json.loads(marker_path.read_text(encoding="utf-8"))
     assert marker["raw_data_deleted"] is False
     maintenance_status = json.loads(
         changed_settings.maintenance_status_path.read_text(encoding="utf-8")

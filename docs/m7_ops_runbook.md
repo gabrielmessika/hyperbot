@@ -278,9 +278,11 @@ puis une relance explicite :
 ```
 
 Cette commande `--once` est la seule reprise automatique contournée ; elle
-revalide intégralement les segments et réutilise un rapport déjà checksumé avant
-de reprendre la compression. Vérifier ensuite `status`, `health`, `ui-health` et
-le marker quotidien. Ne jamais supprimer un segment brut pour débloquer M3.
+réutilise un rapport déjà checksumé avant de reprendre la compression, mais
+seulement si schéma, date, `run_id`, tier A et hash de configuration qualité
+correspondent. Sinon elle échoue fail-closed sans écraser la preuve. Vérifier
+ensuite `status`, `health`, `ui-health` et le marker quotidien. Ne jamais
+supprimer un segment brut pour débloquer M3.
 
 Le healthcheck échoue notamment pour :
 
