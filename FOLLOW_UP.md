@@ -556,6 +556,16 @@ la mauvaise date ou overdue, et l'état global ne peut plus rester `Sain` en
 présence de cet incident. Le rapport d'implémentation et de validation se trouve
 dans `reports/m7_ops/maintenance_oom_fix_report.md`.
 
+La validation finale du 12 août utilise le release
+`20260812T084310Z-82354ea99baa`. La reprise a réutilisé le rapport v2 checksumé,
+compressé 28 segments restants avec environ 27 à 38 Mio affichés au lieu du
+plateau historique de 445 Mio, puis publié le marker `completed`. Les 3 156 388
+événements sont comptés, 56 segments collector clos sont en gzip, le collector
+reste à zéro drop/malformed/backlog et les quatre services ont zéro restart/OOM.
+L'observer expose zéro incident opérationnel actif. La journée reste
+correctement non qualifiée : 317 963 gaps exacts, 24 000 détails retenus et 48
+motifs de qualité ; aucune gate ni aucun seuil n'a été assoupli.
+
 ### M8 — canary, bloqué par défaut
 
 Ce lot ne peut pas commencer à la suite d'un simple développement. Il exige :

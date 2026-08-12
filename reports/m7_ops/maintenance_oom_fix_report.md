@@ -78,3 +78,23 @@ décrits ci-dessus ont ensuite franchi la création du rapport réel. Cette repr
 a révélé un plateau distinct de 445 Mio pendant la compression historique des
 segments de 128 Mio ; la copie et les validations gzip en flux décrites ci-dessus
 suppriment aussi ce dernier risque avant la validation finale.
+
+## Validation serveur finale
+
+Le release `/opt/hyperbot/releases/20260812T084310Z-82354ea99baa` a repris le
+rapport compatible sans nouvelle analyse, puis compressé les 28 segments
+restants avec environ 27 à 38 Mio affichés pour le conteneur, zéro événement OOM
+et une sortie 0. Le marker quotidien est `completed`, checksum du rapport valide,
+avec 3 156 388 événements traités. Les manifests comptent 47 segments gzip de
+marché public et 9 segments gzip de contrôle ; aucun segment collector clos brut
+ne reste après la passe.
+
+Le smoke final confirme : quatre services actifs, collector et observer healthy,
+zéro restart/OOM, zéro drop, zéro malformed, file de persistance vide, 93 Gio
+libres et zéro incident opérationnel actif. `live_enabled=false`,
+`shadow_only=true`, et aucun executor ou runner shadow HyperBot n'est déployé.
+
+Le rapport v2 fait 4 441 228 octets et reste non qualifié : 317 963 gaps exacts,
+24 000 détails retenus, troncature explicitement déclarée et 48 motifs de
+qualification. Ce verdict n'a pas été contourné : cette journée perturbée ne
+constitue toujours pas une preuve M3 valide.
