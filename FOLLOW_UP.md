@@ -532,13 +532,16 @@ du 10 août masquait l'incident. Le conteneur a été stoppé isolément à 963
 redémarrages ; le collector est resté healthy, sans drop sur son run courant.
 
 Le correctif lit et authentifie désormais chaque segment en flux, agrège les
-métriques dans des structures compactes, spill les spreads temporairement et
-publie des heartbeats d'analyse/compression. Une tentative interrompue n'est
-plus répétée automatiquement pour la même date sans reprise opérateur. L'API et
-le dashboard signalent maintenant une maintenance failed, stale, sur la mauvaise
-date ou overdue, et l'état global ne peut plus rester `Sain` en présence de cet
-incident. Le rapport d'implémentation et de validation se trouve dans
-`reports/m7_ops/maintenance_oom_fix_report.md`.
+métriques dans des structures compactes, spill latences et spreads temporairement
+et calcule leurs percentiles exacts par tri externe borné. Un premier essai
+streaming avait encore OOM au tri final après les 3 156 388 records ; le garde-fou
+a limité l'essai à un restart avant le correctif de tri par blocs. La maintenance
+publie aussi des heartbeats d'analyse/compression. Une tentative interrompue
+n'est plus répétée automatiquement pour la même date sans reprise opérateur.
+L'API et le dashboard signalent maintenant une maintenance failed, stale, sur
+la mauvaise date ou overdue, et l'état global ne peut plus rester `Sain` en
+présence de cet incident. Le rapport d'implémentation et de validation se trouve
+dans `reports/m7_ops/maintenance_oom_fix_report.md`.
 
 ### M8 — canary, bloqué par défaut
 

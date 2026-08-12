@@ -253,12 +253,13 @@ lit que les segments UTC clôturés, refuse un segment encore mutable, écrit de
 rapports déterministes et checksumés, puis compresse sans supprimer les données
 brutes. Une deuxième exécution de la même journée réutilise la preuve valide.
 
-L'analyse journalière lit et valide les segments en flux. Les latences restent
-dans des tableaux numériques compacts et les spreads utilisent un spill
-temporaire sous `runtime/quality-spill/`, supprimé à la fin du calcul. Le statut
-`maintenance_status.json` publie un heartbeat pendant l'analyse et après chaque
-segment compressé. L'observer déclare un incident si ce heartbeat devient stale
-ou si le rapport attendu n'est toujours pas terminé après la grâce opératoire.
+L'analyse journalière lit et valide les segments en flux. Latences et spreads
+utilisent un spill temporaire sous `runtime/quality-spill/`, puis un tri externe
+exact par blocs bornés ; tous les fichiers temporaires sont supprimés à la fin.
+Le statut `maintenance_status.json` publie un heartbeat pendant l'analyse et
+après chaque segment compressé. L'observer déclare un incident si ce heartbeat
+devient stale ou si le rapport attendu n'est toujours pas terminé après la grâce
+opératoire.
 
 Après une interruption brutale sans marker final, le service continu ne retente
 pas indéfiniment la même date. Il reste actif mais fail-closed et exige une revue,

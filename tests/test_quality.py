@@ -6,6 +6,8 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
+
 from hyperbot.models import (
     CollectorControlEvent,
     CollectorControlKind,
@@ -170,7 +172,9 @@ def test_daily_json_markdown_and_checksum_are_written(tmp_path: Path) -> None:
 
 def test_ordered_analysis_matches_batch_and_cleans_spill_files(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("hyperbot.quality._PERCENTILE_SORT_CHUNK_VALUES", 2)
     analyzer = DailyQualityAnalyzer(
         QualityConfig(
             expected_markets=("BTC",),

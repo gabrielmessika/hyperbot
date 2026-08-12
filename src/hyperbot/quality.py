@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import hashlib
+import heapq
 import json
-from array import array
 from collections import Counter
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TextIO, cast
+from typing import TextIO, TypeVar, cast
 
 from hyperbot.models import (
     CollectorControlEvent,
@@ -26,6 +26,18 @@ from hyperbot.models import (
 
 QUALITY_SCHEMA_VERSION = 1
 _REQUIRED_BOOK_CHANNELS = frozenset({"l2Book", "bbo"})
+_PERCENTILE_SORT_CHUNK_VALUES = 50_000
+_Numeric = TypeVar("_Numeric", int, Decimal)
+
+
+def _parsed_numeric_lines(
+    handle: TextIO,
+    parse: Callable[[str], _Numeric],
+) -> Iterator[_Numeric]:
+    for line in handle:
+        value = line.strip()
+        if value:
+            yield parse(value)
 
 
 class GapCause(StrEnum):
@@ -365,10 +377,12 @@ class _OrderedMarketAccumulator:
     coin: str
     previous_book_ts_ms: int
     spread_handle: TextIO
+    latency_handle: TextIO
     message_count: int = 0
     channel_counts: Counter[str] = field(default_factory=Counter)
     last_receive_ts_ms: int | None = None
-    latency_values: array[int] = field(default_factory=lambda: array("q"))
+    latency_count: int = 0
+    spread_count: int = 0
     negative_latency_count: int = 0
     gaps: list[QualityGap] = field(default_factory=list)
     bid_depth_sum: Decimal = Decimal(0)
@@ -377,6 +391,102 @@ class _OrderedMarketAccumulator:
     ask_depth_count: int = 0
     trade_count: int = 0
     trade_notional_usd: Decimal = Decimal(0)
+
+
+def _external_percentiles(
+    handle: TextIO,
+    *,
+    count: int,
+    percentiles: Sequence[Decimal],
+    parse: Callable[[str], _Numeric],
+    chunk_root: Path,
+    chunk_prefix: str,
+    progress: Callable[[], None] | None = None,
+) -> tuple[_Numeric | None, ...]:
+    """Compute exact percentiles with a bounded-memory external merge sort."""
+
+    if count == 0:
+        return tuple(None for _ in percentiles)
+    targets: list[tuple[int, int, Decimal]] = []
+    required_indices: set[int] = set()
+    for percentile in percentiles:
+        position = percentile * Decimal(count - 1)
+        lower = int(position)
+        upper = min(lower + 1, count - 1)
+        targets.append((lower, upper, position - lower))
+        required_indices.update((lower, upper))
+
+    handle.seek(0)
+    chunk_paths: list[Path] = []
+    chunk_values: list[_Numeric] = []
+    ordered_values: dict[int, _Numeric]
+    try:
+        for line in handle:
+            raw_value = line.strip()
+            if not raw_value:
+                continue
+            chunk_values.append(parse(raw_value))
+            if len(chunk_values) < _PERCENTILE_SORT_CHUNK_VALUES:
+                continue
+            chunk_values.sort()
+            chunk_path = chunk_root / f"{chunk_prefix}-{len(chunk_paths):06d}.sorted"
+            chunk_path.write_text(
+                "".join(f"{item}\n" for item in chunk_values),
+                encoding="ascii",
+            )
+            chunk_paths.append(chunk_path)
+            chunk_values.clear()
+            if progress is not None:
+                progress()
+
+        if not chunk_paths:
+            chunk_values.sort()
+            ordered_values = {index: chunk_values[index] for index in required_indices}
+        else:
+            if chunk_values:
+                chunk_values.sort()
+                chunk_path = (
+                    chunk_root / f"{chunk_prefix}-{len(chunk_paths):06d}.sorted"
+                )
+                chunk_path.write_text(
+                    "".join(f"{item}\n" for item in chunk_values),
+                    encoding="ascii",
+                )
+                chunk_paths.append(chunk_path)
+                chunk_values.clear()
+            chunk_handles = [path.open(encoding="ascii") for path in chunk_paths]
+            try:
+                iterators: list[Iterator[_Numeric]] = [
+                    _parsed_numeric_lines(current, parse) for current in chunk_handles
+                ]
+                ordered_values = {}
+                maximum_index = max(required_indices)
+                for position_index, merged_value in enumerate(heapq.merge(*iterators)):
+                    if position_index in required_indices:
+                        ordered_values[position_index] = merged_value
+                    if position_index >= maximum_index:
+                        break
+                    if progress is not None and position_index % 50_000 == 0:
+                        progress()
+            finally:
+                for current in chunk_handles:
+                    current.close()
+
+        results: list[_Numeric] = []
+        for lower, upper, weight in targets:
+            lower_value = ordered_values[lower]
+            upper_value = ordered_values[upper]
+            interpolated = (
+                Decimal(lower_value) + Decimal(upper_value - lower_value) * weight
+            )
+            if isinstance(lower_value, int):
+                results.append(int(interpolated.to_integral_value()))
+            else:
+                results.append(interpolated)
+        return tuple(results)
+    finally:
+        for path in chunk_paths:
+            path.unlink(missing_ok=True)
 
 
 def _gap_between(
@@ -511,14 +621,18 @@ class DailyQualityAnalyzer:
             handles: list[TextIO] = []
             try:
                 for index, coin in enumerate(self.config.expected_markets):
-                    handle = (temporary_root / f"{index:04d}.spreads").open(
+                    spread_handle = (temporary_root / f"{index:04d}.spreads").open(
                         "w+", encoding="ascii"
                     )
-                    handles.append(handle)
+                    latency_handle = (temporary_root / f"{index:04d}.latencies").open(
+                        "w+", encoding="ascii"
+                    )
+                    handles.extend((spread_handle, latency_handle))
                     accumulators[coin] = _OrderedMarketAccumulator(
                         coin=coin,
                         previous_book_ts_ms=window_begin,
-                        spread_handle=handle,
+                        spread_handle=spread_handle,
+                        latency_handle=latency_handle,
                     )
 
                 processed_events = 0
@@ -548,7 +662,8 @@ class DailyQualityAnalyzer:
                         if latency < 0:
                             accumulator.negative_latency_count += 1
                         else:
-                            accumulator.latency_values.append(latency)
+                            accumulator.latency_handle.write(f"{latency}\n")
+                            accumulator.latency_count += 1
 
                     if event.channel in _REQUIRED_BOOK_CHANNELS:
                         if event.receive_ts_ms > accumulator.previous_book_ts_ms:
@@ -566,6 +681,7 @@ class DailyQualityAnalyzer:
                         spread, bid_depth, ask_depth = _book_metrics(event)
                         if spread is not None:
                             accumulator.spread_handle.write(f"{spread}\n")
+                            accumulator.spread_count += 1
                         if bid_depth is not None:
                             accumulator.bid_depth_sum += bid_depth
                             accumulator.bid_depth_count += 1
@@ -590,19 +706,36 @@ class DailyQualityAnalyzer:
                     if final_gap is not None:
                         accumulator.gaps.append(final_gap)
                     accumulator.spread_handle.flush()
-                    accumulator.spread_handle.seek(0)
+                    accumulator.latency_handle.flush()
 
                 all_gaps: list[QualityGap] = []
                 market_metrics: list[MarketQuality] = []
                 window_duration = window_end - window_begin
                 for coin in self.config.expected_markets:
                     accumulator = accumulators[coin]
-                    spreads = sorted(
-                        Decimal(line.strip())
-                        for line in accumulator.spread_handle
-                        if line.strip()
+                    percentile_progress = (
+                        (lambda: progress(processed_events))
+                        if progress is not None
+                        else None
                     )
-                    latencies = sorted(accumulator.latency_values)
+                    latency_percentiles = _external_percentiles(
+                        accumulator.latency_handle,
+                        count=accumulator.latency_count,
+                        percentiles=(Decimal("0.50"), Decimal("0.95"), Decimal("0.99")),
+                        parse=int,
+                        chunk_root=temporary_root,
+                        chunk_prefix=f"{coin.replace(':', '_')}-latency",
+                        progress=percentile_progress,
+                    )
+                    spread_percentiles = _external_percentiles(
+                        accumulator.spread_handle,
+                        count=accumulator.spread_count,
+                        percentiles=(Decimal("0.10"), Decimal("0.50"), Decimal("0.90")),
+                        parse=Decimal,
+                        chunk_root=temporary_root,
+                        chunk_prefix=f"{coin.replace(':', '_')}-spread",
+                        progress=percentile_progress,
+                    )
                     all_gaps.extend(accumulator.gaps)
                     stale_duration = sum(gap.duration_ms for gap in accumulator.gaps)
                     coverage = (
@@ -618,15 +751,9 @@ class DailyQualityAnalyzer:
                                 sorted(accumulator.channel_counts.items())
                             ),
                             coverage_pct=coverage,
-                            latency_p50_ms=_ordered_integer_percentile(
-                                latencies, Decimal("0.50")
-                            ),
-                            latency_p95_ms=_ordered_integer_percentile(
-                                latencies, Decimal("0.95")
-                            ),
-                            latency_p99_ms=_ordered_integer_percentile(
-                                latencies, Decimal("0.99")
-                            ),
+                            latency_p50_ms=latency_percentiles[0],
+                            latency_p95_ms=latency_percentiles[1],
+                            latency_p99_ms=latency_percentiles[2],
                             negative_latency_count=(accumulator.negative_latency_count),
                             gap_count=len(accumulator.gaps),
                             major_gap_count=sum(gap.major for gap in accumulator.gaps),
@@ -643,15 +770,9 @@ class DailyQualityAnalyzer:
                                 for gap in accumulator.gaps
                             ),
                             stale_duration_ms=stale_duration,
-                            spread_p10_bps=_ordered_percentile(
-                                spreads, Decimal("0.10")
-                            ),
-                            spread_p50_bps=_ordered_percentile(
-                                spreads, Decimal("0.50")
-                            ),
-                            spread_p90_bps=_ordered_percentile(
-                                spreads, Decimal("0.90")
-                            ),
+                            spread_p10_bps=spread_percentiles[0],
+                            spread_p50_bps=spread_percentiles[1],
+                            spread_p90_bps=spread_percentiles[2],
                             average_bid_depth=(
                                 accumulator.bid_depth_sum / accumulator.bid_depth_count
                                 if accumulator.bid_depth_count
