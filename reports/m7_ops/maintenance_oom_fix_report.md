@@ -110,3 +110,17 @@ du store vérifie que le writer déjà actif invalide son cache, reprend la cha�
 et ouvre le segment du nouveau jour sans perte. La maintenance refuse aussi la
 journée UTC en cours afin qu'une reprise opérateur ne puisse pas publier une
 preuve partielle.
+
+Le correctif a été déployé par sélection du release
+`20260813T185440Z-65b43732befa`, sans recréer collector, observer ou watchdog.
+Seule la maintenance a reçu la nouvelle image. La reprise explicite du 12 août
+a analysé 8 320 373 événements, publié un rapport v2 au checksum valide et
+compressé 94 segments, avec environ 106 à 124 Mio observés sur la passe. Le
+marker final est `completed`, les deux streams ne gardent plus que leurs
+segments actifs du 13 août et l'observer expose zéro incident actif.
+
+La continuité du 13 août est préservée : même ID de conteneur collector, même
+`run_id`, même heure de démarrage, zéro restart/OOM, aucune reconnexion ajoutée,
+aucun `shutdown`, zéro drop, zéro malformed et file vide. Le rapport du 12 août
+reste correctement non qualifié avec 11 pannes collector, 801 347 gaps et 48
+motifs ; aucun seuil n'a été modifié.

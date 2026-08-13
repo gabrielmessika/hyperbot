@@ -575,6 +575,16 @@ restart. Une garde distincte refuse toute analyse de la journée UTC en cours ou
 d'une date future. Le déploiement de ce correctif doit recréer uniquement la
 maintenance afin de préserver le 13 août comme premier jour M3 candidat.
 
+Le release `/opt/hyperbot/releases/20260813T185440Z-65b43732befa` a été
+sélectionné sans `--start-collector`, puis seul le conteneur maintenance a été
+recréé. Le collector a conservé son ID, son démarrage du 12 août, son `run_id` et
+ses 12 reconnexions ; aucun événement `shutdown`, drop ou malformed n'a été
+ajouté. La reprise du 12 août a terminé avec 8 320 373 événements, un rapport v2
+checksumé, 94 segments compressés et zéro segment clos brut restant. La
+maintenance et le collector sont healthy, l'incident actif est revenu à zéro.
+Le 13 août reste donc le premier jour M3 candidat ; son verdict dépendra du
+rapport automatique produit après clôture UTC.
+
 ### M8 — canary, bloqué par défaut
 
 Ce lot ne peut pas commencer à la suite d'un simple développement. Il exige :
