@@ -385,8 +385,6 @@ def test_daily_maintenance_is_idempotent_and_never_deletes_raw(
             reason=None,
         ),
     )
-    store.close()
-
     first = run_daily_maintenance(
         settings,
         report_date=report_date,
@@ -401,6 +399,7 @@ def test_daily_maintenance_is_idempotent_and_never_deletes_raw(
     assert first.report_json.is_file()
     assert first.report_json.with_suffix(".json.sha256").is_file()
     assert first.compressed_segments == 2
+    assert not list(settings.data_root.rglob("*.jsonl.open"))
     assert len(list(settings.data_root.rglob("*.gz"))) == 2
     assert not first.qualified_day
     marker_path = (
@@ -443,6 +442,21 @@ def test_daily_maintenance_is_idempotent_and_never_deletes_raw(
     assert maintenance_status["active_config_sha256"] == (
         changed_settings.config_sha256
     )
+
+
+def test_daily_maintenance_refuses_an_incomplete_utc_day(tmp_path: Path) -> None:
+    settings = OpsSettings.from_environment(_environment(tmp_path))
+    report_date = date(2026, 8, 10)
+    generated_at_ms = int(datetime(2026, 8, 10, 12, tzinfo=UTC).timestamp() * 1_000)
+
+    with pytest.raises(ValueError, match="completed UTC day"):
+        run_daily_maintenance(
+            settings,
+            report_date=report_date,
+            generated_at_ms=generated_at_ms,
+        )
+
+    assert not settings.maintenance_status_path.exists()
 
 
 def test_deployment_artifacts_remain_disabled_by_default() -> None:

@@ -252,6 +252,11 @@ Le service `maintenance` produit à 00:15 UTC le rapport M3 de la veille. Il ne
 lit que les segments UTC clôturés, refuse un segment encore mutable, écrit des
 rapports déterministes et checksumés, puis compresse sans supprimer les données
 brutes. Une deuxième exécution de la même journée réutilise la preuve valide.
+Avant la lecture, il clôt atomiquement sous verrou un segment actif non vide
+dont la date UTC est strictement antérieure au cutoff du rapport. Cela permet aux
+streams de contrôle peu actifs de changer de journée sans attendre leur prochain
+événement. Le segment du jour courant n'est jamais clôturé par ce chemin, et une
+demande portant sur la journée courante ou une date future est refusée.
 
 L'analyse journalière lit et valide les segments en flux. Latences et spreads
 utilisent un spill temporaire sous `runtime/quality-spill/`, puis un tri externe

@@ -6,7 +6,7 @@ import hashlib
 import json
 import time
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from itertools import chain
 from pathlib import Path
 from typing import cast
@@ -179,6 +179,9 @@ def run_daily_maintenance(
 ) -> MaintenanceResult:
     """Generate one deterministic report and compress immutable raw segments."""
 
+    generated_date = datetime.fromtimestamp(generated_at_ms / 1_000, tz=UTC).date()
+    if report_date >= generated_date:
+        raise ValueError("report_date must be a completed UTC day")
     settings.runtime_root.mkdir(parents=True, exist_ok=True)
     marker = settings.runtime_root / "maintenance" / f"{report_date.isoformat()}.json"
     reused = _reuse_completed_day(
@@ -236,6 +239,11 @@ def run_daily_maintenance(
                 "raw_data_deleted": False,
             },
         )
+
+    update_running_status(stage="segment_finalization")
+    cutoff_utc_date = (report_date + timedelta(days=1)).isoformat()
+    for stream in ("public-market-data", "collector-control"):
+        store.finalize_active_before_utc_date(stream, cutoff_utc_date)
 
     if recovered_report is None:
         update_running_status(stage="quality_analysis")

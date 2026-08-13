@@ -309,6 +309,35 @@ class SegmentedEventStore:
                 self._append_states.pop(current_stream, None)
                 self._pending_fsync_records.pop(current_stream, None)
 
+    def finalize_active_before_utc_date(
+        self,
+        stream: str,
+        cutoff_utc_date: str,
+    ) -> bool:
+        """Finalize a non-empty active segment strictly older than the cutoff."""
+
+        try:
+            parsed_cutoff = date.fromisoformat(cutoff_utc_date)
+        except ValueError as exc:
+            raise EventStoreError(f"invalid UTC date: {cutoff_utc_date!r}") from exc
+        if parsed_cutoff.isoformat() != cutoff_utc_date:
+            raise EventStoreError(f"invalid UTC date: {cutoff_utc_date!r}")
+        stream_dir = self._stream_dir(stream)
+        if not stream_dir.exists():
+            return False
+        with self._lock(stream_dir):
+            manifest = self._load_manifest(stream)
+            _, _, active_path, active_scan = self._recover_active(stream, manifest)
+            if active_path is None or active_scan.count == 0:
+                return False
+            active_utc_date = active_path.name[:10]
+            if active_utc_date >= cutoff_utc_date:
+                return False
+            self._finalize_active(stream, manifest, active_path)
+            self._append_states.pop(stream, None)
+            self._pending_fsync_records.pop(stream, None)
+            return True
+
     def validate(self, stream: str) -> ValidationResult:
         stream_dir = self._stream_dir(stream)
         if not stream_dir.exists():

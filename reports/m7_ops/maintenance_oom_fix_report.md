@@ -98,3 +98,15 @@ Le rapport v2 fait 4 441 228 octets et reste non qualifié : 317 963 gaps exacts
 24 000 détails retenus, troncature explicitement déclarée et 48 motifs de
 qualification. Ce verdict n'a pas été contourné : cette journée perturbée ne
 constitue toujours pas une preuve M3 valide.
+
+## Rotation UTC des streams peu actifs
+
+Le run automatique du 13 août à 00:15 UTC a refusé le 12 août parce que le
+segment `collector-control` de la veille était encore actif. Ce stream n'avait
+pas reçu de nouvel événement après minuit pour déclencher sa rotation naturelle.
+La maintenance clôt désormais sous verrou uniquement les segments non vides
+strictement antérieurs au cutoff, avant l'analyse. Un test avec deux instances
+du store vérifie que le writer déjà actif invalide son cache, reprend la chaîne
+et ouvre le segment du nouveau jour sans perte. La maintenance refuse aussi la
+journée UTC en cours afin qu'une reprise opérateur ne puisse pas publier une
+preuve partielle.

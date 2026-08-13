@@ -134,6 +134,32 @@ def test_date_reader_refuses_a_mutable_active_segment(tmp_path: Path) -> None:
         list(store.iter_records_for_utc_date("market-data", "2023-11-14"))
 
 
+def test_prior_utc_segment_can_be_finalized_without_breaking_live_append(
+    tmp_path: Path,
+) -> None:
+    timestamps = iter((1_700_000_000_000, 1_700_086_400_000))
+    writer = SegmentedEventStore(
+        tmp_path,
+        fsync=False,
+        clock_ms=lambda: next(timestamps),
+    )
+    first_path = writer.append("market-data", _event(0)).path
+    maintenance = SegmentedEventStore(tmp_path, fsync=False)
+
+    assert not maintenance.finalize_active_before_utc_date("market-data", "2023-11-14")
+    assert maintenance.finalize_active_before_utc_date("market-data", "2023-11-15")
+    assert not first_path.exists()
+    assert [
+        record["sequence"]
+        for record in maintenance.iter_records_for_utc_date("market-data", "2023-11-14")
+    ] == [0]
+
+    second_path = writer.append("market-data", _event(1)).path
+
+    assert second_path.name.startswith("2023-11-15")
+    assert writer.validate("market-data").record_count == 2
+
+
 def test_compression_ignores_an_active_segment(tmp_path: Path) -> None:
     store = SegmentedEventStore(tmp_path, fsync=False, clock_ms=lambda: 1000)
     active = store.append("market-data", _event(0)).path

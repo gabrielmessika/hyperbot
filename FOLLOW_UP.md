@@ -566,6 +566,15 @@ L'observer expose zéro incident opérationnel actif. La journée reste
 correctement non qualifiée : 317 963 gaps exacts, 24 000 détails retenus et 48
 motifs de qualité ; aucune gate ni aucun seuil n'a été assoupli.
 
+Le 13 août, le rapport automatique du 12 août a échoué fail-closed parce que le
+stream peu actif `collector-control` gardait encore un segment du 12 août ouvert
+à 00:15 UTC. La maintenance finalise désormais, sous le verrou du store, tout
+segment actif non vide strictement antérieur au cutoff du rapport avant de le
+lire. Le writer continu détecte la rotation externe et poursuit la chaîne sans
+restart. Une garde distincte refuse toute analyse de la journée UTC en cours ou
+d'une date future. Le déploiement de ce correctif doit recréer uniquement la
+maintenance afin de préserver le 13 août comme premier jour M3 candidat.
+
 ### M8 — canary, bloqué par défaut
 
 Ce lot ne peut pas commencer à la suite d'un simple développement. Il exige :
