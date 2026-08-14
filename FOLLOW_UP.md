@@ -603,6 +603,15 @@ Les tests couvrent les deux frontières. Ce
 correctif ne modifie ni les durées stale, ni le verdict, ni les seuils 500 ms / 5
 s / 99 %, ni le schéma v2 ; le rapport publié du 13 août reste immuable.
 
+Le release `/opt/hyperbot/releases/20260814T083125Z-012ac8d49ba7` a été
+sélectionné puis seule la maintenance a été recréée. Le collector conserve son
+ID `a6c38019...`, son démarrage du 12 août et son `run_id`; observer et watchdog
+conservent aussi leurs conteneurs. La nouvelle machine d'état relue sur les 27
+événements de contrôle réels du 13 août produit une première session à 00:00
+UTC, 10 sessions et les mêmes 9 coupures pour 5 392 ms. Le checksum du rapport
+reste `5cd54902...`, les quatre services sont sans restart/OOM, le collector est
+à zéro drop/malformed/backlog et l'observer expose zéro incident actif.
+
 ### M8 — canary, bloqué par défaut
 
 Ce lot ne peut pas commencer à la suite d'un simple développement. Il exige :

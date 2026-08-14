@@ -147,3 +147,18 @@ Le changement conserve le schéma M3 v2 et les agrégats de durée : il corrige
 l'explication `collector_not_running` / `market_stale` / `collector_outage`, pas
 la couverture ni le verdict. Le rapport checksumé du 13 août n'est ni recalculé
 ni écrasé.
+
+Le correctif a été déployé dans le release
+`20260814T083125Z-012ac8d49ba7`. Seul le conteneur maintenance a été recréé ; le
+collector conserve l'ID `a6c38019...`, son `run_id` et son démarrage du 12 août,
+et observer/watchdog conservent aussi leur identité. Une lecture diagnostique
+avec la nouvelle image sur les 27 événements de contrôle du 13 août reconstruit
+10 sessions dont la première commence exactement à 00:00 UTC. Les 9 coupures et
+leur durée cumulée de 5 392 ms restent inchangées.
+
+Le rapport du 13 août conserve le SHA-256
+`5cd549027ac484c2c02e83df7c9be7743ffefce443912eb956afb8827146c207` et son
+marker initial. Après déploiement, les quatre conteneurs sont running sans
+restart/OOM, aucun log d'erreur n'est apparu, le collector reste connecté avec
+zéro drop, malformed ou backlog, les gardes live/shadow restent sûres et
+l'observer expose zéro incident actif.
