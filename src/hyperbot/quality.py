@@ -248,6 +248,7 @@ def _collector_outages(
 ) -> list[tuple[int, int]]:
     start: int | None = None
     outages: list[tuple[int, int]] = []
+    saw_connection_transition = False
     for control in sorted(controls, key=lambda item: item.receive_ts_ms):
         timestamp = min(max(control.receive_ts_ms, window_begin_ms), window_end_ms)
         if control.kind in {
@@ -256,16 +257,24 @@ def _collector_outages(
         }:
             if start is None:
                 start = timestamp
-        elif (
-            control.kind
-            in {
-                CollectorControlKind.CONNECTED,
-                CollectorControlKind.RECONNECTED,
-            }
-            and start is not None
-        ):
-            outages.append((start, timestamp))
+        elif control.kind in {
+            CollectorControlKind.CONNECTED,
+            CollectorControlKind.RECONNECTED,
+        }:
+            if start is not None:
+                outages.append((start, timestamp))
+            elif (
+                control.kind is CollectorControlKind.RECONNECTED
+                and not saw_connection_transition
+            ):
+                # A first reconnection proves that the outage started before the
+                # UTC window. The preceding disconnect lives in the prior day's
+                # immutable segment, so carry the outage from midnight.
+                outages.append((window_begin_ms, timestamp))
             start = None
+            saw_connection_transition = True
+        elif control.kind is CollectorControlKind.SHUTDOWN:
+            saw_connection_transition = True
     if start is not None:
         outages.append((start, window_end_ms))
     return _merge_intervals(outages)
@@ -276,11 +285,23 @@ def _collector_sessions(
     window_begin_ms: int,
     window_end_ms: int,
 ) -> list[tuple[int, int]]:
-    if not controls:
+    lifecycle_controls = tuple(
+        control
+        for control in controls
+        if control.kind
+        in {
+            CollectorControlKind.CONNECTED,
+            CollectorControlKind.RECONNECTED,
+            CollectorControlKind.DISCONNECTED,
+            CollectorControlKind.SHUTDOWN,
+        }
+    )
+    if not lifecycle_controls:
         return [(window_begin_ms, window_end_ms)]
     start: int | None = None
     sessions: list[tuple[int, int]] = []
-    for control in sorted(controls, key=lambda item: item.receive_ts_ms):
+    saw_lifecycle_transition = False
+    for control in sorted(lifecycle_controls, key=lambda item: item.receive_ts_ms):
         timestamp = min(max(control.receive_ts_ms, window_begin_ms), window_end_ms)
         if (
             control.kind
@@ -291,16 +312,26 @@ def _collector_sessions(
             and start is None
         ):
             start = timestamp
-        elif (
-            control.kind
-            in {
-                CollectorControlKind.DISCONNECTED,
-                CollectorControlKind.SHUTDOWN,
-            }
-            and start is not None
-        ):
-            sessions.append((start, timestamp))
+            saw_lifecycle_transition = True
+        elif control.kind in {
+            CollectorControlKind.DISCONNECTED,
+            CollectorControlKind.SHUTDOWN,
+        }:
+            if (
+                control.kind is CollectorControlKind.DISCONNECTED
+                and start is None
+                and not saw_lifecycle_transition
+            ):
+                # A first disconnect proves that this collector session was
+                # already active at midnight. Its opening event is stored in a
+                # previous UTC segment and must not make the start of this day
+                # look like collector downtime. A shutdown alone is not enough
+                # evidence because it can also stop a disconnected collector.
+                start = window_begin_ms
+            if start is not None:
+                sessions.append((start, timestamp))
             start = None
+            saw_lifecycle_transition = True
     if start is not None:
         sessions.append((start, window_end_ms))
     return _merge_intervals(sessions)

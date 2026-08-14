@@ -585,6 +585,24 @@ maintenance et le collector sont healthy, l'incident actif est revenu à zéro.
 Le 13 août reste donc le premier jour M3 candidat ; son verdict dépendra du
 rapport automatique produit après clôture UTC.
 
+Le rapport automatique du 13 août a été publié le 14 août à 00:15 UTC avec
+8 228 581 événements, un checksum valide, 9 micro-coupures totalisant 5,392
+secondes et zéro incident opérationnel actif. Il est complet mais non qualifié :
+les 24 marchés restent sous 99 % de couverture et 22 portent au moins un gap
+majeur. Il constitue donc le premier rapport complet à analyser, pas le premier
+jour de la gate.
+
+Cette analyse a révélé une attribution incorrecte des gaps avant la première
+reconnexion du jour : lorsque la session collector avait commencé la veille,
+son événement d'ouverture appartenait au segment UTC précédent et M3 classait
+à tort le début de journée en `collector_not_running`. Le modèle reporte
+désormais une session à minuit si le premier événement de cycle de vie est un
+`disconnected`, et reporte une coupure à minuit si le premier événement est un
+`reconnected`. Un `shutdown` isolé reste insuffisant pour supposer une connexion.
+Les tests couvrent les deux frontières. Ce
+correctif ne modifie ni les durées stale, ni le verdict, ni les seuils 500 ms / 5
+s / 99 %, ni le schéma v2 ; le rapport publié du 13 août reste immuable.
+
 ### M8 — canary, bloqué par défaut
 
 Ce lot ne peut pas commencer à la suite d'un simple développement. Il exige :

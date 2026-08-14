@@ -124,3 +124,26 @@ La continuité du 13 août est préservée : même ID de conteneur collector, m�
 aucun `shutdown`, zéro drop, zéro malformed et file vide. Le rapport du 12 août
 reste correctement non qualifié avec 11 pannes collector, 801 347 gaps et 48
 motifs ; aucun seuil n'a été modifié.
+
+## Continuité du diagnostic M3 à minuit
+
+Le rapport complet du 13 août a confirmé la rotation, mais a aussi exposé une
+erreur limitée à la cause des gaps. Le collector tournait sans redémarrage depuis
+le 12 août ; son premier événement de contrôle du 13 août était pourtant un
+`disconnected` à 02:20 UTC. Comme l'analyseur ne voyait pas le `connected` du
+segment UTC précédent, il attribuait les gaps antérieurs à
+`collector_not_running`.
+
+La machine d'état M3 déduit maintenant les deux continuités démontrables par les
+événements du jour : un premier `disconnected` clôt une session ouverte avant
+minuit, tandis qu'un premier `reconnected` clôt une panne ouverte avant minuit.
+Un `shutdown` isolé ne suffit pas à présumer une connexion. Une vraie première
+connexion du jour continue de laisser la période antérieure hors session. Deux
+tests de frontière et un cas `shutdown` isolé s'ajoutent à celui du temps
+réellement hors session ; la suite compte 120 tests réussis, Ruff est propre sur
+les fichiers modifiés et Mypy reste sans erreur.
+
+Le changement conserve le schéma M3 v2 et les agrégats de durée : il corrige
+l'explication `collector_not_running` / `market_stale` / `collector_outage`, pas
+la couverture ni le verdict. Le rapport checksumé du 13 août n'est ni recalculé
+ni écrasé.

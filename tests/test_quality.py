@@ -292,6 +292,88 @@ def test_time_outside_a_collector_session_is_not_market_inactivity() -> None:
     assert report.markets[0].collector_not_running_gap_count > 0
 
 
+def test_session_active_before_midnight_is_carried_into_the_report_day() -> None:
+    report = DailyQualityAnalyzer(
+        QualityConfig(
+            expected_markets=("BTC",),
+            stale_after_ms=500,
+            major_gap_ms=1_000,
+        )
+    ).analyze(
+        report_date=REPORT_DATE,
+        market_events=[
+            _market_event(timestamp=DAY_BEGIN + 1_000, sequence=0),
+            _market_event(timestamp=DAY_BEGIN + 2_000, sequence=1),
+        ],
+        control_events=[
+            _control(CollectorControlKind.DISCONNECTED, DAY_BEGIN + 3_000),
+            _control(CollectorControlKind.GAP, DAY_BEGIN + 3_000),
+            _control(CollectorControlKind.RECONNECTED, DAY_BEGIN + 4_000),
+        ],
+        generated_at_ms=DAY_BEGIN + DAY_MS,
+        run_id="quality-midnight-session",
+        code_version="test",
+        source_config_hash="d" * 64,
+    )
+
+    market = report.markets[0]
+    assert market.collector_not_running_gap_count == 0
+    assert market.market_stale_gap_count > 0
+    assert market.collector_outage_gap_count > 0
+
+
+def test_outage_active_before_midnight_is_carried_into_the_report_day() -> None:
+    report = DailyQualityAnalyzer(
+        QualityConfig(
+            expected_markets=("BTC",),
+            stale_after_ms=500,
+            major_gap_ms=1_000,
+        )
+    ).analyze(
+        report_date=REPORT_DATE,
+        market_events=[
+            _market_event(timestamp=DAY_BEGIN + 2_000, sequence=0),
+            _market_event(timestamp=DAY_BEGIN + 3_000, sequence=1),
+        ],
+        control_events=[
+            _control(CollectorControlKind.RECONNECTED, DAY_BEGIN + 1_500),
+        ],
+        generated_at_ms=DAY_BEGIN + DAY_MS,
+        run_id="quality-midnight-outage",
+        code_version="test",
+        source_config_hash="d" * 64,
+    )
+
+    assert report.collector_outage_count == 1
+    assert report.collector_outage_duration_ms == 1_500
+    assert report.markets[0].collector_outage_gap_count > 0
+
+
+def test_isolated_shutdown_does_not_imply_a_connected_midnight_session() -> None:
+    report = DailyQualityAnalyzer(
+        QualityConfig(
+            expected_markets=("BTC",),
+            stale_after_ms=500,
+            major_gap_ms=1_000,
+        )
+    ).analyze(
+        report_date=REPORT_DATE,
+        market_events=[
+            _market_event(timestamp=DAY_BEGIN + 1_000, sequence=0),
+            _market_event(timestamp=DAY_BEGIN + 2_000, sequence=1),
+        ],
+        control_events=[
+            _control(CollectorControlKind.SHUTDOWN, DAY_BEGIN + 2_100),
+        ],
+        generated_at_ms=DAY_BEGIN + DAY_MS,
+        run_id="quality-isolated-shutdown",
+        code_version="test",
+        source_config_hash="d" * 64,
+    )
+
+    assert report.markets[0].collector_not_running_gap_count > 0
+
+
 def test_quality_gate_requires_consecutive_qualified_days() -> None:
     analyzer = DailyQualityAnalyzer(
         QualityConfig(
