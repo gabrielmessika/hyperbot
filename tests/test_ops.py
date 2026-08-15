@@ -376,8 +376,8 @@ def test_collector_runtime_publishes_health_and_stops_cleanly(tmp_path: Path) ->
             persisted_code_version,
         )
 
-    metrics, running, record_count, subscriptions, persisted_code_version = (
-        asyncio.run(scenario())
+    metrics, running, record_count, subscriptions, persisted_code_version = asyncio.run(
+        scenario()
     )
 
     assert running["public_only"] is True
@@ -465,6 +465,14 @@ def test_daily_maintenance_is_idempotent_and_never_deletes_raw(
     assert first.report_json.is_file()
     assert first.report_json.with_suffix(".json.sha256").is_file()
     assert first.compressed_segments == 2
+    assert second.reused
+    reused_status = json.loads(
+        settings.maintenance_status_path.read_text(encoding="utf-8")
+    )
+    assert reused_status["archive_enabled"] is False
+    assert reused_status["hot_retention_days"] == 30
+    assert reused_status["archived_segments"] == 0
+    assert reused_status["archived_bytes"] == 0
     assert not list(settings.data_root.rglob("*.jsonl.open"))
     assert len(list(settings.data_root.rglob("*.gz"))) == 2
     assert first.qualified_day

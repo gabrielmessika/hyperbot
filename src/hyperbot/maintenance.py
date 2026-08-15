@@ -104,6 +104,12 @@ def _reuse_completed_day(
     payload = json.loads(report_json.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         return None
+    archived_segments = marker_payload.get("archived_segments", 0)
+    if not isinstance(archived_segments, int) or isinstance(archived_segments, bool):
+        archived_segments = 0
+    archived_bytes = marker_payload.get("archived_bytes", 0)
+    if not isinstance(archived_bytes, int) or isinstance(archived_bytes, bool):
+        archived_bytes = 0
     atomic_write_json(
         settings.maintenance_status_path,
         {
@@ -113,26 +119,20 @@ def _reuse_completed_day(
             "updated_at_ms": generated_at_ms,
             "reused": True,
             "active_config_sha256": settings.config_sha256,
+            "archive_enabled": settings.archive_enabled,
+            "hot_retention_days": settings.hot_retention_days,
+            "archived_segments": archived_segments,
+            "archived_bytes": archived_bytes,
+            "raw_data_deleted": False,
         },
     )
-    archived_segments = marker_payload.get("archived_segments", 0)
-    archived_bytes = marker_payload.get("archived_bytes", 0)
     return MaintenanceResult(
         report_date=report_date.isoformat(),
         report_json=report_json,
         report_markdown=report_markdown,
         compressed_segments=0,
-        archived_segments=(
-            archived_segments
-            if isinstance(archived_segments, int)
-            and not isinstance(archived_segments, bool)
-            else 0
-        ),
-        archived_bytes=(
-            archived_bytes
-            if isinstance(archived_bytes, int) and not isinstance(archived_bytes, bool)
-            else 0
-        ),
+        archived_segments=archived_segments,
+        archived_bytes=archived_bytes,
         reused=True,
         qualified_day=payload.get("qualified_day") is True,
     )
