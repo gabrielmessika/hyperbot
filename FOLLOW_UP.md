@@ -694,10 +694,25 @@ l'observer public `3002`. Le script de fetch HyperBot reste séparé de
 
 ## 11. Questions ouvertes
 
-- **infrastructure à provisionner :** monter un Volume d'archive distinct,
-  créer son sentinel, vérifier sa capacité pour au moins 30 jours froids puis
-  activer `HYPERBOT_ARCHIVE_ENABLED=true` ; le code de tiering est livré mais
-  reste fail-closed sans ce montage ;
+- **infrastructure d'archive Hetzner à provisionner :** retenir en première
+  étape un Volume Cloud distinct de 100 Go, facturé 4,40 EUR HT/mois au tarif
+  observé le 15 août 2026. Le débit récent d'environ 1,03 Gio/jour représente
+  près de 31 Gio pour les 30 jours froids nécessaires à une rétention totale de
+  60 jours ; 100 Go laisse une marge d'exploitation contrairement au minimum
+  technique de 50 Go. Cette option est directement compatible avec le tiering
+  livré : monter le Volume, créer son sentinel, contrôler la capacité et
+  activer `HYPERBOT_ARCHIVE_ENABLED=true`. L'activation reste fail-closed sans
+  montage réellement distinct ;
+
+- **copie froide indépendante à planifier :** ajouter ensuite une Storage Box
+  Hetzner BX11 de 1 To, facturée 3,20 EUR HT/mois au tarif observé le 15 août
+  2026, soit 7,60 EUR HT/mois pour le couple Volume 100 Go + Storage Box. Elle
+  doit recevoir une copie vérifiée des archives et de leurs manifests via un
+  adaptateur SFTP/rclone encore à développer ; elle ne remplace donc pas le
+  Volume d'archive dans l'implémentation actuelle. Hetzner Object Storage,
+  facturé 6,49 EUR HT/mois avec 1 To de stockage et 1 To d'egress inclus, reste
+  l'alternative long terme si le backend d'archive évolue vers une interface
+  S3 native ;
 
 - **durcissement réseau à planifier :** le dashboard `3002` reste exposé en
   HTTP public avec Basic Auth. Le placer derrière TLS/VPN ou une allowlist IP,
