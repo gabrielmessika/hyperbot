@@ -12,7 +12,7 @@ import pytest
 from websockets.asyncio.client import connect
 from websockets.asyncio.server import ServerConnection, serve
 
-from hyperbot.maintenance import run_daily_maintenance
+from hyperbot.maintenance import deduplicate_automatic_target, run_daily_maintenance
 from hyperbot.models import (
     CollectorControlEvent,
     CollectorControlKind,
@@ -34,11 +34,22 @@ from hyperbot.watchdog import WatchdogSettings, alert_payload, should_alert
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_automatic_maintenance_runs_each_utc_date_once_per_process() -> None:
+    first = date(2026, 8, 14)
+    second = date(2026, 8, 15)
+
+    assert deduplicate_automatic_target(first, None, once=False) == first
+    assert deduplicate_automatic_target(first, first, once=False) is None
+    assert deduplicate_automatic_target(second, first, once=False) == second
+    assert deduplicate_automatic_target(first, first, once=True) == first
+
+
 def _environment(tmp_path: Path) -> dict[str, str]:
     return {
         "HYPERBOT_COLLECTOR_ENABLED": "true",
         "HYPERBOT_LIVE_ENABLED": "false",
         "HYPERBOT_SHADOW_ONLY": "true",
+        "HYPERBOT_CODE_COMMIT": "a" * 40,
         "HYPERBOT_COLLECTOR_MARKETS": "BTC",
         "HYPERBOT_COLLECTOR_CHANNELS": "bbo",
         "HYPERBOT_DATA_ROOT": str(tmp_path / "data"),
@@ -62,10 +73,15 @@ def test_ops_configuration_is_explicitly_enabled_and_secret_free(
     assert safe.collector_enabled
     assert not safe.live_enabled
     assert safe.shadow_only
+    assert safe.code_commit == "a" * 40
+    assert safe.code_version == f"0.1.0+g{'a' * 40}"
     assert safe.markets == ("BTC",)
     assert safe.persistence_batch_size == 256
     assert safe.fsync_every_records == 100
     assert safe.data_mount_sentinel is None
+    assert not safe.archive_enabled
+    assert safe.archive_root is None
+    assert safe.hot_retention_days == 30
     assert len(safe.config_sha256) == 64
 
     outcomes = {
@@ -85,6 +101,11 @@ def test_ops_configuration_is_explicitly_enabled_and_secret_free(
     secret = {**_environment(tmp_path), "TRIDENT_SECRET_KEY": "forbidden"}
     with pytest.raises(OpsConfigurationError, match="must not be exposed"):
         OpsSettings.from_environment(secret)
+
+    missing_commit = _environment(tmp_path)
+    missing_commit.pop("HYPERBOT_CODE_COMMIT")
+    with pytest.raises(OpsConfigurationError, match="deployed commit"):
+        OpsSettings.from_environment(missing_commit)
 
     non_finite = {
         **_environment(tmp_path),
@@ -118,12 +139,44 @@ def test_data_volume_sentinel_is_optional_and_fail_closed(tmp_path: Path) -> Non
 
     unrelated = {
         **environment,
-        "HYPERBOT_DATA_MOUNT_SENTINEL": str(
-            tmp_path / "outside" / ".hyperbot-volume"
-        ),
+        "HYPERBOT_DATA_MOUNT_SENTINEL": str(tmp_path / "outside" / ".hyperbot-volume"),
     }
-    with pytest.raises(OpsConfigurationError, match="data-root hierarchy"):
+    with pytest.raises(OpsConfigurationError, match="storage-root hierarchy"):
         OpsSettings.from_environment(unrelated)
+
+
+def test_archive_requires_a_distinct_guarded_mount(tmp_path: Path) -> None:
+    environment = {
+        **_environment(tmp_path),
+        "HYPERBOT_ARCHIVE_ENABLED": "true",
+        "HYPERBOT_ARCHIVE_ROOT": str(tmp_path / "archive" / "collector"),
+        "HYPERBOT_HOT_RETENTION_DAYS": "30",
+        "HYPERBOT_MINIMUM_RETENTION_DAYS": "60",
+    }
+
+    with pytest.raises(OpsConfigurationError, match="ARCHIVE_MOUNT_SENTINEL"):
+        OpsSettings.from_environment(environment)
+
+    sentinel = tmp_path / "archive" / ".hyperbot-volume"
+    sentinel.parent.mkdir(parents=True)
+    sentinel.write_text("archive-ready\n", encoding="utf-8")
+    environment["HYPERBOT_ARCHIVE_MOUNT_SENTINEL"] = str(sentinel)
+    settings = OpsSettings.from_environment(environment)
+
+    assert settings.archive_enabled
+    assert settings.archive_root == tmp_path / "archive" / "collector"
+    assert settings.archive_mount_sentinel == sentinel
+
+    overlapping = {
+        **environment,
+        "HYPERBOT_ARCHIVE_ROOT": str(tmp_path / "data" / "archive"),
+        "HYPERBOT_ARCHIVE_MOUNT_SENTINEL": str(tmp_path / "data" / ".archive-volume"),
+    }
+    overlap_sentinel = tmp_path / "data" / ".archive-volume"
+    overlap_sentinel.parent.mkdir(parents=True, exist_ok=True)
+    overlap_sentinel.write_text("archive-ready\n", encoding="utf-8")
+    with pytest.raises(OpsConfigurationError, match="separate"):
+        OpsSettings.from_environment(overlapping)
 
 
 def test_ops_configuration_builds_distinct_depth_and_breadth_profiles(
@@ -218,6 +271,7 @@ def test_health_is_fail_closed_for_stale_status_disconnect_and_disk(
             "public_only": True,
             "live_enabled": False,
             "shadow_only": True,
+            "code_commit": settings.code_commit,
             "config_sha256": settings.config_sha256,
             "connected": True,
             "dropped_events": 0,
@@ -246,6 +300,7 @@ def test_collector_runtime_publishes_health_and_stops_cleanly(tmp_path: Path) ->
         dict[str, object],
         int,
         list[dict[str, object]],
+        object,
     ]:
         environment = _environment(tmp_path)
         environment.pop("HYPERBOT_COLLECTOR_MARKETS")
@@ -308,16 +363,27 @@ def test_collector_runtime_publishes_health_and_stops_cleanly(tmp_path: Path) ->
         records = SegmentedEventStore(settings.data_root).read_records(
             "public-market-data"
         )
+        payload = records[0].get("payload", {}) if records else {}
+        context = payload.get("context", {}) if isinstance(payload, dict) else {}
+        persisted_code_version = (
+            context.get("code_version") if isinstance(context, dict) else None
+        )
         return (
             metrics,
             running,
             len(records) if health.healthy else -1,
             subscriptions,
+            persisted_code_version,
         )
 
-    metrics, running, record_count, subscriptions = asyncio.run(scenario())
+    metrics, running, record_count, subscriptions, persisted_code_version = (
+        asyncio.run(scenario())
+    )
 
     assert running["public_only"] is True
+    assert running["code_commit"] == "a" * 40
+    assert running["code_version"] == f"0.1.0+g{'a' * 40}"
+    assert persisted_code_version == f"0.1.0+g{'a' * 40}"
     assert running["live_enabled"] is False
     assert running["depth_markets"] == ["BTC"]
     assert running["breadth_markets"] == ["ETH"]
@@ -401,7 +467,7 @@ def test_daily_maintenance_is_idempotent_and_never_deletes_raw(
     assert first.compressed_segments == 2
     assert not list(settings.data_root.rglob("*.jsonl.open"))
     assert len(list(settings.data_root.rglob("*.gz"))) == 2
-    assert not first.qualified_day
+    assert first.qualified_day
     marker_path = (
         settings.runtime_root / "maintenance" / f"{report_date.isoformat()}.json"
     )
@@ -459,6 +525,78 @@ def test_daily_maintenance_refuses_an_incomplete_utc_day(tmp_path: Path) -> None
     assert not settings.maintenance_status_path.exists()
 
 
+def test_daily_maintenance_archives_only_verified_old_segments(
+    tmp_path: Path,
+) -> None:
+    base = OpsSettings.from_environment(_environment(tmp_path))
+    archive_root = tmp_path / "archive" / "collector"
+    settings = replace(
+        base,
+        archive_enabled=True,
+        archive_root=archive_root,
+        archive_mount_sentinel=tmp_path / "archive" / ".hyperbot-volume",
+        hot_retention_days=7,
+    )
+    old_begin = int(datetime(2026, 8, 1, tzinfo=UTC).timestamp() * 1_000)
+    timestamps = iter((old_begin + 1_000, old_begin + 2_000))
+    store = SegmentedEventStore(
+        settings.data_root,
+        fsync=False,
+        clock_ms=lambda: next(timestamps),
+    )
+    context = EventContext("archive-quality", "test", "f" * 64, TimeSource.EXCHANGE)
+    store.append(
+        "public-market-data",
+        PublicMarketDataEvent(
+            context=context,
+            channel="bbo",
+            coin="BTC",
+            exchange_ts_ms=old_begin + 990,
+            receive_ts_ms=old_begin + 1_000,
+            receive_monotonic_ns=1_000,
+            local_sequence=0,
+            payload_json=json.dumps({"coin": "BTC", "bbo": [None, None]}),
+        ),
+    )
+    store.append(
+        "collector-control",
+        CollectorControlEvent(
+            context=context,
+            kind=CollectorControlKind.CONNECTED,
+            receive_ts_ms=old_begin + 2_000,
+            receive_monotonic_ns=2_000,
+            connection_attempt=1,
+            dropped_messages=0,
+            reason=None,
+        ),
+    )
+
+    result = run_daily_maintenance(
+        settings,
+        report_date=date(2026, 8, 10),
+        generated_at_ms=int(datetime(2026, 8, 11, tzinfo=UTC).timestamp() * 1_000),
+    )
+
+    assert result.archived_segments == 2
+    assert result.archived_bytes > 0
+    assert not list(settings.data_root.rglob("*.jsonl.gz"))
+    assert len(list(archive_root.rglob("*.jsonl.gz"))) == 2
+    archived_store = SegmentedEventStore(
+        settings.data_root,
+        archive_root=archive_root,
+        fsync=False,
+    )
+    assert archived_store.validate("public-market-data").record_count == 1
+    marker = json.loads(
+        (settings.runtime_root / "maintenance" / "2026-08-10.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert marker["archive_enabled"] is True
+    assert marker["archived_segments"] == 2
+    assert marker["raw_data_deleted"] is False
+
+
 def test_deployment_artifacts_remain_disabled_by_default() -> None:
     environment = (PROJECT_ROOT / ".env.hyperbot.example").read_text(encoding="utf-8")
     compose = (PROJECT_ROOT / "docker-compose.hyperbot.yml").read_text(encoding="utf-8")
@@ -467,6 +605,7 @@ def test_deployment_artifacts_remain_disabled_by_default() -> None:
     assert "HYPERBOT_COLLECTOR_ENABLED=false" in environment
     assert "HYPERBOT_LIVE_ENABLED=false" in environment
     assert "HYPERBOT_SHADOW_ONLY=true" in environment
+    assert "HYPERBOT_CODE_COMMIT=" in environment
     assert "HYPERBOT_COLLECTOR_DEPTH_MARKETS=BTC,ETH,HYPE,SOL" in environment
     assert "HYPERBOT_COLLECTOR_BREADTH_MARKETS=PUMP,ZEC,XRP" in environment
     assert "HYPERBOT_COLLECTOR_MARKETS=" not in environment
@@ -474,7 +613,12 @@ def test_deployment_artifacts_remain_disabled_by_default() -> None:
     assert "HYPERBOT_FSYNC_EVERY_RECORDS=100" in environment
     assert "HYPERBOT_PERSISTENCE_BATCH_SIZE=256" in environment
     assert "HYPERBOT_DATA_MOUNT_SENTINEL=" in environment
+    assert "HYPERBOT_ARCHIVE_ENABLED=false" in environment
+    assert "HYPERBOT_ARCHIVE_MOUNT_SENTINEL=" in environment
+    assert "HYPERBOT_HOT_RETENTION_DAYS=30" in environment
     assert "HYPERBOT_DATA_MOUNT_SENTINEL" in compose
+    assert "HYPERBOT_ARCHIVE_MOUNT_SENTINEL" in compose
+    assert "/app/archive" in compose
     assert 'profiles: ["collector"]' in compose
     assert "read_only: true" in compose
     assert sum(line.strip() == "ports:" for line in compose.splitlines()) == 1

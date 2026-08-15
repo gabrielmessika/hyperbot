@@ -36,6 +36,15 @@ assert_safe_activation() {
     }
     grep -qx 'HYPERBOT_LIVE_ENABLED=false' "$ENV_FILE"
     grep -qx 'HYPERBOT_SHADOW_ONLY=true' "$ENV_FILE"
+    expected_commit="$(cat "${PROJECT_ROOT}/.hyperbot-code-commit" 2>/dev/null || true)"
+    [[ "$expected_commit" =~ ^[0-9a-f]{40}$ ]] || {
+        echo "Release commit metadata is missing or invalid" >&2
+        exit 1
+    }
+    grep -qx "HYPERBOT_CODE_COMMIT=${expected_commit}" "$ENV_FILE" || {
+        echo "Configured commit does not match the selected release" >&2
+        exit 1
+    }
     if grep -Eq '^[[:space:]]*(HYPERBOT_PRIVATE_KEY|HYPERBOT_SECRET_KEY|TRIDENT_SECRET_KEY)=.+' "$ENV_FILE"; then
         echo "A forbidden signing secret is present in the HyperBot environment" >&2
         exit 1

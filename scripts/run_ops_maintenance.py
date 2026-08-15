@@ -11,7 +11,7 @@ import time
 from dataclasses import asdict
 from datetime import UTC, date, datetime, timedelta
 
-from hyperbot.maintenance import run_daily_maintenance
+from hyperbot.maintenance import deduplicate_automatic_target, run_daily_maintenance
 from hyperbot.ops import OpsConfigurationError, OpsSettings, atomic_write_json
 
 
@@ -69,9 +69,15 @@ def main() -> int:
     signal.signal(signal.SIGINT, request_stop)
     signal.signal(signal.SIGTERM, request_stop)
     reported_blocked_dates: set[date] = set()
+    last_attempted_automatic_date: date | None = None
     while not stopped:
         now = datetime.now(tz=UTC)
         target = args.date or _scheduled_date(settings, now)
+        target = deduplicate_automatic_target(
+            target,
+            last_attempted_automatic_date,
+            once=args.once,
+        )
         if (
             target is not None
             and not args.once
@@ -86,6 +92,8 @@ def main() -> int:
                 reported_blocked_dates.add(target)
             target = None
         if target is not None:
+            if not args.once:
+                last_attempted_automatic_date = target
             try:
                 result = run_daily_maintenance(
                     settings,

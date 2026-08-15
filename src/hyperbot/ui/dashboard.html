@@ -297,8 +297,8 @@
         </div>
         <div class="section-head"><div><h2>Historique 30 jours</h2><p>Vert : qualifié. Rouge : incomplet ou incident.</p></div></div>
         <article class="card"><div id="quality-calendar" class="calendar"></div></article>
-        <div class="section-head"><div><h2>Métriques par marché</h2><p>Couverture, latence, gaps, spread et activité.</p></div></div>
-        <article class="card table-wrap"><table><thead><tr><th>Marché</th><th>Couverture</th><th>Latence p50/p95/p99</th><th>Gaps majeurs</th><th>Spread p50</th><th>Trades</th><th>Notional</th></tr></thead><tbody id="quality-body"></tbody></table></article>
+        <div class="section-head"><div><h2>Métriques par marché</h2><p>Disponibilité opérationnelle, fraîcheur événementielle, latence, spread et activité.</p></div></div>
+        <article class="card table-wrap"><table><thead><tr><th>Marché</th><th>Disponibilité</th><th>Fraîcheur marché</th><th>Latence p50/p95/p99</th><th>Gaps marché majeurs</th><th>Spread p50</th><th>Trades</th><th>Notional</th></tr></thead><tbody id="quality-body"></tbody></table></article>
       </section>
 
       <section id="page-system" class="panel-page">
@@ -474,6 +474,7 @@
         const row = document.createElement("tr");
         cell(row, market.coin);
         cell(row, `${market.coverage_pct ?? "—"}%`, Number(market.coverage_pct) >= 99 ? "good" : "bad");
+        cell(row, `${market.freshness_pct ?? "—"}%`, Number(market.freshness_pct) >= 99 ? "good" : "warn");
         cell(row, [market.latency_p50_ms, market.latency_p95_ms, market.latency_p99_ms].map((value) => value ?? "—").join(" / ") + " ms");
         cell(row, market.major_gap_count);
         cell(row, market.spread_p50_bps == null ? "—" : `${market.spread_p50_bps} bps`);
@@ -481,7 +482,7 @@
         cell(row, market.trade_notional_usd == null ? "—" : `$${formatNumber(market.trade_notional_usd)}`);
         body.appendChild(row);
       });
-      if (!(report?.markets || []).length) { const row = document.createElement("tr"); const item = make("td", "Aucune métrique quotidienne", "empty"); item.colSpan = 7; row.appendChild(item); body.appendChild(row); }
+      if (!(report?.markets || []).length) { const row = document.createElement("tr"); const item = make("td", "Aucune métrique quotidienne", "empty"); item.colSpan = 8; row.appendChild(item); body.appendChild(row); }
     }
 
     function renderStorage(storage, configuration) {
@@ -494,6 +495,9 @@
       addKv(storageKv, "Espace libre", formatBytes(storage.disk_free_bytes));
       addKv(storageKv, "Seuil minimum", formatBytes(storage.minimum_free_bytes));
       addKv(storageKv, "Rétention minimale", `${storage.minimum_retention_days || "—"} jours`);
+      addKv(storageKv, "Rétention chaude", `${storage.hot_retention_days || "—"} jours`);
+      addKv(storageKv, "Archive froide", storage.archive?.enabled ? formatBytes(storage.archive.total_bytes) : "Désactivée");
+      addKv(storageKv, "Espace archive", storage.archive?.enabled ? formatBytes(storage.archive.disk_free_bytes) : "—");
       const configKv = $("config-kv"); clear(configKv);
       addKv(configKv, "Public only", configuration.live_enabled === false ? "Oui" : "Non");
       addKv(configKv, "Live enabled", String(configuration.live_enabled));
@@ -504,6 +508,9 @@
       addKv(configKv, "Batch persistence", configuration.persistence_batch_size ?? "—");
       addKv(configKv, "Fsync marché", `tous les ${configuration.fsync_every_records ?? "—"} records`);
       addKv(configKv, "Garde Volume data", configuration.data_mount_guard_enabled ? "Actif" : "Inactif");
+      addKv(configKv, "Archive froide", configuration.archive_enabled ? "Active" : "Inactive");
+      addKv(configKv, "Garde Volume archive", configuration.archive_mount_guard_enabled ? "Actif" : "Inactif");
+      addKv(configKv, "Commit", configuration.code_commit || "—");
       addKv(configKv, "Contrôles UI", "Désactivés");
       addKv(configKv, "Hash configuration", configuration.config_sha256 || "—");
       const body = $("streams-body"); clear(body);

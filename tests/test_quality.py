@@ -164,8 +164,10 @@ def test_daily_json_markdown_and_checksum_are_written(tmp_path: Path) -> None:
     json_path, markdown_path = write_daily_quality_report(report, tmp_path)
     decoded = json.loads(json_path.read_text(encoding="utf-8"))
 
-    assert decoded["schema_version"] == 2
+    assert decoded["schema_version"] == 3
     assert decoded["dataset_tier"] == "A"
+    assert decoded["operational_coverage_pct"] == "100.000"
+    assert decoded["markets"][0]["freshness_pct"] == "100.000"
     assert decoded["quality_config_hash"] == analyzer.config.sha256
     assert decoded["retained_gap_detail_count"] == len(decoded["gaps"])
     assert markdown_path.read_text(encoding="utf-8").startswith("# Qualité des données")
@@ -262,6 +264,63 @@ def test_gap_details_are_bounded_without_losing_exact_aggregates(
     assert len(report.gaps) == 1
     assert report.gap_details_truncated
     assert report.gap_detail_limit_per_market == 1
+    assert report.qualified_day
+    assert market.freshness_pct < Decimal("1")
+    assert market.coverage_pct == Decimal("100.000")
+
+
+def test_market_staleness_does_not_impersonate_collector_data_loss() -> None:
+    analyzer = DailyQualityAnalyzer(
+        QualityConfig(
+            expected_markets=("BTC",),
+            expected_book_channels=(("BTC", ("bbo",)),),
+            stale_after_ms=500,
+            major_gap_ms=1_000,
+        )
+    )
+    report = analyzer.analyze(
+        report_date=REPORT_DATE,
+        market_events=[
+            _market_event(timestamp=DAY_BEGIN, sequence=0),
+            _market_event(timestamp=DAY_BEGIN + DAY_MS - 1, sequence=1),
+        ],
+        control_events=[
+            _control(CollectorControlKind.CONNECTED, DAY_BEGIN),
+            _control(CollectorControlKind.SHUTDOWN, DAY_BEGIN + DAY_MS),
+        ],
+        generated_at_ms=DAY_BEGIN + DAY_MS,
+        run_id="quality-market-stale",
+        code_version="test",
+        source_config_hash="d" * 64,
+    )
+
+    assert report.qualified_day
+    assert report.operational_coverage_pct == Decimal("100.000")
+    assert report.operational_major_gap_count == 0
+    assert report.markets[0].major_gap_count == 1
+    assert report.markets[0].freshness_pct < Decimal("1")
+
+
+def test_missing_required_book_channel_fails_closed() -> None:
+    report = DailyQualityAnalyzer(
+        QualityConfig(
+            expected_markets=("BTC",),
+            expected_book_channels=(("BTC", ("l2Book", "bbo")),),
+            stale_after_ms=DAY_MS,
+            major_gap_ms=DAY_MS,
+        )
+    ).analyze(
+        report_date=REPORT_DATE,
+        market_events=[_market_event(timestamp=DAY_BEGIN, sequence=0)],
+        control_events=[],
+        generated_at_ms=DAY_BEGIN + DAY_MS,
+        run_id="quality-missing-channel",
+        code_version="test",
+        source_config_hash="d" * 64,
+    )
+
+    assert not report.qualified_day
+    assert report.qualification_reasons == ("missing_book_channel:BTC:l2Book",)
 
 
 def test_time_outside_a_collector_session_is_not_market_inactivity() -> None:

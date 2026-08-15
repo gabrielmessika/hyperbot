@@ -1,6 +1,6 @@
 # HyperBot — plan de développement et suivi
 
-**Dernière mise à jour :** 11 août 2026
+**Dernière mise à jour :** 15 août 2026
 
 **Document stratégique :** [`HYPERBOT_FOUNDATION.md`](HYPERBOT_FOUNDATION.md)
 
@@ -612,6 +612,34 @@ UTC, 10 sessions et les mêmes 9 coupures pour 5 392 ms. Le checksum du rapport
 reste `5cd54902...`, les quatre services sont sans restart/OOM, le collector est
 à zéro drop/malformed/backlog et l'observer expose zéro incident actif.
 
+Correctifs M3/Ops livrés le 15 août 2026 :
+
+- le rapport qualité passe au schéma v3 et sépare désormais la disponibilité
+  opérationnelle du collector de la fraîcheur événementielle de chaque marché ;
+- les seuils restent inchangés à 99 %, 500 ms et 5 s, mais seuls une
+  indisponibilité collector démontrée, un canal de carnet attendu absent ou une
+  latence négative invalident la journée ; la staleness marché reste exhaustive
+  et visible pour décider de l'éligibilité d'un marché ;
+- le service maintenance ne traite plus le même jour toutes les 60 secondes :
+  une date automatique n'est tentée qu'une fois par processus, tandis que
+  `quality --date` conserve la reprise opérateur explicite ;
+- chaque événement d'un collector serveur porte désormais la version package
+  et le SHA Git complet de 40 caractères. Le démarrage refuse un commit absent,
+  ambigu ou différent du release sélectionné ;
+- un tiering froid vérifié sait déplacer les segments gzip de plus de 30 jours
+  vers un montage séparé, après double vérification des hashes de stockage et de
+  contenu. Le manifest principal conserve la chaîne et indique le tier ; chaque
+  stream d'archive possède aussi son manifest checksumé. Aucun fichier archivé
+  n'est purgé automatiquement, ce qui permet une conservation d'au moins 60
+  jours si le Volume d'archive est dimensionné en conséquence ;
+- l'archive reste désactivée tant qu'un second Volume et son sentinel n'ont pas
+  été provisionnés. L'activation sans montage distinct échoue fail-closed.
+
+Les anciens rapports M3 v2 restent immuables. Ils ne sont pas requalifiés
+rétroactivement et l'observer les exclut explicitement de la gate v3 ; la
+nouvelle série de jours candidats commence avec le premier jour UTC complet
+collecté et analysé sous le schéma v3.
+
 ### M8 — canary, bloqué par défaut
 
 Ce lot ne peut pas commencer à la suite d'un simple développement. Il exige :
@@ -666,8 +694,20 @@ l'observer public `3002`. Le script de fetch HyperBot reste séparé de
 
 ## 11. Questions ouvertes
 
-- **à résoudre avant 60 jours :** archivage froid checksummé des segments du
-  Volume, puisque 100 Go couvrent la gate de 30 jours mais pas 60 jours locaux ;
+- **infrastructure à provisionner :** monter un Volume d'archive distinct,
+  créer son sentinel, vérifier sa capacité pour au moins 30 jours froids puis
+  activer `HYPERBOT_ARCHIVE_ENABLED=true` ; le code de tiering est livré mais
+  reste fail-closed sans ce montage ;
+
+- **durcissement réseau à planifier :** le dashboard `3002` reste exposé en
+  HTTP public avec Basic Auth. Le placer derrière TLS/VPN ou une allowlist IP,
+  puis fermer l'accès UFW mondial direct ; l'API demeure strictement read-only
+  entre-temps ;
+
+- **alerting externe à planifier :** aucun webhook HTTPS n'est configuré sur le
+  serveur. Ajouter une destination opérée, tester panne et recovery, puis
+  documenter la rotation ; les transitions restent uniquement dans les logs et
+  `watchdog_status.json` jusque-là ;
 
 - liste blanche outcomes initiale : découverte automatique puis validation ou
   configuration manuelle stricte ;

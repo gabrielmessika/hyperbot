@@ -69,6 +69,12 @@ Un Volume de données dédié peut être protégé par
 `HYPERBOT_DATA_MOUNT_SENTINEL` : tous les services refusent de démarrer si le
 montage attendu n'est pas présent.
 
+Le runtime supporte aussi un tier d'archive distinct : après vérification
+cryptographique, les segments de plus de 30 jours peuvent quitter le Volume
+chaud tout en restant rejouables depuis l'archive. Ce tier est fail-closed et
+reste désactivé tant qu'un second montage avec sentinel n'est pas configuré.
+Chaque collector serveur inscrit le SHA Git complet dans ses événements.
+
 ## Données historiques
 
 HyperBot peut utiliser les archives TRIDENT en lecture seule pour démarrer les

@@ -20,6 +20,7 @@ from hyperbot.models import DomainEvent, JsonValue, event_payload, event_type
 
 SEGMENT_SCHEMA_VERSION = 2
 MANIFEST_SCHEMA_VERSION = 1
+ARCHIVE_MANIFEST_SCHEMA_VERSION = 1
 GENESIS_HASH = "0" * 64
 _STREAM_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 _ACTIVE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{6}\.jsonl\.open$")
@@ -31,6 +32,13 @@ class ValidationResult:
     segment_count: int
     record_count: int
     last_record_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class ArchiveResult:
+    stream: str
+    segment_count: int
+    archived_bytes: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +138,7 @@ class SegmentedEventStore:
         fsync: bool = True,
         fsync_every_records: int = 1,
         always_fsync_streams: frozenset[str] = frozenset(),
+        archive_root: str | Path | None = None,
         clock_ms: Callable[[], int] | None = None,
     ) -> None:
         if max_segment_bytes <= 0:
@@ -148,6 +157,18 @@ class SegmentedEventStore:
         self.fsync = fsync
         self.fsync_every_records = fsync_every_records
         self.always_fsync_streams = always_fsync_streams
+        self.archive_root = Path(archive_root) if archive_root is not None else None
+        if self.archive_root is not None:
+            hot = self.root.absolute()
+            archive = self.archive_root.absolute()
+            if (
+                hot == archive
+                or hot.is_relative_to(archive)
+                or archive.is_relative_to(hot)
+            ):
+                raise ValueError(
+                    "archive_root must be separate from the hot store root"
+                )
         self.clock_ms = clock_ms or (lambda: int(time.time() * 1000))
         self._append_states: dict[str, _ActiveAppendState] = {}
         self._pending_fsync_records: dict[str, int] = {}
@@ -353,7 +374,7 @@ class SegmentedEventStore:
                 path_name = segment.get("path")
                 if not isinstance(path_name, str):
                     raise EventIntegrityError("segment manifest path is invalid")
-                path = stream_dir / path_name
+                path = self._segment_path(stream, segment)
                 if not path.is_file():
                     raise EventIntegrityError(f"missing segment: {path}")
                 stored = path.read_bytes()
@@ -422,7 +443,7 @@ class SegmentedEventStore:
             return
         manifest = self._load_manifest(stream)
         for segment in self._manifest_segments(manifest):
-            path = stream_dir / cast(str, segment["path"])
+            path = self._segment_path(stream, segment)
             stored = path.read_bytes()
             content = gzip.decompress(stored) if path.suffix == ".gz" else stored
             yield from self._decode_records(content)
@@ -461,7 +482,7 @@ class SegmentedEventStore:
             path_name = segment.get("path")
             if not isinstance(path_name, str):
                 raise EventIntegrityError("segment manifest path is invalid")
-            path = stream_dir / path_name
+            path = self._segment_path(stream, segment)
             if not path.is_file():
                 raise EventIntegrityError(f"missing segment: {path}")
             storage_hash = segment.get("storage_sha256")
@@ -525,7 +546,7 @@ class SegmentedEventStore:
             path_name = segment.get("path")
             if not isinstance(path_name, str):
                 raise EventIntegrityError("segment manifest path is invalid")
-            path = stream_dir / path_name
+            path = self._segment_path(stream, segment)
             if path.parent != stream_dir:
                 raise EventIntegrityError("segment path escapes its stream")
             self._validate_closed_segment_stream(
@@ -601,6 +622,209 @@ class SegmentedEventStore:
             finally:
                 temporary.unlink(missing_ok=True)
 
+    def archive_closed_segments_before(
+        self,
+        stream: str,
+        cutoff_utc_date: str,
+        *,
+        progress: Callable[[int, int], None] | None = None,
+    ) -> ArchiveResult:
+        """Move verified gzip segments to a distinct immutable storage tier."""
+
+        if self.archive_root is None:
+            raise EventStoreError("archive_root is required for cold archiving")
+        try:
+            parsed_cutoff = date.fromisoformat(cutoff_utc_date)
+        except ValueError as exc:
+            raise EventStoreError(f"invalid UTC date: {cutoff_utc_date!r}") from exc
+        if parsed_cutoff.isoformat() != cutoff_utc_date:
+            raise EventStoreError(f"invalid UTC date: {cutoff_utc_date!r}")
+        stream_dir = self._stream_dir(stream)
+        if not stream_dir.exists():
+            return ArchiveResult(stream, 0, 0)
+        self.archive_root.mkdir(parents=True, exist_ok=True)
+        if self.archive_root.is_symlink():
+            raise EventIntegrityError("archive root must not be a symlink")
+        archive_stream_dir = self._archive_stream_dir(stream)
+        archive_stream_dir.mkdir(parents=True, exist_ok=True)
+        if archive_stream_dir.is_symlink():
+            raise EventIntegrityError("archive stream directory must not be a symlink")
+        archived_count = 0
+        archived_bytes = 0
+        while True:
+            with self._lock(stream_dir, exclusive=False):
+                manifest = self._load_manifest(stream)
+                segments = [dict(item) for item in self._manifest_segments(manifest)]
+                candidate = next(
+                    (
+                        (index, segment)
+                        for index, segment in enumerate(segments)
+                        if segment.get("storage_tier", "hot") == "hot"
+                        and isinstance(segment.get("utc_date"), str)
+                        and cast(str, segment["utc_date"]) < cutoff_utc_date
+                    ),
+                    None,
+                )
+            if candidate is None:
+                self._remove_verified_hot_archive_duplicates(stream, segments)
+                return ArchiveResult(stream, archived_count, archived_bytes)
+            index, segment = candidate
+            path_name = self._segment_name(segment)
+            if not path_name.endswith(".jsonl.gz"):
+                raise EventIntegrityError(
+                    f"cold archive requires a compressed segment: {path_name}"
+                )
+            source_path = stream_dir / path_name
+            self._validate_closed_segment_stream(
+                stream=stream,
+                segments=segments,
+                index=index,
+                path=source_path,
+            )
+            expected_storage_hash = segment.get("storage_sha256")
+            expected_content_hash = segment.get("content_sha256")
+            if not isinstance(expected_storage_hash, str) or not isinstance(
+                expected_content_hash, str
+            ):
+                raise EventIntegrityError(f"segment checksum is invalid: {source_path}")
+            destination = archive_stream_dir / path_name
+            self._copy_verified_archive_file(
+                source_path,
+                destination,
+                storage_sha256=expected_storage_hash,
+                content_sha256=expected_content_hash,
+            )
+            source_size = source_path.stat().st_size
+            with self._lock(stream_dir):
+                latest_manifest = self._load_manifest(stream)
+                latest_segments = self._manifest_segments(latest_manifest)
+                if index >= len(latest_segments) or latest_segments[index] != segment:
+                    continue
+                if _file_sha256(source_path) != expected_storage_hash:
+                    raise EventIntegrityError(
+                        f"segment changed during archival: {source_path}"
+                    )
+                if _file_sha256(destination) != expected_storage_hash:
+                    raise EventIntegrityError(
+                        f"archive checksum changed before publication: {destination}"
+                    )
+                updated = dict(segment)
+                updated["storage_tier"] = "archive"
+                updated["archive_path"] = f"{stream}/{path_name}"
+                self._record_archive_manifest(stream, updated)
+                latest_segments[index] = updated
+                latest_manifest["segments"] = cast(JsonValue, latest_segments)
+                self._write_manifest(stream, latest_manifest)
+                source_path.unlink()
+            archived_count += 1
+            archived_bytes += source_size
+            if progress is not None:
+                progress(archived_count, archived_bytes)
+
+    def _copy_verified_archive_file(
+        self,
+        source: Path,
+        destination: Path,
+        *,
+        storage_sha256: str,
+        content_sha256: str,
+    ) -> None:
+        if destination.is_symlink():
+            raise EventIntegrityError(
+                f"archive destination is a symlink: {destination}"
+            )
+        if destination.exists():
+            if (
+                not destination.is_file()
+                or _file_sha256(destination) != storage_sha256
+                or _gzip_content_sha256(destination) != content_sha256
+            ):
+                raise EventIntegrityError(
+                    f"existing archive segment is incompatible: {destination}"
+                )
+            return
+        temporary = destination.with_suffix(destination.suffix + ".tmp")
+        if temporary.exists() or temporary.is_symlink():
+            temporary.unlink(missing_ok=True)
+        digest = hashlib.sha256()
+        try:
+            with source.open("rb") as source_handle, temporary.open("xb") as target:
+                for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
+                    digest.update(chunk)
+                    target.write(chunk)
+                target.flush()
+                if self.fsync:
+                    os.fsync(target.fileno())
+            if digest.hexdigest() != storage_sha256:
+                raise EventIntegrityError(f"segment checksum mismatch: {source}")
+            if (
+                _file_sha256(temporary) != storage_sha256
+                or _gzip_content_sha256(temporary) != content_sha256
+            ):
+                raise EventIntegrityError(f"archive verification failed: {destination}")
+            os.replace(temporary, destination)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    def _remove_verified_hot_archive_duplicates(
+        self,
+        stream: str,
+        segments: Sequence[Mapping[str, JsonValue]],
+    ) -> None:
+        if self.archive_root is None:
+            return
+        stream_dir = self._stream_dir(stream)
+        with self._lock(stream_dir):
+            latest_manifest = self._load_manifest(stream)
+            if self._manifest_segments(latest_manifest) != list(segments):
+                return
+            for segment in segments:
+                if segment.get("storage_tier") != "archive":
+                    continue
+                path_name = self._segment_name(segment)
+                hot_path = stream_dir / path_name
+                if not hot_path.exists():
+                    continue
+                archive_path = self._segment_path(stream, segment)
+                expected_hash = segment.get("storage_sha256")
+                if (
+                    not isinstance(expected_hash, str)
+                    or _file_sha256(hot_path) != expected_hash
+                    or _file_sha256(archive_path) != expected_hash
+                ):
+                    raise EventIntegrityError(
+                        f"cannot remove unverified hot archive duplicate: {hot_path}"
+                    )
+                hot_path.unlink()
+
+    def _record_archive_manifest(
+        self,
+        stream: str,
+        segment: Mapping[str, JsonValue],
+    ) -> None:
+        manifest = self._load_archive_manifest(stream)
+        raw_segments = manifest.get("segments")
+        if not isinstance(raw_segments, list):
+            raise EventIntegrityError("archive manifest segments are invalid")
+        archived_segments = [item for item in raw_segments if isinstance(item, dict)]
+        path_name = self._segment_name(segment)
+        previous = next(
+            (item for item in archived_segments if item.get("path") == path_name),
+            None,
+        )
+        if previous is not None:
+            if previous != dict(segment):
+                raise EventIntegrityError(
+                    f"archive manifest entry changed for {stream}/{path_name}"
+                )
+            return
+        archived_segments.append(dict(segment))
+        archived_segments.sort(
+            key=lambda item: cast(int, item.get("first_sequence", 0))
+        )
+        manifest["segments"] = cast(JsonValue, archived_segments)
+        self._write_archive_manifest(stream, manifest)
+
     def _validate_closed_segment_stream(
         self,
         *,
@@ -646,6 +870,39 @@ class SegmentedEventStore:
             raise EventStoreError(f"invalid stream name: {stream!r}")
         return self.root / stream
 
+    def _archive_stream_dir(self, stream: str) -> Path:
+        if self.archive_root is None:
+            raise EventStoreError("archive_root is not configured")
+        if not _STREAM_PATTERN.fullmatch(stream):
+            raise EventStoreError(f"invalid stream name: {stream!r}")
+        return self.archive_root / stream
+
+    def _segment_name(self, segment: Mapping[str, JsonValue]) -> str:
+        path_name = segment.get("path")
+        if (
+            not isinstance(path_name, str)
+            or Path(path_name).name != path_name
+            or path_name in {"", ".", ".."}
+        ):
+            raise EventIntegrityError("segment manifest path is invalid")
+        return path_name
+
+    def _segment_path(
+        self,
+        stream: str,
+        segment: Mapping[str, JsonValue],
+    ) -> Path:
+        path_name = self._segment_name(segment)
+        storage_tier = segment.get("storage_tier", "hot")
+        if storage_tier == "hot":
+            return self._stream_dir(stream) / path_name
+        if storage_tier != "archive":
+            raise EventIntegrityError("segment storage tier is invalid")
+        expected_archive_path = f"{stream}/{path_name}"
+        if segment.get("archive_path") != expected_archive_path:
+            raise EventIntegrityError("segment archive path is invalid")
+        return self._archive_stream_dir(stream) / path_name
+
     def _known_streams(self) -> list[str]:
         return sorted(
             entry.name
@@ -658,6 +915,58 @@ class SegmentedEventStore:
 
     def _manifest_path(self, stream: str) -> Path:
         return self._stream_dir(stream) / "manifest.json"
+
+    def _archive_manifest_path(self, stream: str) -> Path:
+        return self._archive_stream_dir(stream) / "manifest.json"
+
+    def _load_archive_manifest(self, stream: str) -> dict[str, JsonValue]:
+        path = self._archive_manifest_path(stream)
+        checksum_path = path.with_suffix(".sha256")
+        if not path.exists():
+            if checksum_path.exists():
+                raise EventIntegrityError(f"archive manifest missing for {stream}")
+            return {
+                "archive_manifest_schema_version": ARCHIVE_MANIFEST_SCHEMA_VERSION,
+                "stream": stream,
+                "segments": [],
+            }
+        if path.is_symlink() or not checksum_path.is_file():
+            raise EventIntegrityError(f"archive manifest is unsafe for {stream}")
+        raw = path.read_bytes()
+        if checksum_path.read_text(encoding="ascii").strip() != _sha256(raw):
+            raise EventIntegrityError(
+                f"archive manifest checksum mismatch for {stream}"
+            )
+        try:
+            decoded = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise EventIntegrityError(
+                f"invalid archive manifest JSON for {stream}"
+            ) from exc
+        if (
+            not isinstance(decoded, dict)
+            or decoded.get("archive_manifest_schema_version")
+            != ARCHIVE_MANIFEST_SCHEMA_VERSION
+            or decoded.get("stream") != stream
+            or not isinstance(decoded.get("segments"), list)
+        ):
+            raise EventIntegrityError(f"invalid archive manifest for {stream}")
+        return cast(dict[str, JsonValue], decoded)
+
+    def _write_archive_manifest(
+        self,
+        stream: str,
+        manifest: Mapping[str, JsonValue],
+    ) -> None:
+        path = self._archive_manifest_path(stream)
+        raw = _canonical_json(manifest) + b"\n"
+        temporary = path.with_suffix(".json.tmp")
+        checksum_path = path.with_suffix(".sha256")
+        checksum_temporary = checksum_path.with_suffix(".sha256.tmp")
+        self._write_file(temporary, raw)
+        self._write_file(checksum_temporary, (_sha256(raw) + "\n").encode("ascii"))
+        os.replace(temporary, path)
+        os.replace(checksum_temporary, checksum_path)
 
     def _new_manifest(self, stream: str) -> dict[str, JsonValue]:
         config: dict[str, JsonValue] = {
@@ -1097,6 +1406,7 @@ class SegmentedEventStore:
                 "content_sha256": content_hash,
                 "storage_sha256": content_hash,
                 "compression": "none",
+                "storage_tier": "hot",
             }
         )
         manifest["segments"] = cast(JsonValue, segments)

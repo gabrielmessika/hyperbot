@@ -13,6 +13,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import cast
 
+from hyperbot.build_info import code_commit, code_version
 from hyperbot.services.public_collector import ALLOWED_CHANNELS
 
 OPS_SCHEMA_VERSION = 3
@@ -90,23 +91,26 @@ def _runtime_path(environment: Mapping[str, str], name: str, default: str) -> Pa
     return path
 
 
-def _data_mount_sentinel(
+def _mount_sentinel(
     environment: Mapping[str, str],
-    data_root: Path,
+    *,
+    variable: str,
+    storage_root: Path,
+    required: bool,
 ) -> Path | None:
-    raw = environment.get("HYPERBOT_DATA_MOUNT_SENTINEL", "").strip()
+    raw = environment.get(variable, "").strip()
     if not raw:
+        if required:
+            raise OpsConfigurationError(
+                f"{variable} is required when storage is enabled"
+            )
         return None
     sentinel = Path(raw)
     if sentinel == Path("/") or ".." in sentinel.parts:
-        raise OpsConfigurationError(
-            "HYPERBOT_DATA_MOUNT_SENTINEL must be a narrow path without '..'"
-        )
-    allowed_parents = {data_root, *data_root.parents} - {Path("/")}
+        raise OpsConfigurationError(f"{variable} must be a narrow path without '..'")
+    allowed_parents = {storage_root, *storage_root.parents} - {Path("/")}
     if sentinel.parent not in allowed_parents:
-        raise OpsConfigurationError(
-            "HYPERBOT_DATA_MOUNT_SENTINEL must share the data-root hierarchy"
-        )
+        raise OpsConfigurationError(f"{variable} must share the storage-root hierarchy")
     try:
         is_valid = (
             not sentinel.is_symlink()
@@ -114,12 +118,10 @@ def _data_mount_sentinel(
             and sentinel.stat().st_size <= 4_096
         )
     except OSError as exc:
-        raise OpsConfigurationError(
-            "cannot inspect HYPERBOT_DATA_MOUNT_SENTINEL"
-        ) from exc
+        raise OpsConfigurationError(f"cannot inspect {variable}") from exc
     if not is_valid:
         raise OpsConfigurationError(
-            "required HyperBot data Volume sentinel is missing or invalid"
+            f"required HyperBot storage sentinel is missing or invalid: {variable}"
         )
     return sentinel
 
@@ -217,6 +219,7 @@ class OpsSettings:
     collector_enabled: bool
     live_enabled: bool
     shadow_only: bool
+    code_commit: str
     markets: tuple[str, ...]
     channels: tuple[str, ...]
     depth_markets: tuple[str, ...]
@@ -224,6 +227,10 @@ class OpsSettings:
     subscriptions: tuple[tuple[str, str], ...]
     data_root: Path
     data_mount_sentinel: Path | None
+    archive_enabled: bool
+    archive_root: Path | None
+    archive_mount_sentinel: Path | None
+    hot_retention_days: int
     runtime_root: Path
     review_root: Path
     queue_capacity: int
@@ -268,6 +275,13 @@ class OpsSettings:
             raise OpsConfigurationError(
                 "collector activation requires HYPERBOT_COLLECTOR_ENABLED=true"
             )
+        try:
+            exact_code_commit = code_commit(
+                values,
+                required=require_enabled or collector_enabled,
+            )
+        except ValueError as exc:
+            raise OpsConfigurationError(str(exc)) from exc
 
         (
             markets,
@@ -304,23 +318,70 @@ class OpsSettings:
         minimum_retention_days = _integer(
             values, "HYPERBOT_MINIMUM_RETENTION_DAYS", "60", minimum=30
         )
+        hot_retention_days = _integer(
+            values, "HYPERBOT_HOT_RETENTION_DAYS", "30", minimum=7
+        )
+        archive_enabled = _boolean(values, "HYPERBOT_ARCHIVE_ENABLED", "false")
+        if archive_enabled and hot_retention_days >= minimum_retention_days:
+            raise OpsConfigurationError(
+                "HYPERBOT_HOT_RETENTION_DAYS must be below minimum retention"
+            )
         hour = _integer(values, "HYPERBOT_MAINTENANCE_HOUR_UTC", "0", minimum=0)
         minute = _integer(values, "HYPERBOT_MAINTENANCE_MINUTE_UTC", "15", minimum=0)
         if hour > 23 or minute > 59:
             raise OpsConfigurationError("maintenance UTC time is invalid")
 
         data_root = _runtime_path(values, "HYPERBOT_DATA_ROOT", "data/raw/collector")
+        archive_root = (
+            _runtime_path(
+                values,
+                "HYPERBOT_ARCHIVE_ROOT",
+                "/app/archive/collector",
+            )
+            if archive_enabled
+            else None
+        )
+        if archive_root is not None:
+            data_absolute = data_root.absolute()
+            archive_absolute = archive_root.absolute()
+            if (
+                data_absolute == archive_absolute
+                or data_absolute.is_relative_to(archive_absolute)
+                or archive_absolute.is_relative_to(data_absolute)
+            ):
+                raise OpsConfigurationError(
+                    "archive root must be separate from the hot data root"
+                )
         settings = cls(
             collector_enabled=collector_enabled,
             live_enabled=live_enabled,
             shadow_only=shadow_only,
+            code_commit=exact_code_commit,
             markets=markets,
             channels=channels,
             depth_markets=depth_markets,
             breadth_markets=breadth_markets,
             subscriptions=subscriptions,
             data_root=data_root,
-            data_mount_sentinel=_data_mount_sentinel(values, data_root),
+            data_mount_sentinel=_mount_sentinel(
+                values,
+                variable="HYPERBOT_DATA_MOUNT_SENTINEL",
+                storage_root=data_root,
+                required=False,
+            ),
+            archive_enabled=archive_enabled,
+            archive_root=archive_root,
+            archive_mount_sentinel=(
+                _mount_sentinel(
+                    values,
+                    variable="HYPERBOT_ARCHIVE_MOUNT_SENTINEL",
+                    storage_root=archive_root,
+                    required=True,
+                )
+                if archive_root is not None
+                else None
+            ),
+            hot_retention_days=hot_retention_days,
             runtime_root=_runtime_path(values, "HYPERBOT_RUNTIME_ROOT", "runtime"),
             review_root=_runtime_path(values, "HYPERBOT_REVIEW_ROOT", "data/reviews"),
             queue_capacity=_integer(
@@ -385,10 +446,19 @@ class OpsSettings:
     @property
     def config_sha256(self) -> str:
         payload = asdict(self)
+        payload.pop("code_commit")
         payload["data_root"] = str(self.data_root)
         payload["data_mount_sentinel"] = (
             str(self.data_mount_sentinel)
             if self.data_mount_sentinel is not None
+            else None
+        )
+        payload["archive_root"] = (
+            str(self.archive_root) if self.archive_root is not None else None
+        )
+        payload["archive_mount_sentinel"] = (
+            str(self.archive_mount_sentinel)
+            if self.archive_mount_sentinel is not None
             else None
         )
         payload["runtime_root"] = str(self.runtime_root)
@@ -397,6 +467,10 @@ class OpsSettings:
             "utf-8"
         )
         return hashlib.sha256(encoded).hexdigest()
+
+    @property
+    def code_version(self) -> str:
+        return code_version(self.code_commit)
 
 
 def atomic_write_json(path: Path, payload: Mapping[str, object]) -> None:
@@ -462,6 +536,8 @@ def evaluate_collector_health(
         reasons.append("live_guard_failed")
     if status.get("shadow_only") is not True:
         reasons.append("shadow_guard_failed")
+    if status.get("code_commit") != settings.code_commit:
+        reasons.append("code_commit_mismatch")
     if status.get("config_sha256") != settings.config_sha256:
         reasons.append("config_hash_mismatch")
     if status.get("connected") is not True:
@@ -482,6 +558,20 @@ def evaluate_collector_health(
     free_bytes = shutil.disk_usage(disk_target).free
     if free_bytes < settings.minimum_free_bytes:
         reasons.append("disk_reserve_low")
+    if settings.archive_enabled:
+        if settings.archive_root is None:
+            reasons.append("archive_root_missing")
+        else:
+            archive_disk_target = (
+                settings.archive_root
+                if settings.archive_root.exists()
+                else settings.archive_root.parent
+            )
+            if (
+                shutil.disk_usage(archive_disk_target).free
+                < settings.minimum_free_bytes
+            ):
+                reasons.append("archive_reserve_low")
     return HealthResult(
         healthy=not reasons,
         reasons=tuple(dict.fromkeys(reasons)),

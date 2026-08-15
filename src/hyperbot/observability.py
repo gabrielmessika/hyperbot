@@ -14,13 +14,13 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
-from hyperbot import __version__
 from hyperbot.ops import (
     HealthResult,
     OpsConfigurationError,
     OpsSettings,
     evaluate_collector_health,
 )
+from hyperbot.quality import QUALITY_SCHEMA_VERSION
 
 MAX_JSON_BYTES = 32 * 1024 * 1024
 MAX_HISTORY_DAYS = 90
@@ -213,6 +213,7 @@ def _quality_gate(reports: list[dict[str, object]]) -> dict[str, object]:
         date.fromisoformat(cast(str, report["report_date"])): report
         for report in reports
         if isinstance(report.get("report_date"), str)
+        and report.get("schema_version") == QUALITY_SCHEMA_VERSION
     }
     ordered = sorted(by_date)
     missing: list[str] = []
@@ -254,6 +255,13 @@ def _report_summary(report: dict[str, object]) -> dict[str, object]:
         "qualified_day": report.get("qualified_day") is True,
         "collector_outage_count": report.get("collector_outage_count", 0),
         "collector_outage_duration_ms": report.get("collector_outage_duration_ms", 0),
+        "collector_not_running_count": report.get("collector_not_running_count", 0),
+        "collector_not_running_duration_ms": report.get(
+            "collector_not_running_duration_ms", 0
+        ),
+        "operational_gap_count": report.get("operational_gap_count", 0),
+        "operational_major_gap_count": report.get("operational_major_gap_count", 0),
+        "operational_coverage_pct": report.get("operational_coverage_pct", "0"),
         "qualification_reasons": report.get("qualification_reasons", []),
         "markets": markets if isinstance(markets, list) else [],
     }
@@ -269,7 +277,8 @@ class ObservabilityReader:
         return {
             "status": "ok",
             "service": "hyperbot-observer",
-            "version": __version__,
+            "version": self.settings.ops.code_version,
+            "code_commit": self.settings.ops.code_commit,
             "read_only": True,
         }
 
@@ -280,7 +289,8 @@ class ObservabilityReader:
         return {
             "generated_at_ms": checked_at_ms,
             "service": "hyperbot-observer",
-            "version": __version__,
+            "version": self.settings.ops.code_version,
+            "code_commit": self.settings.ops.code_commit,
             "read_only": True,
             "control_endpoints_enabled": False,
             "public_only": True,
@@ -395,6 +405,39 @@ class ObservabilityReader:
                     total_bytes += path.stat().st_size
             except OSError:
                 continue
+        archive: dict[str, object] = {
+            "enabled": self.settings.ops.archive_enabled,
+            "root": (
+                str(self.settings.ops.archive_root)
+                if self.settings.ops.archive_root is not None
+                else None
+            ),
+            "mount_guard_enabled": (
+                self.settings.ops.archive_mount_sentinel is not None
+            ),
+            "total_bytes": 0,
+        }
+        archive_root = self.settings.ops.archive_root
+        if self.settings.ops.archive_enabled and archive_root is not None:
+            archive_bytes = 0
+            for path in archive_root.rglob("*"):
+                try:
+                    if path.is_file() and not path.is_symlink():
+                        archive_bytes += path.stat().st_size
+                except OSError:
+                    continue
+            archive_disk_target = (
+                archive_root if archive_root.exists() else archive_root.parent
+            )
+            archive_disk = shutil.disk_usage(archive_disk_target)
+            archive.update(
+                {
+                    "total_bytes": archive_bytes,
+                    "disk_total_bytes": archive_disk.total,
+                    "disk_used_bytes": archive_disk.used,
+                    "disk_free_bytes": archive_disk.free,
+                }
+            )
         return {
             "available": True,
             "root": str(root),
@@ -404,6 +447,8 @@ class ObservabilityReader:
             "disk_free_bytes": disk.free,
             "minimum_free_bytes": self.settings.ops.minimum_free_bytes,
             "minimum_retention_days": self.settings.ops.minimum_retention_days,
+            "hot_retention_days": self.settings.ops.hot_retention_days,
+            "archive": archive,
             "streams": streams,
         }
 
@@ -547,11 +592,16 @@ class ObservabilityReader:
             "persistence_batch_size": ops.persistence_batch_size,
             "fsync_every_records": ops.fsync_every_records,
             "data_mount_guard_enabled": ops.data_mount_sentinel is not None,
+            "archive_enabled": ops.archive_enabled,
+            "archive_mount_guard_enabled": (ops.archive_mount_sentinel is not None),
+            "hot_retention_days": ops.hot_retention_days,
             "heartbeat_interval_seconds": ops.heartbeat_interval_seconds,
             "stale_after_seconds": ops.stale_after_seconds,
             "health_max_age_seconds": ops.health_max_age_seconds,
             "minimum_free_bytes": ops.minimum_free_bytes,
             "minimum_retention_days": ops.minimum_retention_days,
+            "code_version": ops.code_version,
+            "code_commit": ops.code_commit,
             "ui": {
                 "host": self.settings.host,
                 "port": self.settings.port,

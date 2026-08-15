@@ -24,7 +24,7 @@ from hyperbot.models import (
     TimeSource,
 )
 
-QUALITY_SCHEMA_VERSION = 2
+QUALITY_SCHEMA_VERSION = 3
 _REQUIRED_BOOK_CHANNELS = frozenset({"l2Book", "bbo"})
 _PERCENTILE_SORT_CHUNK_VALUES = 50_000
 _MAX_GAP_DETAILS_PER_MARKET = 1_000
@@ -56,6 +56,7 @@ class QualityGateStage(StrEnum):
 @dataclass(frozen=True, slots=True)
 class QualityConfig:
     expected_markets: tuple[str, ...]
+    expected_book_channels: tuple[tuple[str, tuple[str, ...]], ...] = ()
     stale_after_ms: int = 500
     major_gap_ms: int = 5_000
     minimum_coverage_pct: Decimal = Decimal("99")
@@ -67,6 +68,17 @@ class QualityConfig:
             raise ValueError("expected_markets must be unique")
         if any(not market.strip() for market in self.expected_markets):
             raise ValueError("expected market names must not be empty")
+        configured_markets: set[str] = set()
+        for market, channels in self.expected_book_channels:
+            if market not in self.expected_markets:
+                raise ValueError("expected book channel market is not configured")
+            if market in configured_markets:
+                raise ValueError("expected book channel markets must be unique")
+            if not channels or len(set(channels)) != len(channels):
+                raise ValueError("expected book channels must be non-empty and unique")
+            if not set(channels).issubset(_REQUIRED_BOOK_CHANNELS):
+                raise ValueError("expected book channels must be l2Book or bbo")
+            configured_markets.add(market)
         if self.stale_after_ms <= 0:
             raise ValueError("stale_after_ms must be positive")
         if self.major_gap_ms < self.stale_after_ms:
@@ -78,6 +90,10 @@ class QualityConfig:
     def sha256(self) -> str:
         payload = {
             "expected_markets": list(self.expected_markets),
+            "expected_book_channels": [
+                [market, list(channels)]
+                for market, channels in self.expected_book_channels
+            ],
             "stale_after_ms": self.stale_after_ms,
             "major_gap_ms": self.major_gap_ms,
             "minimum_coverage_pct": str(self.minimum_coverage_pct),
@@ -101,6 +117,7 @@ class MarketQuality:
     message_count: int
     channel_counts: tuple[tuple[str, int], ...]
     coverage_pct: Decimal
+    freshness_pct: Decimal
     latency_p50_ms: int | None
     latency_p95_ms: int | None
     latency_p99_ms: int | None
@@ -134,6 +151,12 @@ class DailyQualityReport:
     window_end_ms: int
     collector_outage_count: int
     collector_outage_duration_ms: int
+    collector_not_running_count: int
+    collector_not_running_duration_ms: int
+    operational_gap_count: int
+    operational_major_gap_count: int
+    operational_unavailable_duration_ms: int
+    operational_coverage_pct: Decimal
     total_gap_count: int
     retained_gap_detail_count: int
     gap_details_truncated: bool
@@ -228,6 +251,53 @@ def _merge_intervals(
             previous_begin, previous_end = merged[-1]
             merged[-1] = (previous_begin, max(previous_end, end))
     return merged
+
+
+def _interval_complement(
+    intervals: Iterable[tuple[int, int]],
+    window_begin_ms: int,
+    window_end_ms: int,
+) -> list[tuple[int, int]]:
+    """Return portions of the UTC window not covered by the input intervals."""
+
+    complement: list[tuple[int, int]] = []
+    cursor = window_begin_ms
+    for begin, end in _merge_intervals(intervals):
+        bounded_begin = max(begin, window_begin_ms)
+        bounded_end = min(end, window_end_ms)
+        if bounded_end <= window_begin_ms or bounded_begin >= window_end_ms:
+            continue
+        if bounded_begin > cursor:
+            complement.append((cursor, bounded_begin))
+        cursor = max(cursor, bounded_end)
+    if cursor < window_end_ms:
+        complement.append((cursor, window_end_ms))
+    return complement
+
+
+def _subtract_intervals(
+    intervals: Iterable[tuple[int, int]],
+    excluded: Iterable[tuple[int, int]],
+) -> list[tuple[int, int]]:
+    """Subtract excluded intervals while preserving exact durations."""
+
+    remaining: list[tuple[int, int]] = []
+    exclusions = _merge_intervals(excluded)
+    for begin, end in _merge_intervals(intervals):
+        fragments = [(begin, end)]
+        for excluded_begin, excluded_end in exclusions:
+            next_fragments: list[tuple[int, int]] = []
+            for fragment_begin, fragment_end in fragments:
+                if excluded_end <= fragment_begin or excluded_begin >= fragment_end:
+                    next_fragments.append((fragment_begin, fragment_end))
+                    continue
+                if fragment_begin < excluded_begin:
+                    next_fragments.append((fragment_begin, excluded_begin))
+                if excluded_end < fragment_end:
+                    next_fragments.append((excluded_end, fragment_end))
+            fragments = next_fragments
+        remaining.extend(fragments)
+    return remaining
 
 
 def _overlaps(
@@ -671,6 +741,22 @@ class DailyQualityAnalyzer:
         )
         outages = _collector_outages(selected_controls, window_begin, window_end)
         sessions = _collector_sessions(selected_controls, window_begin, window_end)
+        outside_sessions = _interval_complement(
+            sessions,
+            window_begin,
+            window_end,
+        )
+        collector_not_running = _subtract_intervals(outside_sessions, outages)
+        operational_gaps = _merge_intervals((*outages, *collector_not_running))
+        operational_unavailable_duration = sum(
+            end - begin for begin, end in operational_gaps
+        )
+        window_duration = window_end - window_begin
+        operational_coverage = (
+            Decimal(max(0, window_duration - operational_unavailable_duration))
+            / Decimal(window_duration)
+            * 100
+        ).quantize(Decimal("0.001"))
         spill_parent = Path(spill_root) if spill_root is not None else None
         if spill_parent is not None:
             spill_parent.mkdir(parents=True, exist_ok=True)
@@ -772,7 +858,6 @@ class DailyQualityAnalyzer:
 
                 all_gaps: list[QualityGap] = []
                 market_metrics: list[MarketQuality] = []
-                window_duration = window_end - window_begin
                 for coin in self.config.expected_markets:
                     accumulator = accumulators[coin]
                     percentile_progress = (
@@ -799,7 +884,7 @@ class DailyQualityAnalyzer:
                         progress=percentile_progress,
                     )
                     all_gaps.extend(accumulator.retained_gaps)
-                    coverage = (
+                    freshness = (
                         Decimal(max(0, window_duration - accumulator.stale_duration_ms))
                         / Decimal(window_duration)
                         * 100
@@ -811,7 +896,8 @@ class DailyQualityAnalyzer:
                             channel_counts=tuple(
                                 sorted(accumulator.channel_counts.items())
                             ),
-                            coverage_pct=coverage,
+                            coverage_pct=operational_coverage,
+                            freshness_pct=freshness,
                             latency_p50_ms=latency_percentiles[0],
                             latency_p95_ms=latency_percentiles[1],
                             latency_p99_ms=latency_percentiles[2],
@@ -848,11 +934,27 @@ class DailyQualityAnalyzer:
                     current_handle.close()
 
         reasons: list[str] = []
+        operational_major_gap_count = sum(
+            end - begin >= self.config.major_gap_ms for begin, end in operational_gaps
+        )
+        if operational_coverage < self.config.minimum_coverage_pct:
+            reasons.append("operational_coverage_below_threshold")
+        if operational_major_gap_count > 0:
+            reasons.append("operational_major_gap")
+        expected_channels_by_market = dict(self.config.expected_book_channels)
         for market in market_metrics:
-            if market.coverage_pct < self.config.minimum_coverage_pct:
-                reasons.append(f"coverage_below_threshold:{market.coin}")
-            if market.major_gap_count > 0:
-                reasons.append(f"major_gap:{market.coin}")
+            channel_counts = dict(market.channel_counts)
+            expected_channels = expected_channels_by_market.get(market.coin)
+            if expected_channels is None:
+                if not any(
+                    channel_counts.get(channel, 0)
+                    for channel in _REQUIRED_BOOK_CHANNELS
+                ):
+                    reasons.append(f"missing_book_data:{market.coin}")
+            else:
+                for channel in expected_channels:
+                    if channel_counts.get(channel, 0) == 0:
+                        reasons.append(f"missing_book_channel:{market.coin}:{channel}")
             if market.negative_latency_count > 0:
                 reasons.append(f"negative_latency:{market.coin}")
         total_gap_count = sum(market.gap_count for market in market_metrics)
@@ -869,6 +971,14 @@ class DailyQualityAnalyzer:
             window_end_ms=window_end,
             collector_outage_count=len(outages),
             collector_outage_duration_ms=sum(end - begin for begin, end in outages),
+            collector_not_running_count=len(collector_not_running),
+            collector_not_running_duration_ms=sum(
+                end - begin for begin, end in collector_not_running
+            ),
+            operational_gap_count=len(operational_gaps),
+            operational_major_gap_count=operational_major_gap_count,
+            operational_unavailable_duration_ms=operational_unavailable_duration,
+            operational_coverage_pct=operational_coverage,
             total_gap_count=total_gap_count,
             retained_gap_detail_count=len(all_gaps),
             gap_details_truncated=total_gap_count > len(all_gaps),
@@ -975,6 +1085,13 @@ def write_daily_quality_report(
         f"- journée qualifiée : `{str(report.qualified_day).lower()}` ;",
         f"- pannes collector : {report.collector_outage_count} ;",
         f"- durée de panne : {report.collector_outage_duration_ms} ms ;",
+        f"- périodes collector non actif : {report.collector_not_running_count} ;",
+        (
+            "- indisponibilité opérationnelle : "
+            f"{report.operational_unavailable_duration_ms} ms ;"
+        ),
+        f"- couverture opérationnelle : {report.operational_coverage_pct}% ;",
+        f"- gaps opérationnels majeurs : {report.operational_major_gap_count} ;",
         f"- gaps exacts : {report.total_gap_count} ;",
         (
             "- détails de gaps conservés : "
@@ -982,8 +1099,11 @@ def write_daily_quality_report(
             f"(tronqués : {str(report.gap_details_truncated).lower()})."
         ),
         "",
-        "| Marché | Couverture | Latence p50/p95/p99 | Gaps majeurs | Trades |",
-        "|---|---:|---:|---:|---:|",
+        (
+            "| Marché | Couverture opérationnelle | Fraîcheur marché | "
+            "Latence p50/p95/p99 | Gaps marché majeurs | Trades |"
+        ),
+        "|---|---:|---:|---:|---:|---:|",
     ]
     for market in report.markets:
         latency = "/".join(
@@ -995,7 +1115,8 @@ def write_daily_quality_report(
             )
         )
         lines.append(
-            f"| {market.coin} | {market.coverage_pct}% | {latency} ms | "
+            f"| {market.coin} | {market.coverage_pct}% | {market.freshness_pct}% | "
+            f"{latency} ms | "
             f"{market.major_gap_count} | {market.trade_count} |"
         )
     if report.qualification_reasons:

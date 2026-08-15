@@ -6,6 +6,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.hyperbot
+      args:
+        HYPERBOT_CODE_COMMIT: ${HYPERBOT_CODE_COMMIT:-0000000000000000000000000000000000000000}
     image: hyperbot:${HYPERBOT_IMAGE_TAG:-local}
     container_name: hyperbot-collector
     command: ["python", "scripts/run_collector_service.py"]
@@ -13,10 +15,15 @@ services:
       HYPERBOT_COLLECTOR_ENABLED: ${HYPERBOT_COLLECTOR_ENABLED:-false}
       HYPERBOT_LIVE_ENABLED: ${HYPERBOT_LIVE_ENABLED:-false}
       HYPERBOT_SHADOW_ONLY: ${HYPERBOT_SHADOW_ONLY:-true}
+      HYPERBOT_CODE_COMMIT: ${HYPERBOT_CODE_COMMIT:-0000000000000000000000000000000000000000}
       HYPERBOT_COLLECTOR_DEPTH_MARKETS: ${HYPERBOT_COLLECTOR_DEPTH_MARKETS:-BTC,ETH,HYPE,SOL}
       HYPERBOT_COLLECTOR_BREADTH_MARKETS: ${HYPERBOT_COLLECTOR_BREADTH_MARKETS:-PUMP,ZEC,XRP,LIT,KAITO,CRV,WLD,XMR,TAO,ADA,LINK,PAXG,xyz:SKHX,xyz:CL,xyz:BRENTOIL,xyz:SPCX,xyz:SP500,xyz:XYZ100,xyz:SILVER,xyz:GOLD}
       HYPERBOT_DATA_ROOT: ${HYPERBOT_DATA_ROOT:-/app/data/raw/collector}
       HYPERBOT_DATA_MOUNT_SENTINEL: ${HYPERBOT_DATA_MOUNT_SENTINEL:-}
+      HYPERBOT_ARCHIVE_ENABLED: ${HYPERBOT_ARCHIVE_ENABLED:-false}
+      HYPERBOT_ARCHIVE_ROOT: ${HYPERBOT_ARCHIVE_ROOT:-/app/archive/collector}
+      HYPERBOT_ARCHIVE_MOUNT_SENTINEL: ${HYPERBOT_ARCHIVE_MOUNT_SENTINEL:-}
+      HYPERBOT_HOT_RETENTION_DAYS: ${HYPERBOT_HOT_RETENTION_DAYS:-30}
       HYPERBOT_RUNTIME_ROOT: ${HYPERBOT_RUNTIME_ROOT:-/app/runtime}
       HYPERBOT_REVIEW_ROOT: ${HYPERBOT_REVIEW_ROOT:-/app/data/reviews}
       HYPERBOT_QUEUE_CAPACITY: ${HYPERBOT_QUEUE_CAPACITY:-10000}
@@ -37,10 +44,11 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
-    volumes: &hyperbot-volumes
+    volumes: &hyperbot-read-archive-volumes
       - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/data:/app/data
       - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/runtime:/app/runtime
       - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/reports:/app/reports
+      - ${HYPERBOT_HOST_ARCHIVE_DIR:-./shared/archive}:/app/archive:ro
     restart: unless-stopped
     stop_grace_period: 45s
     healthcheck:
@@ -69,7 +77,11 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
-    volumes: *hyperbot-volumes
+    volumes:
+      - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/data:/app/data
+      - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/runtime:/app/runtime
+      - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/reports:/app/reports
+      - ${HYPERBOT_HOST_ARCHIVE_DIR:-./shared/archive}:/app/archive
     depends_on:
       collector:
         condition: service_healthy
@@ -96,7 +108,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777
-    volumes: *hyperbot-volumes
+    volumes: *hyperbot-read-archive-volumes
     secrets:
       - hyperbot_alert_webhook
     depends_on:
@@ -131,6 +143,7 @@ services:
       - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/data:/app/data:ro
       - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/runtime:/app/runtime:ro
       - ${HYPERBOT_HOST_SHARED_DIR:-./shared}/reports:/app/reports:ro
+      - ${HYPERBOT_HOST_ARCHIVE_DIR:-./shared/archive}:/app/archive:ro
     secrets:
       - hyperbot_ui_password
     ports:

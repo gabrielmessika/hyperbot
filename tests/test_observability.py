@@ -23,6 +23,7 @@ def _environment(tmp_path: Path) -> dict[str, str]:
         "HYPERBOT_COLLECTOR_ENABLED": "true",
         "HYPERBOT_LIVE_ENABLED": "false",
         "HYPERBOT_SHADOW_ONLY": "true",
+        "HYPERBOT_CODE_COMMIT": "b" * 40,
         "HYPERBOT_COLLECTOR_DEPTH_MARKETS": "BTC",
         "HYPERBOT_COLLECTOR_BREADTH_MARKETS": "ETH",
         "HYPERBOT_DATA_ROOT": str(tmp_path / "data"),
@@ -60,6 +61,7 @@ def _settings_with_snapshots(tmp_path: Path) -> ObserverSettings:
             "public_only": True,
             "live_enabled": False,
             "shadow_only": True,
+            "code_commit": settings.ops.code_commit,
             "config_sha256": settings.ops.config_sha256,
             "connected": True,
             "dropped_events": 0,
@@ -86,6 +88,7 @@ def _settings_with_snapshots(tmp_path: Path) -> ObserverSettings:
         _write_checksummed_json(
             settings.ops.review_root / f"quality-{report_date}-test.json",
             {
+                "schema_version": 3,
                 "report_date": report_date,
                 "generated_at_ms": 1_786_000_000_000 + day,
                 "qualified_day": True,
@@ -222,6 +225,17 @@ def test_observability_reader_combines_only_verified_bounded_snapshots(
     tmp_path: Path,
 ) -> None:
     settings = _settings_with_snapshots(tmp_path)
+    _write_checksummed_json(
+        settings.ops.review_root / "quality-2026-08-03-v2.json",
+        {
+            "schema_version": 2,
+            "report_date": "2026-08-03",
+            "generated_at_ms": 1_786_000_000_003,
+            "qualified_day": True,
+            "qualification_reasons": [],
+            "markets": [],
+        },
+    )
     invalid = settings.ops.review_root / "quality-2026-08-11-invalid.json"
     invalid.write_text(
         '{"report_date":"2026-08-11","qualified_day":true}',

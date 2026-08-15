@@ -81,6 +81,13 @@ ln -sfn "$previous" "${install_root}/current"
 [ -n "$current_target" ] && printf '%s\n' "$current_target" > "$previous_file"
 if [ "$start_collector" = "true" ]; then
     env_file="${install_root}/shared/.env.hyperbot"
+    expected_commit="$(cat "${previous}/.hyperbot-code-commit")"
+    [[ "$expected_commit" =~ ^[0-9a-f]{40}$ ]]
+    if grep -q '^HYPERBOT_CODE_COMMIT=' "$env_file"; then
+        sed -i "s|^HYPERBOT_CODE_COMMIT=.*|HYPERBOT_CODE_COMMIT=${expected_commit}|" "$env_file"
+    else
+        printf 'HYPERBOT_CODE_COMMIT=%s\n' "$expected_commit" >> "$env_file"
+    fi
     grep -qx 'HYPERBOT_COLLECTOR_ENABLED=true' "$env_file"
     grep -qx 'HYPERBOT_LIVE_ENABLED=false' "$env_file"
     grep -qx 'HYPERBOT_SHADOW_ONLY=true' "$env_file"
@@ -101,10 +108,33 @@ if [ -n "$(git status --porcelain=v1)" ]; then
     printf 'Refusing to deploy a dirty worktree; commit M7-Ops first.\n' >&2
     exit 1
 fi
+CURRENT_REMOTE_RELEASE="$(remote readlink -f "${REMOTE_DIR}/current" 2>/dev/null || true)"
+if [[ "$CURRENT_REMOTE_RELEASE" == "${REMOTE_DIR}"/releases/* ]]; then
+    CURRENT_RELEASE_NAME="${CURRENT_REMOTE_RELEASE##*/}"
+    CURRENT_SHORT_SHA="${CURRENT_RELEASE_NAME##*-}"
+    if [[ "$CURRENT_SHORT_SHA" =~ ^[0-9a-f]{12}$ ]]; then
+        PRIOR_COMMIT_SHA="$(git rev-parse "${CURRENT_SHORT_SHA}^{commit}")"
+        remote bash -s -- \
+            "$CURRENT_REMOTE_RELEASE/.hyperbot-code-commit" \
+            "$PRIOR_COMMIT_SHA" <<'REMOTE_PRIOR_COMMIT'
+set -euo pipefail
+commit_file="$1"
+commit_sha="$2"
+[[ "$commit_sha" =~ ^[0-9a-f]{40}$ ]]
+if [ ! -e "$commit_file" ]; then
+    printf '%s\n' "$commit_sha" > "$commit_file"
+    chmod 640 "$commit_file"
+fi
+REMOTE_PRIOR_COMMIT
+    fi
+fi
 RELEASE_ID="$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short=12 HEAD)"
+COMMIT_SHA="$(git rev-parse HEAD)"
+[[ "$COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]
 REMOTE_RELEASE="${REMOTE_DIR}/releases/${RELEASE_ID}"
 
 remote mkdir -p "$REMOTE_DIR/releases" "$REMOTE_DIR/shared/data" \
+    "$REMOTE_DIR/shared/archive" \
     "$REMOTE_DIR/shared/runtime" "$REMOTE_DIR/shared/reports" \
     "$REMOTE_DIR/shared/logs"
 remote test ! -e "$REMOTE_RELEASE"
@@ -124,12 +154,22 @@ fi
 chmod 600 "$password_file"
 REMOTE_SECRET
 git archive --format=tar HEAD | remote tar -xf - -C "$REMOTE_RELEASE"
+remote bash -s -- "$REMOTE_RELEASE/.hyperbot-code-commit" "$COMMIT_SHA" <<'REMOTE_COMMIT'
+set -euo pipefail
+commit_file="$1"
+commit_sha="$2"
+[[ "$commit_sha" =~ ^[0-9a-f]{40}$ ]]
+printf '%s\n' "$commit_sha" > "$commit_file"
+chmod 640 "$commit_file"
+REMOTE_COMMIT
 
-remote bash -s -- "$REMOTE_DIR" "$REMOTE_RELEASE" "$START_COLLECTOR" <<'REMOTE_INSTALL'
+remote bash -s -- "$REMOTE_DIR" "$REMOTE_RELEASE" "$START_COLLECTOR" "$COMMIT_SHA" <<'REMOTE_INSTALL'
 set -euo pipefail
 install_root="$1"
 release="$2"
 start_collector="$3"
+commit_sha="$4"
+[[ "$commit_sha" =~ ^[0-9a-f]{40}$ ]]
 env_file="${install_root}/shared/.env.hyperbot"
 ensure_env_setting() {
     key="$1"
@@ -152,6 +192,8 @@ if [ ! -f "$env_file" ]; then
     echo "Created disabled environment: $env_file"
 fi
 ensure_env_setting HYPERBOT_HOST_SHARED_DIR "${install_root}/shared"
+ensure_env_setting HYPERBOT_HOST_ARCHIVE_DIR "${install_root}/shared/archive"
+ensure_env_setting HYPERBOT_CODE_COMMIT "$commit_sha"
 ensure_env_setting HYPERBOT_ALERT_WEBHOOK_FILE \
     "${install_root}/shared/alert_webhook_url"
 ensure_env_setting HYPERBOT_UI_AUTH_PASSWORD_FILE \
@@ -168,6 +210,10 @@ ensure_env_default HYPERBOT_COLLECTOR_BREADTH_MARKETS \
     "PUMP,ZEC,XRP,LIT,KAITO,CRV,WLD,XMR,TAO,ADA,LINK,PAXG,xyz:SKHX,xyz:CL,xyz:BRENTOIL,xyz:SPCX,xyz:SP500,xyz:XYZ100,xyz:SILVER,xyz:GOLD"
 ensure_env_default HYPERBOT_PERSISTENCE_BATCH_SIZE "256"
 ensure_env_default HYPERBOT_FSYNC_EVERY_RECORDS "100"
+ensure_env_default HYPERBOT_ARCHIVE_ENABLED "false"
+ensure_env_default HYPERBOT_ARCHIVE_ROOT "/app/archive/collector"
+ensure_env_default HYPERBOT_ARCHIVE_MOUNT_SENTINEL ""
+ensure_env_default HYPERBOT_HOT_RETENTION_DAYS "30"
 sed -i '/^HYPERBOT_COLLECTOR_MARKETS=/d' "$env_file"
 sed -i '/^HYPERBOT_COLLECTOR_CHANNELS=/d' "$env_file"
 ensure_env_setting HYPERBOT_UID "$(id -u)"

@@ -4,6 +4,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+ARG HYPERBOT_CODE_COMMIT=0000000000000000000000000000000000000000
+ENV HYPERBOT_CODE_COMMIT=${HYPERBOT_CODE_COMMIT}
+
 WORKDIR /app
 
 RUN groupadd --gid 10001 hyperbot \
@@ -16,7 +19,7 @@ RUN python -m pip install --no-cache-dir .
 COPY config ./config
 COPY scripts ./scripts
 
-RUN mkdir -p /app/data /app/runtime /app/reports \
+RUN mkdir -p /app/data /app/runtime /app/reports /app/archive \
     && chown -R hyperbot:hyperbot /app
 
 USER hyperbot

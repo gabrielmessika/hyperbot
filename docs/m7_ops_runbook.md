@@ -36,6 +36,7 @@ Le déploiement utilise exclusivement :
 └── shared/
     ├── .env.hyperbot
     ├── ui_password
+    ├── archive/              # montage froid distinct, optionnel
     ├── data/
     ├── logs/
     ├── reports/
@@ -102,6 +103,7 @@ Sur le serveur, éditer `/opt/hyperbot/shared/.env.hyperbot` :
 HYPERBOT_COLLECTOR_ENABLED=true
 HYPERBOT_LIVE_ENABLED=false
 HYPERBOT_SHADOW_ONLY=true
+HYPERBOT_CODE_COMMIT=<sha-git-complet-rempli-par-deploy.sh>
 HYPERBOT_COLLECTOR_DEPTH_MARKETS=BTC,ETH,HYPE,SOL
 HYPERBOT_COLLECTOR_BREADTH_MARKETS=PUMP,ZEC,XRP,LIT,KAITO,CRV,WLD,XMR,TAO,ADA,LINK,PAXG,xyz:SKHX,xyz:CL,xyz:BRENTOIL,xyz:SPCX,xyz:SP500,xyz:XYZ100,xyz:SILVER,xyz:GOLD
 HYPERBOT_PERSISTENCE_BATCH_SIZE=256
@@ -183,6 +185,34 @@ Un Volume Hetzner n'est pas inclus dans les snapshots ou backups du serveur.
 Les segments clôturés doivent donc aussi être exportés vers un stockage séparé
 avec leur manifest et leur SHA-256.
 
+### Tier froid pour une rétention de 60 jours
+
+Le tiering conserve 30 jours sur le Volume chaud et déplace les segments plus
+anciens vers un second montage. Il copie chaque gzip dans un fichier temporaire,
+revérifie le SHA-256 stocké et le hash du contenu décompressé, publie le manifest
+d'archive puis seulement retire la copie chaude. Le manifest du store continue
+de référencer le segment dans le tier `archive`, ce qui préserve replay et chaîne
+de hashes.
+
+Préparer un Volume distinct sur `/opt/hyperbot/shared/archive`, créer un sentinel
+uniquement sur ce Volume, puis configurer :
+
+```dotenv
+HYPERBOT_HOST_ARCHIVE_DIR=/opt/hyperbot/shared/archive
+HYPERBOT_ARCHIVE_ENABLED=true
+HYPERBOT_ARCHIVE_ROOT=/app/archive/collector
+HYPERBOT_ARCHIVE_MOUNT_SENTINEL=/app/archive/.hyperbot-archive-volume-<id>
+HYPERBOT_HOT_RETENTION_DAYS=30
+HYPERBOT_MINIMUM_RETENTION_DAYS=60
+```
+
+Le collector, la maintenance, le watchdog et l'observer refusent cette
+configuration si le sentinel manque, si les roots chaud/froid se chevauchent ou
+si la réserve disque du tier froid passe sous le seuil. Seule la maintenance a
+un montage archive en écriture. Les autres services le voient en lecture seule.
+L'archive n'est jamais purgée automatiquement ; une politique au-delà de 60
+jours exige une décision et une preuve séparées.
+
 ### Accès public au dashboard
 
 Si UFW est actif, ouvrir explicitement le port après avoir choisi la politique
@@ -261,10 +291,17 @@ demande portant sur la journée courante ou une date future est refusée.
 L'analyse journalière lit et valide les segments en flux. Latences et spreads
 utilisent un spill temporaire sous `runtime/quality-spill/`, puis un tri externe
 exact par blocs bornés ; tous les fichiers temporaires sont supprimés à la fin.
-Les compteurs, durées et causes de gaps restent exhaustifs. Le rapport M3 v2
+Les compteurs, durées et causes de gaps restent exhaustifs. Le rapport M3 v3
 borne seulement les détails individuels à 1 000 par marché et expose
 `total_gap_count`, `retained_gap_detail_count`, `gap_detail_limit_per_market` et
 `gap_details_truncated` pour rendre tout échantillonnage explicite.
+La qualification à 99 % porte sur l'indisponibilité opérationnelle reconstruite
+depuis les cycles de vie collector. Un silence BBO/L2 événementiel reste une
+mesure de fraîcheur du marché et n'imite plus une panne. Chaque canal de carnet
+configuré reste toutefois obligatoire au moins une fois dans la journée ; son
+absence échoue fail-closed.
+Les rapports des schémas précédents restent consultables, mais ne sont jamais
+comptés dans la séquence de promotion du schéma v3.
 La compression lit et écrit les segments par blocs de 1 Mio, puis compare en
 flux le hash du gzip et le hash du contenu décompressé aux valeurs du manifeste.
 Elle ne matérialise jamais un segment complet et ne publie le `.gz` qu'après une
@@ -273,6 +310,12 @@ Le statut `maintenance_status.json` publie un heartbeat pendant l'analyse et
 après chaque segment compressé. L'observer déclare un incident si ce heartbeat
 devient stale ou si le rapport attendu n'est toujours pas terminé après la grâce
 opératoire.
+
+Une date automatique terminée n'est plus relue à chaque poll de 60 secondes.
+Elle est tentée une seule fois par processus ; la date suivante réarme
+automatiquement le service. Après un restart, une preuve existante est validée
+et réutilisée une seule fois. La commande opérateur `quality --date` n'est pas
+dédupliquée.
 
 Après une interruption brutale sans marker final, le service continu ne retente
 pas indéfiniment la même date. Il reste actif mais fail-closed et exige une revue,
@@ -308,9 +351,15 @@ Le watchdog attend 120 secondes au démarrage, alerte sur transition vers
 `healthy`. Son payload ne contient que l'état de santé, les raisons, les âges,
 la réserve disque et le hash de configuration.
 
+Le déploiement inscrit le SHA Git complet dans `.hyperbot-code-commit`, le passe
+à l'image et l'environnement, puis vérifie sa concordance avant tout start. Les
+événements portent `0.1.0+g<sha-complet>` dans `context.code_version`; le statut
+expose aussi `code_commit` séparément.
+
 Les journaux Docker sont bornés à cinq fichiers de 10 Mio par service. Les
-données A ne sont jamais supprimées automatiquement : une alerte disque impose
-une intervention et une extension ou un archivage vérifié.
+données A ne sont jamais détruites automatiquement. Une copie chaude n'est
+retirée qu'après publication et double vérification de sa copie froide ; sans
+archive active, une alerte disque impose une intervention ou une extension.
 
 ## 7. Fetch vérifié
 
@@ -323,8 +372,9 @@ Depuis le poste de développement :
 
 Le serveur construit d'abord un manifest des seuls segments clôturés et rapports
 publics sélectionnés. Les `.open`, symlinks, `.env`, clés et données TRIDENT sont
-exclus. Le fetch utilise cette liste puis recalcule taille et SHA-256 de chaque
-fichier sous `data/server-fetches/<fetch-id>/`.
+exclus. Le fetch utilise cette liste dans les tiers chaud et froid, puis
+recalcule taille et SHA-256 de chaque fichier sous
+`data/server-fetches/<fetch-id>/`.
 
 Une capture répétée garde son propre identifiant et manifest. Aucun résultat ne
 doit être promu en baseline avant validation de son checksum et de sa provenance

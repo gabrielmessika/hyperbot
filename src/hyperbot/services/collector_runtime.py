@@ -8,7 +8,6 @@ import time
 import uuid
 from collections.abc import Callable
 
-from hyperbot import __version__
 from hyperbot.models import EventContext, TimeSource
 from hyperbot.ops import OPS_SCHEMA_VERSION, OpsSettings, atomic_write_json
 from hyperbot.segmented_store import SegmentedEventStore
@@ -35,7 +34,8 @@ def _status_payload(
         "schema_version": OPS_SCHEMA_VERSION,
         "state": state,
         "run_id": run_id,
-        "code_version": __version__,
+        "code_version": settings.code_version,
+        "code_commit": settings.code_commit,
         "config_sha256": settings.config_sha256,
         "started_at_ms": started_at_ms,
         "updated_at_ms": updated_at_ms,
@@ -50,6 +50,8 @@ def _status_payload(
         "persistence_batch_size": settings.persistence_batch_size,
         "fsync_every_records": settings.fsync_every_records,
         "data_mount_guard_enabled": settings.data_mount_sentinel is not None,
+        "archive_enabled": settings.archive_enabled,
+        "archive_mount_guard_enabled": settings.archive_mount_sentinel is not None,
         "received_messages": metrics.received_messages,
         "persisted_events": metrics.persisted_events,
         "dropped_events": metrics.dropped_events,
@@ -79,7 +81,7 @@ async def run_collector_service(
     run_id = f"collector-ops-{started_at_ms}-{uuid.uuid4().hex[:8]}"
     context = EventContext(
         run_id,
-        __version__,
+        settings.code_version,
         settings.config_sha256,
         TimeSource.EXCHANGE,
     )

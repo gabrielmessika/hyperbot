@@ -42,8 +42,7 @@ def completed_utc_dates(*, today: date, days: int) -> tuple[str, ...]:
     if days <= 0:
         raise ValueError("days must be positive")
     return tuple(
-        (today - timedelta(days=offset)).isoformat()
-        for offset in range(1, days + 1)
+        (today - timedelta(days=offset)).isoformat() for offset in range(1, days + 1)
     )
 
 
@@ -66,8 +65,13 @@ def _selected_files(
     include_all: bool,
 ) -> tuple[Path, ...]:
     candidates: set[Path] = set()
-    collector_root = root / "data" / "raw" / "collector"
-    if collector_root.is_dir():
+    collector_roots = (
+        root / "data" / "raw" / "collector",
+        root / "archive" / "collector",
+    )
+    for collector_root in collector_roots:
+        if not collector_root.is_dir():
+            continue
         for path in collector_root.glob("*/*"):
             if path.is_symlink():
                 raise ExportError(f"symlinks are forbidden in exports: {path}")
@@ -110,9 +114,7 @@ def build_export_bundle(
     if not include_all and not parsed_dates:
         raise ExportError("at least one export date is required")
     normalized_time = generated_at.astimezone(UTC)
-    run_id = (
-        normalized_time.strftime("fetch-%Y%m%dT%H%M%SZ-") + uuid.uuid4().hex[:8]
-    )
+    run_id = normalized_time.strftime("fetch-%Y%m%dT%H%M%SZ-") + uuid.uuid4().hex[:8]
     destination_root = (
         output_root.resolve()
         if output_root is not None

@@ -11,7 +11,6 @@ from itertools import chain
 from pathlib import Path
 from typing import cast
 
-from hyperbot import __version__
 from hyperbot.ops import OPS_SCHEMA_VERSION, OpsSettings, atomic_write_json
 from hyperbot.quality import (
     QUALITY_SCHEMA_VERSION,
@@ -30,8 +29,23 @@ class MaintenanceResult:
     report_json: Path
     report_markdown: Path
     compressed_segments: int
+    archived_segments: int
+    archived_bytes: int
     reused: bool
     qualified_day: bool
+
+
+def deduplicate_automatic_target(
+    target: date | None,
+    last_attempted: date | None,
+    *,
+    once: bool,
+) -> date | None:
+    """Run each scheduled UTC date once per long-lived process."""
+
+    if once or target is None or target != last_attempted:
+        return target
+    return None
 
 
 def _valid_existing_report(json_path: Path) -> bool:
@@ -101,11 +115,24 @@ def _reuse_completed_day(
             "active_config_sha256": settings.config_sha256,
         },
     )
+    archived_segments = marker_payload.get("archived_segments", 0)
+    archived_bytes = marker_payload.get("archived_bytes", 0)
     return MaintenanceResult(
         report_date=report_date.isoformat(),
         report_json=report_json,
         report_markdown=report_markdown,
         compressed_segments=0,
+        archived_segments=(
+            archived_segments
+            if isinstance(archived_segments, int)
+            and not isinstance(archived_segments, bool)
+            else 0
+        ),
+        archived_bytes=(
+            archived_bytes
+            if isinstance(archived_bytes, int) and not isinstance(archived_bytes, bool)
+            else 0
+        ),
         reused=True,
         qualified_day=payload.get("qualified_day") is True,
     )
@@ -196,11 +223,28 @@ def run_daily_maintenance(
     stem = f"quality-{report_date.isoformat()}-{run_id}"
     report_json = settings.review_root / f"{stem}.json"
     report_markdown = settings.review_root / f"{stem}.md"
-    store = SegmentedEventStore(settings.data_root)
+    store = SegmentedEventStore(
+        settings.data_root,
+        archive_root=settings.archive_root,
+    )
     date_value = report_date.isoformat()
     started_at_ms = generated_at_ms
     processed_market_events = 0
-    quality_config = QualityConfig(expected_markets=settings.markets)
+    expected_book_channels = tuple(
+        (
+            market,
+            tuple(
+                channel
+                for channel, configured_market in settings.subscriptions
+                if configured_market == market and channel in {"l2Book", "bbo"}
+            ),
+        )
+        for market in settings.markets
+    )
+    quality_config = QualityConfig(
+        expected_markets=settings.markets,
+        expected_book_channels=expected_book_channels,
+    )
     recovered_report = _recover_existing_quality_report(
         report_json=report_json,
         report_markdown=report_markdown,
@@ -218,6 +262,8 @@ def run_daily_maintenance(
         stage: str,
         processed_events: int | None = None,
         compressed_segments: int = 0,
+        archived_segments: int = 0,
+        archived_bytes: int = 0,
     ) -> None:
         effective_processed_events = (
             processed_market_events if processed_events is None else processed_events
@@ -234,6 +280,10 @@ def run_daily_maintenance(
                 "updated_at_ms": int(time.time() * 1_000),
                 "processed_market_events": effective_processed_events,
                 "compressed_segments": compressed_segments,
+                "archived_segments": archived_segments,
+                "archived_bytes": archived_bytes,
+                "archive_enabled": settings.archive_enabled,
+                "hot_retention_days": settings.hot_retention_days,
                 "config_sha256": settings.config_sha256,
                 "minimum_retention_days": settings.minimum_retention_days,
                 "raw_data_deleted": False,
@@ -288,7 +338,7 @@ def run_daily_maintenance(
             generated_at_ms=generated_at_ms,
             run_id=run_id,
             code_version=(
-                source_context.code_version if source_context else __version__
+                source_context.code_version if source_context else settings.code_version
             ),
             source_config_hash=(
                 source_context.config_hash if source_context else settings.config_sha256
@@ -324,6 +374,44 @@ def run_daily_maintenance(
             stream,
             progress=compression_progress,
         )
+    archived_segments = 0
+    archived_bytes = 0
+    if settings.archive_enabled:
+        archive_cutoff = (
+            report_date - timedelta(days=settings.hot_retention_days - 1)
+        ).isoformat()
+        update_running_status(
+            stage="archival",
+            processed_events=processed_market_events,
+            compressed_segments=compressed,
+            archived_segments=archived_segments,
+            archived_bytes=archived_bytes,
+        )
+        for stream in ("public-market-data", "collector-control"):
+            base_segments = archived_segments
+            base_bytes = archived_bytes
+
+            def archive_progress(
+                stream_segments: int,
+                stream_bytes: int,
+                segment_base: int = base_segments,
+                byte_base: int = base_bytes,
+            ) -> None:
+                update_running_status(
+                    stage="archival",
+                    processed_events=processed_market_events,
+                    compressed_segments=compressed,
+                    archived_segments=segment_base + stream_segments,
+                    archived_bytes=byte_base + stream_bytes,
+                )
+
+            archive_result = store.archive_closed_segments_before(
+                stream,
+                archive_cutoff,
+                progress=archive_progress,
+            )
+            archived_segments += archive_result.segment_count
+            archived_bytes += archive_result.archived_bytes
     marker_payload = {
         "schema_version": OPS_SCHEMA_VERSION,
         "report_date": date_value,
@@ -334,6 +422,10 @@ def run_daily_maintenance(
         "report_markdown": str(report_markdown),
         "report_sha256": hashlib.sha256(report_json.read_bytes()).hexdigest(),
         "compressed_segments": compressed,
+        "archived_segments": archived_segments,
+        "archived_bytes": archived_bytes,
+        "archive_enabled": settings.archive_enabled,
+        "hot_retention_days": settings.hot_retention_days,
         "processed_market_events": processed_market_events,
         "qualified_day": qualified_day,
         "report_reused": report_reused,
@@ -354,6 +446,8 @@ def run_daily_maintenance(
         report_json=report_json,
         report_markdown=report_markdown,
         compressed_segments=compressed,
+        archived_segments=archived_segments,
+        archived_bytes=archived_bytes,
         reused=report_reused,
         qualified_day=qualified_day,
     )

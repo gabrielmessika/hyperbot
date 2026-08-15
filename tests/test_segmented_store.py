@@ -227,6 +227,70 @@ def test_compression_refuses_a_corrupted_closed_segment(tmp_path: Path) -> None:
         store.compress_closed_segments("market-data")
 
 
+def test_verified_cold_archive_preserves_replay_and_frees_hot_tier(
+    tmp_path: Path,
+) -> None:
+    hot_root = tmp_path / "hot"
+    archive_root = tmp_path / "archive"
+    store = SegmentedEventStore(
+        hot_root,
+        archive_root=archive_root,
+        fsync=False,
+        clock_ms=lambda: 1_000,
+    )
+    store.append_many("market-data", (_event(0), _event(1)))
+    store.close("market-data")
+    before = store.read_records("market-data")
+    assert store.compress_closed_segments("market-data") == 1
+
+    result = store.archive_closed_segments_before("market-data", "1970-01-02")
+    manifest = json.loads(
+        (hot_root / "market-data" / "manifest.json").read_text(encoding="utf-8")
+    )
+    segment = manifest["segments"][0]
+    hot_segment = hot_root / "market-data" / segment["path"]
+    archive_segment = archive_root / "market-data" / segment["path"]
+
+    assert result.segment_count == 1
+    assert result.archived_bytes == archive_segment.stat().st_size
+    assert not hot_segment.exists()
+    assert archive_segment.is_file()
+    assert segment["storage_tier"] == "archive"
+    assert segment["archive_path"] == f"market-data/{segment['path']}"
+    assert store.read_records("market-data") == before
+    assert list(store.iter_records_for_utc_date("market-data", "1970-01-01")) == before
+    assert store.validate("market-data").record_count == 2
+    archive_manifest = archive_root / "market-data" / "manifest.json"
+    assert archive_manifest.is_file()
+    assert archive_manifest.with_suffix(".sha256").is_file()
+
+
+def test_cold_archive_refuses_an_incompatible_existing_copy(tmp_path: Path) -> None:
+    hot_root = tmp_path / "hot"
+    archive_root = tmp_path / "archive"
+    store = SegmentedEventStore(
+        hot_root,
+        archive_root=archive_root,
+        fsync=False,
+        clock_ms=lambda: 1_000,
+    )
+    store.append("market-data", _event(0))
+    store.close("market-data")
+    assert store.compress_closed_segments("market-data") == 1
+    manifest = json.loads(
+        (hot_root / "market-data" / "manifest.json").read_text(encoding="utf-8")
+    )
+    path_name = manifest["segments"][0]["path"]
+    destination = archive_root / "market-data" / path_name
+    destination.parent.mkdir(parents=True)
+    destination.write_bytes(b"not-the-segment")
+
+    with pytest.raises(EventIntegrityError, match="incompatible"):
+        store.archive_closed_segments_before("market-data", "1970-01-02")
+
+    assert (hot_root / "market-data" / path_name).is_file()
+
+
 def test_partial_active_line_is_removed_without_rewriting_valid_bytes(
     tmp_path: Path,
 ) -> None:
