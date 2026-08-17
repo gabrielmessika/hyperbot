@@ -12,7 +12,7 @@ from typing import TypeAlias, cast
 from hyperbot.legacy.policy import ReplayUse, require_replay_use
 from hyperbot.models import BookLevel, DatasetTier, Side
 
-REPLAY_SCHEMA_VERSION = 3
+REPLAY_SCHEMA_VERSION = 4
 MARKOUT_HORIZONS_MS = (100, 1_000, 5_000, 30_000)
 
 
@@ -349,18 +349,20 @@ def _markout(
     tolerance_ms: int,
 ) -> Decimal | None:
     target = fill.fill_ts_ms + horizon_ms
+    candidate: ReplayPriceEvent | None = None
     for price_event in prices_by_market.get(fill.market, ()):
-        if price_event.timestamp_ms < target:
-            continue
-        if price_event.timestamp_ms > target + tolerance_ms:
-            return None
-        midpoint = price_event.midpoint
-        if midpoint is None:
-            continue
-        if fill.side is Side.BUY:
-            return (midpoint - fill.price) * fill.size
-        return (fill.price - midpoint) * fill.size
-    return None
+        if price_event.timestamp_ms > target:
+            break
+        if price_event.midpoint is not None:
+            candidate = price_event
+    if candidate is None or target - candidate.timestamp_ms > tolerance_ms:
+        return None
+    midpoint = candidate.midpoint
+    if midpoint is None:
+        return None
+    if fill.side is Side.BUY:
+        return (midpoint - fill.price) * fill.size
+    return (fill.price - midpoint) * fill.size
 
 
 class ReplayEngine:

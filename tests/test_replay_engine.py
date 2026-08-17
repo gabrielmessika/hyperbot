@@ -171,7 +171,7 @@ def test_bbo_marks_supply_markouts_without_changing_queue_evidence() -> None:
     events = (
         _book(0, 0, bid_size="0.1"),
         _trade(100, 1, "2"),
-        ReplayMark("BTC", 200, 2, Decimal("101"), Decimal("103")),
+        ReplayMark("BTC", 150, 2, Decimal("101"), Decimal("103")),
         ReplayMark("BTC", 1_100, 3, Decimal("102"), Decimal("104")),
         ReplayMark("BTC", 5_100, 4, Decimal("103"), Decimal("105")),
         ReplayMark("BTC", 30_100, 5, Decimal("102"), Decimal("104")),
