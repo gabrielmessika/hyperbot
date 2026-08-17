@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
+import subprocess
 from collections.abc import Mapping
+from pathlib import Path
 
 from hyperbot import __version__
 
@@ -32,3 +34,29 @@ def code_version(commit: str) -> str:
     if _COMMIT_PATTERN.fullmatch(commit) is None:
         raise ValueError("commit must be a 40-character Git SHA")
     return f"{__version__}+g{commit}"
+
+
+def exact_code_version(
+    environment: Mapping[str, str],
+    *,
+    repository_root: Path | None = None,
+) -> str:
+    """Resolve exact deployed or local Git provenance, never an ambiguous build."""
+
+    commit = code_commit(environment, required=False)
+    if commit == UNKNOWN_COMMIT and repository_root is not None:
+        try:
+            completed = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repository_root,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise ValueError("cannot resolve an exact local Git commit") from exc
+        commit = completed.stdout.strip().lower()
+    if _COMMIT_PATTERN.fullmatch(commit) is None or commit == UNKNOWN_COMMIT:
+        raise ValueError("an exact non-zero Git commit is required")
+    return code_version(commit)

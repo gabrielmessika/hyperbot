@@ -6,12 +6,15 @@ from pathlib import Path
 
 import pytest
 
+from hyperbot.models import EventContext, PublicMarketDataEvent, TimeSource
 from hyperbot.ops_export import (
     ExportError,
     build_export_bundle,
     completed_utc_dates,
+    materialize_export_store_manifests,
     verify_export_manifest,
 )
+from hyperbot.segmented_store import SegmentedEventStore
 
 
 def test_export_contains_only_closed_selected_public_artifacts(tmp_path: Path) -> None:
@@ -95,3 +98,66 @@ def test_completed_dates_never_include_current_utc_day() -> None:
         "2026-08-09",
         "2026-08-08",
     )
+
+
+def test_export_materializes_replayable_store_manifest_snapshot(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "shared"
+    store_root = root / "data" / "raw" / "collector"
+    timestamp_ms = int(datetime(2026, 8, 10, 12, tzinfo=UTC).timestamp() * 1_000)
+    store = SegmentedEventStore(
+        store_root,
+        fsync=False,
+        clock_ms=lambda: timestamp_ms,
+    )
+    store.append(
+        "public-market-data",
+        PublicMarketDataEvent(
+            context=EventContext(
+                "export-replay",
+                f"0.1.0+g{'a' * 40}",
+                "b" * 64,
+                TimeSource.EXCHANGE,
+            ),
+            channel="bbo",
+            coin="BTC",
+            exchange_ts_ms=timestamp_ms - 10,
+            receive_ts_ms=timestamp_ms,
+            receive_monotonic_ns=timestamp_ms * 1_000_000,
+            local_sequence=0,
+            payload_json='{"coin":"BTC","time":1786363199990}',
+        ),
+    )
+    store.close("public-market-data")
+    bundle = build_export_bundle(
+        root,
+        dates=("2026-08-10",),
+        include_all=False,
+        generated_at=datetime(2026, 8, 11, 12, tzinfo=UTC),
+    )
+    payload_root = tmp_path / "payload"
+    for item in bundle.files:
+        source = root / item.path
+        destination = payload_root / item.path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(source.read_bytes())
+
+    assert len(verify_export_manifest(bundle.manifest_path, payload_root)) == 1
+    paths = materialize_export_store_manifests(
+        bundle.manifest_path,
+        payload_root,
+    )
+    fetched_store = SegmentedEventStore(
+        payload_root / "data" / "raw" / "collector",
+        fsync=False,
+    )
+
+    assert len(paths) == 1
+    assert [
+        record["sequence"]
+        for record in fetched_store.iter_records_for_utc_date(
+            "public-market-data",
+            "2026-08-10",
+        )
+    ] == [0]

@@ -93,6 +93,8 @@ if [ -s "$destination/export/files.txt" ]; then
 fi
 uv run python scripts/verify_fetch_manifest.py \
     "$destination/export/manifest.json" "$destination/payload"
+uv run python scripts/prepare_replay_fetch.py \
+    "$destination/export/manifest.json" "$destination/payload"
 (
     cd "$destination"
     sha256sum export/manifest.json export/SHA256SUMS export/files.txt \

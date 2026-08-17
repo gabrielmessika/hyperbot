@@ -6,18 +6,23 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from decimal import Decimal
 from pathlib import Path
 from typing import cast
 
+from hyperbot.build_info import exact_code_version
 from hyperbot.models import BookLevel, DatasetTier, Side
 from hyperbot.replay import (
+    CollectorReplayDataset,
     FillModelKind,
     ReplayBook,
     ReplayConfig,
     ReplayEngine,
     ReplayQuote,
     ReplayTrade,
+    generate_top_of_book_probes,
+    read_collector_replay_dataset,
 )
 from hyperbot.replay.engine import ReplayMarketEvent, replay_result_payload
 
@@ -27,6 +32,19 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("input", type=Path)
     parser.add_argument("--output-root", type=Path, default=Path("data/replay_reports"))
     parser.add_argument("--stress", action="store_true")
+    parser.add_argument("--model", choices=tuple(FillModelKind))
+    parser.add_argument("--placement-latency-ms", type=int)
+    parser.add_argument("--cancel-latency-ms", type=int)
+    parser.add_argument(
+        "--central-queue-fraction", type=Decimal, default=Decimal("0.5")
+    )
+    parser.add_argument("--markout-tolerance-ms", type=int, default=250)
+    parser.add_argument("--maker-fee-bps", type=Decimal)
+    parser.add_argument("--probe-interval-ms", type=int, default=300_000)
+    parser.add_argument("--probe-ttl-ms", type=int, default=1_000)
+    parser.add_argument("--probe-notional-usd", type=Decimal, default=Decimal("10"))
+    parser.add_argument("--run-id")
+    parser.add_argument("--code-version")
     return parser.parse_args()
 
 
@@ -84,13 +102,16 @@ def _quote(value: object) -> ReplayQuote:
     )
 
 
-def main() -> int:
-    args = _arguments()
-    raw = args.input.read_bytes()
+def _fixture_document(raw: bytes) -> dict[str, object]:
     decoded = json.loads(raw)
     if not isinstance(decoded, dict):
         raise ValueError("replay input must be a JSON object")
-    document = cast(dict[str, object], decoded)
+    return cast(dict[str, object], decoded)
+
+
+def _fixture_inputs(
+    document: dict[str, object],
+) -> tuple[ReplayConfig, tuple[ReplayMarketEvent, ...], tuple[ReplayQuote, ...]]:
     config = ReplayConfig(
         run_id=str(document["run_id"]),
         code_version=str(document["code_version"]),
@@ -104,18 +125,150 @@ def main() -> int:
         central_queue_fraction=Decimal(
             str(document.get("central_queue_fraction", "0.5"))
         ),
-        markout_tolerance_ms=int(
-            cast(int, document.get("markout_tolerance_ms", 250))
-        ),
+        markout_tolerance_ms=int(cast(int, document.get("markout_tolerance_ms", 250))),
     )
     events = tuple(_event(item) for item in cast(list[object], document["events"]))
     quotes = tuple(_quote(item) for item in cast(list[object], document["quotes"]))
+    return config, events, quotes
+
+
+def _looks_like_collector_dataset(path: Path) -> bool:
+    with path.open("rb") as handle:
+        prefix = handle.read(4_096)
+    return b'"kind": "hyperbot_collector_replay_dataset"' in prefix
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _required_dataset_argument(value: object, name: str) -> object:
+    if value is None:
+        raise ValueError(f"{name} is required for a collector replay dataset")
+    return value
+
+
+def _collector_inputs(
+    args: argparse.Namespace,
+    dataset: CollectorReplayDataset,
+) -> tuple[
+    ReplayConfig,
+    tuple[ReplayMarketEvent, ...],
+    tuple[ReplayQuote, ...],
+    dict[str, object],
+]:
+    model = FillModelKind(str(_required_dataset_argument(args.model, "--model")))
+    placement_latency_ms = int(
+        cast(
+            int,
+            _required_dataset_argument(
+                args.placement_latency_ms,
+                "--placement-latency-ms",
+            ),
+        )
+    )
+    cancel_latency_ms = int(
+        cast(
+            int,
+            _required_dataset_argument(
+                args.cancel_latency_ms,
+                "--cancel-latency-ms",
+            ),
+        )
+    )
+    maker_fee_bps = cast(
+        Decimal,
+        _required_dataset_argument(args.maker_fee_bps, "--maker-fee-bps"),
+    )
+    repository_root = Path(__file__).resolve().parents[1]
+    replay_code_version = args.code_version or exact_code_version(
+        os.environ,
+        repository_root=repository_root,
+    )
+    quote_plan = {
+        "kind": "top_of_book_execution_probe_v1",
+        "interval_ms": args.probe_interval_ms,
+        "ttl_ms": args.probe_ttl_ms,
+        "notional_usd": str(args.probe_notional_usd),
+        "maker_fee_bps": str(maker_fee_bps),
+    }
+    assumptions = {
+        "dataset_sha256": dataset.dataset_sha256,
+        "model": model.value,
+        "placement_latency_ms": placement_latency_ms,
+        "cancel_latency_ms": cancel_latency_ms,
+        "central_queue_fraction": str(args.central_queue_fraction),
+        "markout_tolerance_ms": args.markout_tolerance_ms,
+        "quote_plan": quote_plan,
+        "replay_code_version": replay_code_version,
+    }
+    assumptions_hash = hashlib.sha256(
+        json.dumps(assumptions, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    ).hexdigest()
+    run_id = args.run_id or (
+        f"{dataset.dataset_id}-{model.value}-{assumptions_hash[:12]}"
+    )
+    config = ReplayConfig(
+        run_id=run_id,
+        code_version=replay_code_version,
+        model=model,
+        dataset_tiers=(DatasetTier.A,),
+        placement_latency_ms=placement_latency_ms,
+        cancel_latency_ms=cancel_latency_ms,
+        central_queue_fraction=args.central_queue_fraction,
+        markout_tolerance_ms=args.markout_tolerance_ms,
+    )
+    quotes = generate_top_of_book_probes(
+        dataset,
+        interval_ms=args.probe_interval_ms,
+        ttl_ms=args.probe_ttl_ms,
+        notional_usd=args.probe_notional_usd,
+        maker_fee_bps=maker_fee_bps,
+    )
+    return (
+        config,
+        dataset.events,
+        quotes,
+        {
+            "dataset_id": dataset.dataset_id,
+            "dataset_sha256": dataset.dataset_sha256,
+            "quality_report_sha256": dataset.quality_report_sha256,
+            "source_manifest_sha256": dataset.source_manifest_sha256,
+            "source_config_sha256": dataset.source_config_sha256,
+            "source_code_version": dataset.source_code_version,
+            "builder_code_version": dataset.builder_code_version,
+            "assumptions_sha256": assumptions_hash,
+            "quote_plan": quote_plan,
+            "quote_count": len(quotes),
+        },
+    )
+
+
+def main() -> int:
+    args = _arguments()
+    collector_dataset = _looks_like_collector_dataset(args.input)
+    provenance: dict[str, object] | None = None
+    if collector_dataset:
+        dataset = read_collector_replay_dataset(args.input)
+        config, events, quotes, provenance = _collector_inputs(args, dataset)
+        input_sha256 = _file_sha256(args.input)
+    else:
+        raw = args.input.read_bytes()
+        document = _fixture_document(raw)
+        config, events, quotes = _fixture_inputs(document)
+        input_sha256 = hashlib.sha256(raw).hexdigest()
     engine = ReplayEngine()
     base = engine.run(config=config, events=events, quotes=quotes)
     payload: dict[str, object] = {
-        "input_file_sha256": hashlib.sha256(raw).hexdigest(),
+        "input_file_sha256": input_sha256,
         "base": replay_result_payload(base),
     }
+    if provenance is not None:
+        payload["collector_dataset"] = provenance
     if args.stress:
         stress = engine.run_stress(config=config, events=events, quotes=quotes)
         payload["double_latency"] = replay_result_payload(stress.double_latency)

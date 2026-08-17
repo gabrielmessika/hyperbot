@@ -16,6 +16,7 @@ from hyperbot.ops import OPS_SCHEMA_VERSION, atomic_write_json
 
 _CLOSED_SEGMENT = re.compile(r"^(\d{4}-\d{2}-\d{2})-\d{6}\.jsonl(?:\.gz)?$")
 _CHECKSUM = re.compile(r"^[0-9a-f]{64}$")
+_STREAM = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 
 
 class ExportError(RuntimeError):
@@ -36,6 +37,18 @@ class ExportBundle:
     checksum_path: Path
     files_path: Path
     files: tuple[ExportFile, ...]
+
+
+def _canonical_json(value: object) -> bytes:
+    return (
+        json.dumps(
+            value,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+        + b"\n"
+    )
 
 
 def completed_utc_dates(*, today: date, days: int) -> tuple[str, ...]:
@@ -92,6 +105,58 @@ def _selected_files(
     return tuple(sorted(candidates))
 
 
+def _store_manifest_snapshots(
+    root: Path,
+    selected: tuple[Path, ...],
+) -> list[dict[str, object]]:
+    streams: set[str] = set()
+    for path in selected:
+        relative = path.relative_to(root).parts
+        if len(relative) >= 5 and relative[:3] == ("data", "raw", "collector"):
+            streams.add(relative[3])
+        elif len(relative) >= 4 and relative[:2] == ("archive", "collector"):
+            streams.add(relative[2])
+    snapshots: list[dict[str, object]] = []
+    for stream in sorted(streams):
+        if _STREAM.fullmatch(stream) is None:
+            raise ExportError(f"invalid collector stream: {stream}")
+        manifest_path = root / "data" / "raw" / "collector" / stream / "manifest.json"
+        checksum_path = manifest_path.with_suffix(".sha256")
+        if not manifest_path.exists() and not checksum_path.exists():
+            continue
+        if (
+            manifest_path.is_symlink()
+            or checksum_path.is_symlink()
+            or not manifest_path.is_file()
+            or not checksum_path.is_file()
+        ):
+            raise ExportError(f"unsafe collector manifest: {manifest_path}")
+        raw = manifest_path.read_bytes()
+        actual = hashlib.sha256(raw).hexdigest()
+        if checksum_path.read_text(encoding="ascii").strip() != actual:
+            raise ExportError(f"collector manifest checksum mismatch: {manifest_path}")
+        try:
+            decoded = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ExportError(f"invalid collector manifest: {manifest_path}") from exc
+        if (
+            not isinstance(decoded, dict)
+            or decoded.get("stream") != stream
+            or not isinstance(decoded.get("segments"), list)
+        ):
+            raise ExportError(f"invalid collector manifest: {manifest_path}")
+        snapshots.append(
+            {
+                "root": "data/raw/collector",
+                "archive_root": "archive/collector",
+                "stream": stream,
+                "manifest_sha256": actual,
+                "manifest": decoded,
+            }
+        )
+    return snapshots
+
+
 def build_export_bundle(
     root: Path,
     *,
@@ -141,6 +206,7 @@ def build_export_bundle(
                 sha256=hashlib.sha256(content).hexdigest(),
             )
         )
+    store_manifests = _store_manifest_snapshots(root, selected)
 
     def sanitize(value: object) -> object:
         if isinstance(value, dict):
@@ -192,6 +258,7 @@ def build_export_bundle(
                 }
                 for item in files
             ],
+            "store_manifests": store_manifests,
             "runtime_status": status_payloads,
         },
     )
@@ -262,3 +329,96 @@ def verify_export_manifest(
             raise ExportError(f"exported file checksum mismatch: {relative}")
         verified.append(ExportFile(relative, size, checksum))
     return tuple(verified)
+
+
+def materialize_export_store_manifests(
+    manifest_path: Path,
+    data_root: Path,
+) -> tuple[Path, ...]:
+    """Restore immutable manifest snapshots beside verified fetched segments."""
+
+    try:
+        decoded = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ExportError(f"cannot read export manifest: {manifest_path}") from exc
+    if not isinstance(decoded, dict) or decoded.get("public_only") is not True:
+        raise ExportError("invalid or unsafe export manifest")
+    raw_snapshots = decoded.get("store_manifests")
+    if not isinstance(raw_snapshots, list):
+        raise ExportError("export store manifests are missing")
+    raw_files = decoded.get("files")
+    if not isinstance(raw_files, list):
+        raise ExportError("export manifest files are invalid")
+    exported = {
+        str(item.get("path")): str(item.get("sha256"))
+        for item in raw_files
+        if isinstance(item, dict)
+    }
+    root = data_root.resolve()
+    written: list[Path] = []
+    for raw_snapshot in raw_snapshots:
+        if not isinstance(raw_snapshot, dict):
+            raise ExportError("export store manifest snapshot is invalid")
+        stream = raw_snapshot.get("stream")
+        relative_root = raw_snapshot.get("root")
+        checksum = raw_snapshot.get("manifest_sha256")
+        store_manifest = raw_snapshot.get("manifest")
+        if (
+            not isinstance(stream, str)
+            or _STREAM.fullmatch(stream) is None
+            or relative_root != "data/raw/collector"
+            or not isinstance(checksum, str)
+            or _CHECKSUM.fullmatch(checksum) is None
+            or not isinstance(store_manifest, dict)
+            or store_manifest.get("stream") != stream
+            or not isinstance(store_manifest.get("segments"), list)
+        ):
+            raise ExportError("export store manifest snapshot is invalid")
+        encoded = _canonical_json(store_manifest)
+        if hashlib.sha256(encoded).hexdigest() != checksum:
+            raise ExportError("export store manifest snapshot checksum mismatch")
+        segment_by_path = {
+            str(item.get("path")): item
+            for item in store_manifest["segments"]
+            if isinstance(item, dict)
+        }
+        prefixes = (
+            f"data/raw/collector/{stream}/",
+            f"archive/collector/{stream}/",
+        )
+        selected_paths = [path for path in exported if path.startswith(prefixes)]
+        if not selected_paths:
+            raise ExportError(f"store manifest has no exported segments: {stream}")
+        for relative in selected_paths:
+            name = Path(relative).name
+            segment = segment_by_path.get(name)
+            if (
+                not isinstance(segment, dict)
+                or segment.get("storage_sha256") != exported[relative]
+            ):
+                raise ExportError(f"exported segment evidence mismatch: {relative}")
+        stream_root = root / "data" / "raw" / "collector" / stream
+        try:
+            stream_root.resolve().relative_to(root)
+        except ValueError as exc:
+            raise ExportError("store manifest path escapes payload root") from exc
+        current = root
+        for part in ("data", "raw", "collector", stream):
+            current /= part
+            if current.is_symlink():
+                raise ExportError(f"symlink in store manifest path: {current}")
+        stream_root.mkdir(parents=True, exist_ok=True)
+        target = stream_root / "manifest.json"
+        checksum_target = stream_root / "manifest.sha256"
+        if target.exists() or checksum_target.exists():
+            raise ExportError(f"store manifest already exists: {target}")
+        temporary = target.with_suffix(".json.tmp")
+        checksum_temporary = checksum_target.with_suffix(".sha256.tmp")
+        temporary.write_bytes(encoded)
+        checksum_temporary.write_text(checksum + "\n", encoding="ascii")
+        os.replace(temporary, target)
+        os.replace(checksum_temporary, checksum_target)
+        written.append(target)
+    if not written:
+        raise ExportError("export contains no replayable store manifests")
+    return tuple(written)

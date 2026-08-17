@@ -1,6 +1,6 @@
 # HyperBot — plan de développement et suivi
 
-**Dernière mise à jour :** 15 août 2026
+**Dernière mise à jour :** 17 août 2026
 
 **Document stratégique :** [`HYPERBOT_FOUNDATION.md`](HYPERBOT_FOUNDATION.md)
 
@@ -357,6 +357,26 @@ Livré le 11 août 2026 :
 
 La reproductibilité logicielle est acquise. Les résultats sur fixtures ne
 valident ni edge ni promotion tant que la collecte A n'a pas satisfait M3.
+
+Passerelle M3 vers M4 livrée le 17 août 2026 :
+
+- l'export vérifié embarque désormais un snapshot immuable des manifests du
+  store et le matérialise auprès des segments locaux après contrôle des SHA-256 ;
+- `build_collector_replay_dataset.py` convertit une journée et un marché en
+  événements M4 L2/trades, avec séquence issue du store append-only ;
+- le builder refuse fail-closed un rapport M3 non qualifié ou ancien, une
+  provenance hors A, un checksum invalide, une version sans SHA Git complet, un
+  mélange de config/code/run, une latence négative ou l'absence de L2/trades ;
+- le dataset enregistre les hashes du rapport qualité, du manifest, des segments
+  et de la transformation ainsi que les métriques de cadence L2 et de latence ;
+- `run_hyperbot_replay.py` accepte ces datasets et exige modèle, latences et frais
+  explicites. Ses probes top-of-book espacées sont une mesure d'exécution, jamais
+  une stratégie ou une preuve d'edge ; central, pessimiste et stress restent des
+  expériences distinctes et checksumées.
+
+Cette passerelle ne requalifie aucune ancienne journée et ne rend pas les vingt
+marchés `breadth` compatibles avec un modèle de file : seuls les marchés
+collectés en profil `depth` disposent de L2.
 
 ### M5 — recherche d'edge
 

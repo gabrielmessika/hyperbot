@@ -375,6 +375,17 @@ publics sélectionnés. Les `.open`, symlinks, `.env`, clés et données TRIDENT
 exclus. Le fetch utilise cette liste dans les tiers chaud et froid, puis
 recalcule taille et SHA-256 de chaque fichier sous
 `data/server-fetches/<fetch-id>/`.
+Le bundle contient aussi une copie immuable et checksumée des manifests du
+store au moment de l'export. Après validation des fichiers, le fetch matérialise
+ces snapshots dans le payload local. `SegmentedEventStore` peut ainsi revérifier
+la chaîne de records, le hash de contenu et le hash de stockage d'une journée
+sans dépendre du manifest serveur qui continue d'évoluer.
+
+Seul un rapport M3 au schéma courant, qualifié, checksumé, tier A et portant un
+SHA Git complet peut ouvrir le builder replay. Le builder exige en plus un seul
+`run_id` collector et la présence de L2 et trades pour le marché. Une journée
+reste donc consultable par M3 sans devenir automatiquement une preuve de file
+M4.
 
 Une capture répétée garde son propre identifiant et manifest. Aucun résultat ne
 doit être promu en baseline avant validation de son checksum et de sa provenance

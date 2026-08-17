@@ -120,6 +120,44 @@ uv run python scripts/report_data_quality.py \
 Une capture courte reste volontairement non qualifiée : la gate M3 demande sept
 jours UTC consécutifs, puis trente jours de preuve A.
 
+Une journée M3 v3 qualifiée peut être exportée puis transformée en dataset M4.
+Le fetch restaure un snapshot immuable des manifests du store à côté des
+segments vérifiés :
+
+```bash
+./scripts/fetch_hyperbot_data.sh --date 2026-08-16
+
+uv run python scripts/build_collector_replay_dataset.py \
+  --date 2026-08-16 \
+  --market BTC \
+  --data-root data/server-fetches/<fetch-id>/payload/data/raw/collector \
+  --archive-root data/server-fetches/<fetch-id>/payload/archive/collector \
+  --quality-report \
+    data/server-fetches/<fetch-id>/payload/data/reviews/quality-2026-08-16-<run>.json
+```
+
+Le builder refuse une journée non qualifiée, un rapport sans checksum, un
+mélange de commit/configuration/run, une provenance autre que A, une latence
+négative ou l'absence de L2/trades. Le dataset obtenu contient les hashes du
+rapport, du manifest et de chaque segment source.
+
+Le replay réel exige ensuite des hypothèses explicites. L'exemple suivant crée
+des probes top-of-book espacées de cinq minutes pour mesurer la file et les
+markouts ; ces probes ne constituent ni une stratégie ni une preuve d'edge :
+
+```bash
+uv run python scripts/run_hyperbot_replay.py \
+  data/replay_datasets/<dataset>.json \
+  --model central \
+  --placement-latency-ms 350 \
+  --cancel-latency-ms 350 \
+  --maker-fee-bps 1.5 \
+  --probe-interval-ms 300000 \
+  --probe-ttl-ms 1000 \
+  --probe-notional-usd 10 \
+  --stress
+```
+
 Un replay M4 reproductible et ses stress se lancent sur un fixture explicite :
 
 ```bash
