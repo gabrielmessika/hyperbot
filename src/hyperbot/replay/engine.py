@@ -12,7 +12,7 @@ from typing import TypeAlias, cast
 from hyperbot.legacy.policy import ReplayUse, require_replay_use
 from hyperbot.models import BookLevel, DatasetTier, Side
 
-REPLAY_SCHEMA_VERSION = 4
+REPLAY_SCHEMA_VERSION = 5
 MARKOUT_HORIZONS_MS = (100, 1_000, 5_000, 30_000)
 
 
@@ -298,7 +298,7 @@ def _event_sort_key(event: ReplayMarketEvent) -> tuple[int, int, str, int]:
         if isinstance(event, ReplayMark)
         else 2
     )
-    return event.observed_ts_ms, event.source_sequence, event.market, type_order
+    return event.timestamp_ms, event.source_sequence, event.market, type_order
 
 
 def _visible_size(book: ReplayBook, quote: ReplayQuote) -> Decimal:
@@ -406,7 +406,7 @@ class ReplayEngine:
         latest_books: dict[str, ReplayBook] = {}
         raw_fills: list[SimulatedFill] = []
         for event in ordered_events:
-            clock.advance_to(event.observed_ts_ms)
+            clock.advance_to(event.timestamp_ms)
             if isinstance(event, ReplayBook):
                 previous_book = latest_books.get(event.market)
                 self._update_queues(config, states, event, previous_book)

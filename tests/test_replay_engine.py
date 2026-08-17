@@ -189,7 +189,7 @@ def test_bbo_marks_supply_markouts_without_changing_queue_evidence() -> None:
     assert result.fills[0].markout_30s == Decimal("3")
 
 
-def test_receive_order_prevents_future_book_lookahead() -> None:
+def test_exchange_order_preserves_venue_queue_when_receive_is_reordered() -> None:
     initial_book = ReplayBook(
         market="BTC",
         timestamp_ms=0,
@@ -222,7 +222,7 @@ def test_receive_order_prevents_future_book_lookahead() -> None:
         quotes=(_quote(size="1", submitted=100),),
     )
 
-    assert not result.fills
+    assert len(result.fills) == 1
 
 
 def test_legacy_only_allows_the_labeled_optimistic_bound() -> None:

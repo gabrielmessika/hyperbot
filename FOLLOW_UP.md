@@ -373,9 +373,9 @@ Passerelle M3 vers M4 livrée le 17 août 2026 :
 - le dataset enregistre les hashes du rapport qualité, du manifest, des segments
   et de la transformation ainsi que les métriques de cadence L2 et de latence ;
 - les événements M4 conservent séparément temps exchange et temps de réception ;
-  le moteur les ordonne au temps de réception, les probes ne sont soumises qu'au
-  temps réellement observé et refusent par défaut un carnet âgé de plus de 500
-  ms, afin d'éviter toute fuite future ;
+  les probes ne sont soumises qu'au temps réellement observé et refusent par
+  défaut un carnet âgé de plus de 500 ms, tandis que la file et les fills
+  suivent la chronologie exchange du venue, y compris pour un trade retardé ;
 - la preuve de file reste exclusivement L2 ; les BBO servent uniquement aux
   markouts `as-of`, dans la tolérance de fraîcheur configurée ;
 - `run_hyperbot_replay.py` accepte ces datasets et exige modèle, latences et frais
