@@ -15,13 +15,14 @@ from hyperbot.models import BookLevel, DatasetTier, Side, TimeSource
 from hyperbot.quality import QUALITY_SCHEMA_VERSION, market_event_from_payload
 from hyperbot.replay.engine import (
     ReplayBook,
+    ReplayMark,
     ReplayMarketEvent,
     ReplayQuote,
     ReplayTrade,
 )
 from hyperbot.segmented_store import SegmentedEventStore
 
-COLLECTOR_REPLAY_DATASET_SCHEMA_VERSION = 2
+COLLECTOR_REPLAY_DATASET_SCHEMA_VERSION = 3
 _CODE_VERSION = re.compile(r"^.+\+g[0-9a-f]{40}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
@@ -57,12 +58,13 @@ class CollectorReplayDataset:
     source_run_ids: tuple[str, ...]
     events: tuple[ReplayMarketEvent, ...]
     book_count: int
+    bbo_count: int
     trade_count: int
-    ignored_bbo_count: int
     first_exchange_ts_ms: int
     last_exchange_ts_ms: int
     maximum_receive_latency_ms: int
     maximum_book_receive_latency_ms: int
+    maximum_bbo_receive_latency_ms: int
     maximum_trade_receive_latency_ms: int
     maximum_book_gap_ms: int
     dataset_sha256: str
@@ -348,6 +350,37 @@ def _decode_trade(
         raise CollectorReplayError(f"invalid replay trade: {exc}") from exc
 
 
+def _decode_mark(
+    payload: dict[str, object],
+    *,
+    market: str,
+    timestamp_ms: int,
+    receive_ts_ms: int,
+    sequence: int,
+) -> ReplayMark:
+    if payload.get("coin") != market or payload.get("time") != timestamp_ms:
+        raise CollectorReplayError("BBO payload is inconsistent")
+    raw_bbo = payload.get("bbo")
+    if not isinstance(raw_bbo, list) or len(raw_bbo) != 2:
+        raise CollectorReplayError("BBO replay evidence requires two sides")
+    sides: list[Decimal] = []
+    for index, raw_side in enumerate(raw_bbo):
+        if not isinstance(raw_side, dict):
+            raise CollectorReplayError(f"BBO side {index} is invalid")
+        sides.append(_decimal(raw_side.get("px"), f"bbo[{index}].px"))
+    try:
+        return ReplayMark(
+            market=market,
+            timestamp_ms=timestamp_ms,
+            source_sequence=sequence,
+            bid=sides[0],
+            ask=sides[1],
+            receive_ts_ms=receive_ts_ms,
+        )
+    except ValueError as exc:
+        raise CollectorReplayError(f"invalid replay BBO: {exc}") from exc
+
+
 def _event_payload(event: ReplayMarketEvent) -> dict[str, object]:
     if isinstance(event, ReplayBook):
         return {
@@ -372,6 +405,16 @@ def _event_payload(event: ReplayMarketEvent) -> dict[str, object]:
                 }
                 for level in event.asks
             ],
+        }
+    if isinstance(event, ReplayMark):
+        return {
+            "type": "mark",
+            "market": event.market,
+            "timestamp_ms": event.timestamp_ms,
+            "source_sequence": event.source_sequence,
+            "receive_ts_ms": event.receive_ts_ms,
+            "bid": str(event.bid),
+            "ask": str(event.ask),
         }
     return {
         "type": "trade",
@@ -417,14 +460,15 @@ def _dataset_base_payload(dataset: CollectorReplayDataset) -> dict[str, object]:
         "events": [_event_payload(event) for event in dataset.events],
         "metrics": {
             "book_count": dataset.book_count,
+            "bbo_count": dataset.bbo_count,
             "trade_count": dataset.trade_count,
-            "ignored_bbo_count": dataset.ignored_bbo_count,
             "first_exchange_ts_ms": dataset.first_exchange_ts_ms,
             "last_exchange_ts_ms": dataset.last_exchange_ts_ms,
             "maximum_receive_latency_ms": dataset.maximum_receive_latency_ms,
             "maximum_book_receive_latency_ms": (
                 dataset.maximum_book_receive_latency_ms
             ),
+            "maximum_bbo_receive_latency_ms": dataset.maximum_bbo_receive_latency_ms,
             "maximum_trade_receive_latency_ms": (
                 dataset.maximum_trade_receive_latency_ms
             ),
@@ -482,7 +526,6 @@ def build_collector_replay_dataset(
     )
     events: list[ReplayMarketEvent] = []
     run_ids: set[str] = set()
-    ignored_bbo = 0
     maximum_latency = 0
     for record in store.iter_records_for_utc_date(stream, report_date.isoformat()):
         raw_payload = record.get("payload")
@@ -536,7 +579,15 @@ def build_collector_replay_dataset(
                 )
             )
         elif event.channel == "bbo":
-            ignored_bbo += 1
+            events.append(
+                _decode_mark(
+                    cast(dict[str, object], decoded_payload),
+                    market=market,
+                    timestamp_ms=event.exchange_ts_ms,
+                    receive_ts_ms=event.receive_ts_ms,
+                    sequence=sequence,
+                )
+            )
         else:
             raise CollectorReplayError(
                 f"unsupported collector channel: {event.channel}"
@@ -547,15 +598,20 @@ def build_collector_replay_dataset(
             key=lambda item: (
                 item.timestamp_ms,
                 item.source_sequence,
-                0 if isinstance(item, ReplayBook) else 1,
+                0
+                if isinstance(item, ReplayBook)
+                else 1
+                if isinstance(item, ReplayMark)
+                else 2,
             ),
         )
     )
     books = tuple(item for item in ordered if isinstance(item, ReplayBook))
+    marks = tuple(item for item in ordered if isinstance(item, ReplayMark))
     trades = tuple(item for item in ordered if isinstance(item, ReplayTrade))
-    if len(books) < 2 or not trades:
+    if len(books) < 2 or not marks or not trades:
         raise CollectorReplayError(
-            "replay requires at least two L2 books and one trade"
+            "replay requires at least two L2 books, one BBO, and one trade"
         )
     if len(run_ids) != 1:
         raise CollectorReplayError(
@@ -568,6 +624,7 @@ def build_collector_replay_dataset(
     if any(gap < 0 for gap in book_gaps):
         raise CollectorReplayError("L2 exchange timestamps move backwards")
     book_latencies = [item.observed_ts_ms - item.timestamp_ms for item in books]
+    mark_latencies = [item.observed_ts_ms - item.timestamp_ms for item in marks]
     trade_latencies = [
         cast(int, item.receive_ts_ms) - item.timestamp_ms for item in trades
     ]
@@ -595,12 +652,13 @@ def build_collector_replay_dataset(
         source_run_ids=tuple(sorted(run_ids)),
         events=ordered,
         book_count=len(books),
+        bbo_count=len(marks),
         trade_count=len(trades),
-        ignored_bbo_count=ignored_bbo,
         first_exchange_ts_ms=ordered[0].timestamp_ms,
         last_exchange_ts_ms=ordered[-1].timestamp_ms,
         maximum_receive_latency_ms=maximum_latency,
         maximum_book_receive_latency_ms=max(book_latencies),
+        maximum_bbo_receive_latency_ms=max(mark_latencies),
         maximum_trade_receive_latency_ms=max(trade_latencies),
         maximum_book_gap_ms=max(book_gaps),
         dataset_sha256="",
@@ -690,6 +748,22 @@ def _dataset_event(value: object) -> ReplayMarketEvent:
             )
         except ValueError as exc:
             raise CollectorReplayError(f"invalid dataset book: {exc}") from exc
+    if event_type == "mark":
+        try:
+            return ReplayMark(
+                market=market,
+                timestamp_ms=timestamp_ms,
+                source_sequence=sequence,
+                bid=_decimal(value.get("bid"), "mark.bid"),
+                ask=_decimal(value.get("ask"), "mark.ask"),
+                receive_ts_ms=(
+                    int(cast(int, value["receive_ts_ms"]))
+                    if value.get("receive_ts_ms") is not None
+                    else None
+                ),
+            )
+        except ValueError as exc:
+            raise CollectorReplayError(f"invalid dataset mark: {exc}") from exc
     if event_type == "trade":
         try:
             return ReplayTrade(
@@ -759,6 +833,7 @@ def collector_replay_dataset_from_payload(value: object) -> CollectorReplayDatas
         segments.append(segment)
     events = tuple(_dataset_event(item) for item in raw_events)
     books = sum(isinstance(item, ReplayBook) for item in events)
+    marks = sum(isinstance(item, ReplayMark) for item in events)
     trades = sum(isinstance(item, ReplayTrade) for item in events)
     try:
         dataset = CollectorReplayDataset(
@@ -776,8 +851,8 @@ def collector_replay_dataset_from_payload(value: object) -> CollectorReplayDatas
             source_run_ids=tuple(str(item) for item in raw_runs),
             events=events,
             book_count=int(cast(int, metrics["book_count"])),
+            bbo_count=int(cast(int, metrics["bbo_count"])),
             trade_count=int(cast(int, metrics["trade_count"])),
-            ignored_bbo_count=int(cast(int, metrics["ignored_bbo_count"])),
             first_exchange_ts_ms=int(cast(int, metrics["first_exchange_ts_ms"])),
             last_exchange_ts_ms=int(cast(int, metrics["last_exchange_ts_ms"])),
             maximum_receive_latency_ms=int(
@@ -785,6 +860,9 @@ def collector_replay_dataset_from_payload(value: object) -> CollectorReplayDatas
             ),
             maximum_book_receive_latency_ms=int(
                 cast(int, metrics["maximum_book_receive_latency_ms"])
+            ),
+            maximum_bbo_receive_latency_ms=int(
+                cast(int, metrics["maximum_bbo_receive_latency_ms"])
             ),
             maximum_trade_receive_latency_ms=int(
                 cast(int, metrics["maximum_trade_receive_latency_ms"])
@@ -814,8 +892,10 @@ def collector_replay_dataset_from_payload(value: object) -> CollectorReplayDatas
         or _CODE_VERSION.fullmatch(dataset.source_code_version) is None
         or len(dataset.source_run_ids) != 1
         or books != dataset.book_count
+        or marks != dataset.bbo_count
         or trades != dataset.trade_count
         or books < 2
+        or marks < 1
         or trades < 1
         or not events
         or dataset.first_exchange_ts_ms != events[0].timestamp_ms

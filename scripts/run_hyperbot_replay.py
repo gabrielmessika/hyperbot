@@ -19,6 +19,7 @@ from hyperbot.replay import (
     ReplayBook,
     ReplayConfig,
     ReplayEngine,
+    ReplayMark,
     ReplayQuote,
     ReplayTrade,
     generate_top_of_book_probes,
@@ -87,6 +88,19 @@ def _event(value: object) -> ReplayMarketEvent:
             aggressor_side=Side(str(item["aggressor_side"])),
             price=Decimal(str(item["price"])),
             size=Decimal(str(item["size"])),
+            receive_ts_ms=(
+                int(cast(int, item["receive_ts_ms"]))
+                if item.get("receive_ts_ms") is not None
+                else None
+            ),
+        )
+    if event_type == "mark":
+        return ReplayMark(
+            market=str(item["market"]),
+            timestamp_ms=int(cast(int, item["timestamp_ms"])),
+            source_sequence=int(cast(int, item["source_sequence"])),
+            bid=Decimal(str(item["bid"])),
+            ask=Decimal(str(item["ask"])),
             receive_ts_ms=(
                 int(cast(int, item["receive_ts_ms"]))
                 if item.get("receive_ts_ms") is not None

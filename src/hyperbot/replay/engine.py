@@ -12,7 +12,7 @@ from typing import TypeAlias, cast
 from hyperbot.legacy.policy import ReplayUse, require_replay_use
 from hyperbot.models import BookLevel, DatasetTier, Side
 
-REPLAY_SCHEMA_VERSION = 2
+REPLAY_SCHEMA_VERSION = 3
 MARKOUT_HORIZONS_MS = (100, 1_000, 5_000, 30_000)
 
 
@@ -91,7 +91,46 @@ class ReplayTrade:
         )
 
 
-ReplayMarketEvent: TypeAlias = ReplayBook | ReplayTrade
+@dataclass(frozen=True, slots=True)
+class ReplayMark:
+    """Top-of-book observation used for markouts, never for queue evidence."""
+
+    market: str
+    timestamp_ms: int
+    source_sequence: int
+    bid: Decimal
+    ask: Decimal
+    receive_ts_ms: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.market.strip():
+            raise ValueError("market must not be empty")
+        if self.timestamp_ms < 0 or self.source_sequence < 0:
+            raise ValueError("mark timestamp and sequence must be non-negative")
+        if self.receive_ts_ms is not None and self.receive_ts_ms < self.timestamp_ms:
+            raise ValueError("mark receive timestamp cannot precede exchange time")
+        if (
+            not self.bid.is_finite()
+            or not self.ask.is_finite()
+            or self.bid <= 0
+            or self.ask <= 0
+            or self.bid > self.ask
+        ):
+            raise ValueError("mark prices must be finite, positive, and not crossed")
+
+    @property
+    def midpoint(self) -> Decimal:
+        return (self.bid + self.ask) / 2
+
+    @property
+    def observed_ts_ms(self) -> int:
+        return (
+            self.receive_ts_ms if self.receive_ts_ms is not None else self.timestamp_ms
+        )
+
+
+ReplayMarketEvent: TypeAlias = ReplayBook | ReplayMark | ReplayTrade
+ReplayPriceEvent: TypeAlias = ReplayBook | ReplayMark
 
 
 @dataclass(frozen=True, slots=True)
@@ -252,7 +291,13 @@ def _hash(value: object) -> str:
 
 
 def _event_sort_key(event: ReplayMarketEvent) -> tuple[int, int, str, int]:
-    type_order = 0 if isinstance(event, ReplayBook) else 1
+    type_order = (
+        0
+        if isinstance(event, ReplayBook)
+        else 1
+        if isinstance(event, ReplayMark)
+        else 2
+    )
     return event.observed_ts_ms, event.source_sequence, event.market, type_order
 
 
@@ -280,6 +325,14 @@ def _book_crosses_quote(book: ReplayBook, quote: ReplayQuote) -> bool:
     return bool(book.bids and book.bids[0].price >= quote.price)
 
 
+def _mark_crosses_quote(mark: ReplayMark, quote: ReplayQuote) -> bool:
+    if quote.market != mark.market:
+        return False
+    if quote.side is Side.BUY:
+        return mark.ask <= quote.price
+    return mark.bid >= quote.price
+
+
 def _active_at(state: _QuoteState, timestamp_ms: int) -> bool:
     if timestamp_ms < state.active_ts_ms or state.remaining_size <= 0:
         return False
@@ -291,17 +344,17 @@ def _active_at(state: _QuoteState, timestamp_ms: int) -> bool:
 
 def _markout(
     fill: SimulatedFill,
-    books_by_market: dict[str, tuple[ReplayBook, ...]],
+    prices_by_market: dict[str, tuple[ReplayPriceEvent, ...]],
     horizon_ms: int,
     tolerance_ms: int,
 ) -> Decimal | None:
     target = fill.fill_ts_ms + horizon_ms
-    for book in books_by_market.get(fill.market, ()):
-        if book.timestamp_ms < target:
+    for price_event in prices_by_market.get(fill.market, ()):
+        if price_event.timestamp_ms < target:
             continue
-        if book.timestamp_ms > target + tolerance_ms:
+        if price_event.timestamp_ms > target + tolerance_ms:
             return None
-        midpoint = book.midpoint
+        midpoint = price_event.midpoint
         if midpoint is None:
             continue
         if fill.side is Side.BUY:
@@ -369,6 +422,20 @@ class ReplayEngine:
                                 )
                             )
                 continue
+            if isinstance(event, ReplayMark):
+                if config.model is FillModelKind.OPTIMISTIC_TOUCH:
+                    for state in states:
+                        is_active = _active_at(state, event.timestamp_ms)
+                        if is_active and _mark_crosses_quote(event, state.quote):
+                            raw_fills.append(
+                                self._fill_state(
+                                    config.model,
+                                    state,
+                                    event.timestamp_ms,
+                                    state.remaining_size,
+                                )
+                            )
+                continue
             self._initialize_queues(
                 config,
                 states,
@@ -423,14 +490,15 @@ class ReplayEngine:
                 )
                 available -= fill_size
 
-        books_by_market: dict[str, tuple[ReplayBook, ...]] = {}
+        prices_by_market: dict[str, tuple[ReplayPriceEvent, ...]] = {}
         for market in {event.market for event in ordered_events}:
-            books_by_market[market] = tuple(
+            prices_by_market[market] = tuple(
                 sorted(
                     (
                         event
                         for event in ordered_events
-                        if isinstance(event, ReplayBook) and event.market == market
+                        if isinstance(event, ReplayBook | ReplayMark)
+                        and event.market == market
                     ),
                     key=lambda item: (item.timestamp_ms, item.source_sequence),
                 )
@@ -439,16 +507,16 @@ class ReplayEngine:
             replace(
                 fill,
                 markout_100ms=_markout(
-                    fill, books_by_market, 100, config.markout_tolerance_ms
+                    fill, prices_by_market, 100, config.markout_tolerance_ms
                 ),
                 markout_1s=_markout(
-                    fill, books_by_market, 1_000, config.markout_tolerance_ms
+                    fill, prices_by_market, 1_000, config.markout_tolerance_ms
                 ),
                 markout_5s=_markout(
-                    fill, books_by_market, 5_000, config.markout_tolerance_ms
+                    fill, prices_by_market, 5_000, config.markout_tolerance_ms
                 ),
                 markout_30s=_markout(
-                    fill, books_by_market, 30_000, config.markout_tolerance_ms
+                    fill, prices_by_market, 30_000, config.markout_tolerance_ms
                 ),
             )
             for fill in raw_fills

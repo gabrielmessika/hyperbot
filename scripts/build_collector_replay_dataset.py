@@ -59,10 +59,12 @@ def main() -> int:
     print(f"dataset={path}")
     print(f"dataset_sha256={dataset.dataset_sha256}")
     print(f"books={dataset.book_count}")
+    print(f"bbo={dataset.bbo_count}")
     print(f"trades={dataset.trade_count}")
     print(f"maximum_book_gap_ms={dataset.maximum_book_gap_ms}")
     print(f"maximum_receive_latency_ms={dataset.maximum_receive_latency_ms}")
     print(f"maximum_book_receive_latency_ms={dataset.maximum_book_receive_latency_ms}")
+    print(f"maximum_bbo_receive_latency_ms={dataset.maximum_bbo_receive_latency_ms}")
     print(
         f"maximum_trade_receive_latency_ms={dataset.maximum_trade_receive_latency_ms}"
     )

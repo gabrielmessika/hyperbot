@@ -12,6 +12,7 @@ from hyperbot.models import EventContext, PublicMarketDataEvent, Side, TimeSourc
 from hyperbot.replay import (
     CollectorReplayError,
     ReplayBook,
+    ReplayMark,
     ReplayTrade,
     build_collector_replay_dataset,
     collector_replay_dataset_payload,
@@ -188,15 +189,17 @@ def test_qualified_collector_day_builds_reproducible_replay_dataset(
     assert first == second
     assert first.dataset_sha256 == second.dataset_sha256
     assert first.book_count == 2
+    assert first.bbo_count == 1
     assert first.trade_count == 1
-    assert first.ignored_bbo_count == 1
     assert first.maximum_book_gap_ms == 4_900
     assert first.maximum_receive_latency_ms == 100
     assert first.maximum_book_receive_latency_ms == 100
+    assert first.maximum_bbo_receive_latency_ms == 100
     assert first.maximum_trade_receive_latency_ms == 100
-    assert isinstance(first.events[0], ReplayBook)
-    assert isinstance(first.events[1], ReplayTrade)
-    trade = first.events[1]
+    assert isinstance(first.events[0], ReplayMark)
+    assert isinstance(first.events[1], ReplayBook)
+    assert isinstance(first.events[2], ReplayTrade)
+    trade = first.events[2]
     assert isinstance(trade, ReplayTrade)
     assert trade.aggressor_side is Side.SELL
     assert first.source_segments[0].record_count == 4
