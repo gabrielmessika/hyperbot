@@ -326,12 +326,14 @@ Livré le 11 août 2026 :
   `reports/m3/implementation_report.md`.
 
 La capture M2 de cinq secondes est correctement refusée comme journée
-qualifiée. Les gates réelles 7/30 jours restent donc non acquises ; aucune
-continuité fictive n'a été créée.
+qualifiée. Au 17 août 2026, le 16 août est la première journée v3 qualifiée : la
+gate est à 1/7, et les gates 7/30 jours restent non acquises. Aucune continuité
+fictive n'a été créée.
 
 ### M4 — replay
 
-Statut : `Terminé` pour le moteur ; validation empirique A en attente.
+Statut : `Terminé` pour le moteur et la validation technique A sur une journée ;
+profondeur statistique en collecte.
 
 - horloge virtuelle et ordering déterministe ;
 - modèle pessimiste : volume devant la quote entièrement consommé ;
@@ -363,19 +365,41 @@ Passerelle M3 vers M4 livrée le 17 août 2026 :
 - l'export vérifié embarque désormais un snapshot immuable des manifests du
   store et le matérialise auprès des segments locaux après contrôle des SHA-256 ;
 - `build_collector_replay_dataset.py` convertit une journée et un marché en
-  événements M4 L2/trades, avec séquence issue du store append-only ;
+  événements M4 L2/BBO/trades, avec séquence issue du store append-only ;
 - le builder refuse fail-closed un rapport M3 non qualifié ou ancien, une
   provenance hors A, un checksum invalide, une version sans SHA Git complet, un
-  mélange de config/code/run, une latence négative ou l'absence de L2/trades ;
+  mélange de config/code/run, une latence négative ou l'absence de
+  L2/BBO/trades ;
 - le dataset enregistre les hashes du rapport qualité, du manifest, des segments
   et de la transformation ainsi que les métriques de cadence L2 et de latence ;
 - les événements M4 conservent séparément temps exchange et temps de réception ;
-  les probes ne sont soumises qu'au temps réellement observé et refusent par
-  défaut un carnet âgé de plus de 500 ms, afin d'éviter toute fuite future ;
+  le moteur les ordonne au temps de réception, les probes ne sont soumises qu'au
+  temps réellement observé et refusent par défaut un carnet âgé de plus de 500
+  ms, afin d'éviter toute fuite future ;
+- la preuve de file reste exclusivement L2 ; les BBO servent uniquement aux
+  markouts `as-of`, dans la tolérance de fraîcheur configurée ;
 - `run_hyperbot_replay.py` accepte ces datasets et exige modèle, latences et frais
   explicites. Ses probes top-of-book espacées sont une mesure d'exécution, jamais
   une stratégie ou une preuve d'edge ; central, pessimiste et stress restent des
   expériences distinctes et checksumées.
+
+Validation réelle du 16 août 2026 :
+
+- fetch `fetch-20260817T071924Z-71b8699d`, 35 fichiers vérifiés et deux
+  manifests de store matérialisés, pour 552 Mio ;
+- dataset BTC `collector-replay-2026-08-16-d042c2c002498295`, SHA-256 interne
+  `2d4477ae...e6369`, contenant 16 114 L2, 373 651 BBO et 108 417 trades ;
+- gap L2 maximal 6 046 ms ; latence de réception maximale 1 841 ms sur L2,
+  1 967 ms sur BBO et 107 553 ms sur un trade isolé ;
+- 192 probes de 10 USD, intervalle 15 minutes, TTL 1 s, pose/annulation 350 ms,
+  frais maker 1,5 bps et carnet âgé de 500 ms au plus ;
+- central : deux fills, 20 USD notionnels, aucun markout 30 s manquant, résultat
+  `3752d952...416d3` ; pessimiste : un fill, 10 USD notionnels, aucun markout 30
+  s manquant, résultat `9c4a070a...937ec` ;
+- stress latence ×2 et frais ×2 exécutés et rapports externes checksumés.
+
+Ces probes prouvent le fonctionnement causal et reproductible du pipeline, pas
+un edge : leur PnL n'est ni un backtest de stratégie ni un critère de promotion.
 
 Cette passerelle ne requalifie aucune ancienne journée et ne rend pas les vingt
 marchés `breadth` compatibles avec un modèle de file : seuls les marchés
@@ -662,6 +686,15 @@ Les anciens rapports M3 v2 restent immuables. Ils ne sont pas requalifiés
 rétroactivement et l'observer les exclut explicitement de la gate v3 ; la
 nouvelle série de jours candidats commence avec le premier jour UTC complet
 collecté et analysé sous le schéma v3.
+
+État contrôlé le 17 août 2026 : le 15 août v3 est non qualifié à cause des
+interruptions de déploiement ; le 16 août v3 est qualifié, avec 99,994 % de
+couverture et aucun gap opérationnel majeur. La gate vaut donc 1/7. Le 17 août
+est encore en cours et ne peut pas être qualifié avant clôture UTC. La release
+`/opt/hyperbot/releases/20260817T074827Z-2f4aaa04df05` a été sélectionnée sans
+redémarrer les services : collector healthy, même ID/run depuis le 15 août,
+zéro drop, zéro malformed, zéro backlog et zéro restart. Le live reste désactivé
+et aucun executor n'est présent.
 
 ### M8 — canary, bloqué par défaut
 

@@ -383,9 +383,12 @@ sans dépendre du manifest serveur qui continue d'évoluer.
 
 Seul un rapport M3 au schéma courant, qualifié, checksumé, tier A et portant un
 SHA Git complet peut ouvrir le builder replay. Le builder exige en plus un seul
-`run_id` collector et la présence de L2 et trades pour le marché. Une journée
-reste donc consultable par M3 sans devenir automatiquement une preuve de file
-M4.
+`run_id` collector et la présence de L2, BBO et trades pour le marché. Le L2
+reste la seule preuve de file ; le BBO sert uniquement aux markouts `as-of` à
+fraîcheur bornée. Temps exchange et temps de réception restent distincts, et le
+moteur traite les événements dans l'ordre où ils étaient observables. Une
+journée reste donc consultable par M3 sans devenir automatiquement une preuve de
+file M4.
 
 Une capture répétée garde son propre identifiant et manifest. Aucun résultat ne
 doit être promu en baseline avant validation de son checksum et de sa provenance

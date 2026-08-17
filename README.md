@@ -138,8 +138,12 @@ uv run python scripts/build_collector_replay_dataset.py \
 
 Le builder refuse une journée non qualifiée, un rapport sans checksum, un
 mélange de commit/configuration/run, une provenance autre que A, une latence
-négative ou l'absence de L2/trades. Le dataset obtenu contient les hashes du
-rapport, du manifest et de chaque segment source.
+négative ou l'absence de L2/BBO/trades. Le dataset obtenu contient les hashes du
+rapport, du manifest et de chaque segment source. Le L2 alimente exclusivement
+la preuve de file ; les BBO alimentent les midpoints de markout selon une lecture
+`as-of` à fraîcheur bornée. Tous les événements conservent séparément temps
+exchange et temps de réception, et le moteur les observe dans l'ordre de
+réception afin d'interdire le lookahead.
 
 Le replay réel exige ensuite des hypothèses explicites. L'exemple suivant crée
 des probes top-of-book espacées de cinq minutes pour mesurer la file et les
