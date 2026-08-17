@@ -84,12 +84,36 @@ remote_bundle="${REMOTE_DIR}/shared/runtime/fetch_exports/${bundle_name}"
 destination="${LOCAL_DIR%/}/${bundle_name}"
 mkdir -p "$destination/export" "$destination/payload"
 
-rsync -az -e "ssh ${SSH_OPTIONS[*]}" \
-    "${SSH_TARGET}:${remote_bundle}/" "$destination/export/"
-if [ -s "$destination/export/files.txt" ]; then
+if command -v rsync >/dev/null 2>&1; then
     rsync -az -e "ssh ${SSH_OPTIONS[*]}" \
-        --files-from="$destination/export/files.txt" \
-        "${SSH_TARGET}:${REMOTE_DIR}/shared/" "$destination/payload/"
+        "${SSH_TARGET}:${remote_bundle}/" "$destination/export/"
+    if [ -s "$destination/export/files.txt" ]; then
+        rsync -az -e "ssh ${SSH_OPTIONS[*]}" \
+            --files-from="$destination/export/files.txt" \
+            "${SSH_TARGET}:${REMOTE_DIR}/shared/" "$destination/payload/"
+    fi
+else
+    scp "${SSH_OPTIONS[@]}" -r \
+        "${SSH_TARGET}:${remote_bundle}/." "$destination/export/"
+    if [ -s "$destination/export/files.txt" ]; then
+        while IFS= read -r relative; do
+            [ -n "$relative" ] || continue
+            case "/$relative/" in
+                /*/../*|/*/./*|//*)
+                    echo "Unsafe exported path: $relative" >&2
+                    exit 1
+                    ;;
+            esac
+            [[ "$relative" =~ ^(data|archive)/[A-Za-z0-9._:/-]+$ ]] || {
+                echo "Unsupported exported path: $relative" >&2
+                exit 1
+            }
+        done < "$destination/export/files.txt"
+        remote_tar_command="tar -C $(remote_quote "${REMOTE_DIR}/shared") -cf - -T $(remote_quote "${remote_bundle}/files.txt")"
+        ssh "${SSH_OPTIONS[@]}" "$SSH_TARGET" "$remote_tar_command" \
+            | tar --no-same-owner --no-same-permissions -xf - \
+                -C "$destination/payload"
+    fi
 fi
 uv run python scripts/verify_fetch_manifest.py \
     "$destination/export/manifest.json" "$destination/payload"
