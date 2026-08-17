@@ -394,8 +394,8 @@ Validation réelle du 16 août 2026 :
 - 192 probes de 10 USD, intervalle 15 minutes, TTL 1 s, pose/annulation 350 ms,
   frais maker 1,5 bps et carnet âgé de 500 ms au plus ;
 - central : deux fills, 20 USD notionnels, aucun markout 30 s manquant, résultat
-  `3752d952...416d3` ; pessimiste : un fill, 10 USD notionnels, aucun markout 30
-  s manquant, résultat `9c4a070a...937ec` ;
+  `891381dd...c50f6` ; pessimiste : un fill, 10 USD notionnels, aucun markout 30
+  s manquant, résultat `5c4bf34f...c13aa` ;
 - stress latence ×2 et frais ×2 exécutés et rapports externes checksumés.
 
 Ces probes prouvent le fonctionnement causal et reproductible du pipeline, pas
@@ -691,7 +691,7 @@ collecté et analysé sous le schéma v3.
 interruptions de déploiement ; le 16 août v3 est qualifié, avec 99,994 % de
 couverture et aucun gap opérationnel majeur. La gate vaut donc 1/7. Le 17 août
 est encore en cours et ne peut pas être qualifié avant clôture UTC. La release
-`/opt/hyperbot/releases/20260817T074827Z-2f4aaa04df05` a été sélectionnée sans
+`/opt/hyperbot/releases/20260817T075423Z-0aacb04c7246` a été sélectionnée sans
 redémarrer les services : collector healthy, même ID/run depuis le 15 août,
 zéro drop, zéro malformed, zéro backlog et zéro restart. Le live reste désactivé
 et aucun executor n'est présent.
