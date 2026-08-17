@@ -12,7 +12,7 @@ from typing import TypeAlias, cast
 from hyperbot.legacy.policy import ReplayUse, require_replay_use
 from hyperbot.models import BookLevel, DatasetTier, Side
 
-REPLAY_SCHEMA_VERSION = 1
+REPLAY_SCHEMA_VERSION = 2
 MARKOUT_HORIZONS_MS = (100, 1_000, 5_000, 30_000)
 
 
@@ -83,6 +83,12 @@ class ReplayTrade:
             raise ValueError("trade price must be finite and positive")
         if not self.size.is_finite() or self.size <= 0:
             raise ValueError("trade size must be finite and positive")
+
+    @property
+    def observed_ts_ms(self) -> int:
+        return (
+            self.receive_ts_ms if self.receive_ts_ms is not None else self.timestamp_ms
+        )
 
 
 ReplayMarketEvent: TypeAlias = ReplayBook | ReplayTrade
@@ -247,7 +253,7 @@ def _hash(value: object) -> str:
 
 def _event_sort_key(event: ReplayMarketEvent) -> tuple[int, int, str, int]:
     type_order = 0 if isinstance(event, ReplayBook) else 1
-    return event.timestamp_ms, event.source_sequence, event.market, type_order
+    return event.observed_ts_ms, event.source_sequence, event.market, type_order
 
 
 def _visible_size(book: ReplayBook, quote: ReplayQuote) -> Decimal:
@@ -345,7 +351,7 @@ class ReplayEngine:
         latest_books: dict[str, ReplayBook] = {}
         raw_fills: list[SimulatedFill] = []
         for event in ordered_events:
-            clock.advance_to(event.timestamp_ms)
+            clock.advance_to(event.observed_ts_ms)
             if isinstance(event, ReplayBook):
                 previous_book = latest_books.get(event.market)
                 self._update_queues(config, states, event, previous_book)
@@ -420,9 +426,14 @@ class ReplayEngine:
         books_by_market: dict[str, tuple[ReplayBook, ...]] = {}
         for market in {event.market for event in ordered_events}:
             books_by_market[market] = tuple(
-                event
-                for event in ordered_events
-                if isinstance(event, ReplayBook) and event.market == market
+                sorted(
+                    (
+                        event
+                        for event in ordered_events
+                        if isinstance(event, ReplayBook) and event.market == market
+                    ),
+                    key=lambda item: (item.timestamp_ms, item.source_sequence),
+                )
             )
         fills = tuple(
             replace(

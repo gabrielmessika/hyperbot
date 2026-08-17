@@ -166,6 +166,42 @@ def test_markouts_fees_and_result_hash_are_reproducible() -> None:
     assert first.economic_pnl_30s_usd == Decimal("2.99")
 
 
+def test_receive_order_prevents_future_book_lookahead() -> None:
+    initial_book = ReplayBook(
+        market="BTC",
+        timestamp_ms=0,
+        source_sequence=0,
+        bids=(BookLevel(Decimal("100"), Decimal("5")),),
+        asks=(BookLevel(Decimal("101"), Decimal("5")),),
+        receive_ts_ms=0,
+    )
+    delayed_book = ReplayBook(
+        market="BTC",
+        timestamp_ms=200,
+        source_sequence=1,
+        bids=(BookLevel(Decimal("100"), Decimal("0.1")),),
+        asks=(BookLevel(Decimal("101"), Decimal("5")),),
+        receive_ts_ms=1_000,
+    )
+    trade = ReplayTrade(
+        market="BTC",
+        timestamp_ms=300,
+        source_sequence=2,
+        aggressor_side=Side.SELL,
+        price=Decimal("100"),
+        size=Decimal("2"),
+        receive_ts_ms=500,
+    )
+
+    result = ReplayEngine().run(
+        config=_config(FillModelKind.CENTRAL),
+        events=(initial_book, delayed_book, trade),
+        quotes=(_quote(size="1", submitted=100),),
+    )
+
+    assert not result.fills
+
+
 def test_legacy_only_allows_the_labeled_optimistic_bound() -> None:
     optimistic = ReplayEngine().run(
         config=_config(FillModelKind.OPTIMISTIC_TOUCH, tier=DatasetTier.C),
