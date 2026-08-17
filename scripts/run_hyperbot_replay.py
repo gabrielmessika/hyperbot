@@ -43,6 +43,7 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--probe-interval-ms", type=int, default=300_000)
     parser.add_argument("--probe-ttl-ms", type=int, default=1_000)
     parser.add_argument("--probe-notional-usd", type=Decimal, default=Decimal("10"))
+    parser.add_argument("--probe-max-book-age-ms", type=int, default=500)
     parser.add_argument("--run-id")
     parser.add_argument("--code-version")
     return parser.parse_args()
@@ -72,6 +73,11 @@ def _event(value: object) -> ReplayMarketEvent:
             source_sequence=int(cast(int, item["source_sequence"])),
             bids=tuple(_level(level) for level in cast(list[object], item["bids"])),
             asks=tuple(_level(level) for level in cast(list[object], item["asks"])),
+            receive_ts_ms=(
+                int(cast(int, item["receive_ts_ms"]))
+                if item.get("receive_ts_ms") is not None
+                else None
+            ),
         )
     if event_type == "trade":
         return ReplayTrade(
@@ -81,6 +87,11 @@ def _event(value: object) -> ReplayMarketEvent:
             aggressor_side=Side(str(item["aggressor_side"])),
             price=Decimal(str(item["price"])),
             size=Decimal(str(item["size"])),
+            receive_ts_ms=(
+                int(cast(int, item["receive_ts_ms"]))
+                if item.get("receive_ts_ms") is not None
+                else None
+            ),
         )
     raise ValueError(f"unsupported replay event type: {event_type!r}")
 
@@ -195,6 +206,7 @@ def _collector_inputs(
         "ttl_ms": args.probe_ttl_ms,
         "notional_usd": str(args.probe_notional_usd),
         "maker_fee_bps": str(maker_fee_bps),
+        "maximum_book_age_ms": args.probe_max_book_age_ms,
     }
     assumptions = {
         "dataset_sha256": dataset.dataset_sha256,
@@ -228,6 +240,7 @@ def _collector_inputs(
         ttl_ms=args.probe_ttl_ms,
         notional_usd=args.probe_notional_usd,
         maker_fee_bps=maker_fee_bps,
+        maximum_book_age_ms=args.probe_max_book_age_ms,
     )
     return (
         config,

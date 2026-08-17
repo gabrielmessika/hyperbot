@@ -192,6 +192,8 @@ def test_qualified_collector_day_builds_reproducible_replay_dataset(
     assert first.ignored_bbo_count == 1
     assert first.maximum_book_gap_ms == 4_900
     assert first.maximum_receive_latency_ms == 100
+    assert first.maximum_book_receive_latency_ms == 100
+    assert first.maximum_trade_receive_latency_ms == 100
     assert isinstance(first.events[0], ReplayBook)
     assert isinstance(first.events[1], ReplayTrade)
     trade = first.events[1]
@@ -226,12 +228,24 @@ def test_top_of_book_probe_plan_is_sparse_and_explicit(tmp_path: Path) -> None:
         minimum_markout_horizon_ms=0,
     )
 
-    assert len(probes) == 4
+    assert len(probes) == 2
     assert {probe.side for probe in probes} == {Side.BUY, Side.SELL}
+    assert probes[0].submitted_ts_ms == DAY + 201
     assert all(
         probe.cancel_requested_ts_ms == probe.submitted_ts_ms + 500 for probe in probes
     )
     assert all(probe.price * probe.size == Decimal("10") for probe in probes)
+
+    with pytest.raises(CollectorReplayError, match="generated no quotes"):
+        generate_top_of_book_probes(
+            dataset,
+            interval_ms=1_000,
+            ttl_ms=500,
+            notional_usd=Decimal("10"),
+            maker_fee_bps=Decimal("1"),
+            maximum_book_age_ms=50,
+            minimum_markout_horizon_ms=0,
+        )
 
 
 def test_replay_dataset_rejects_unqualified_or_mixed_evidence(tmp_path: Path) -> None:

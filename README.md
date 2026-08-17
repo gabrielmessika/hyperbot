@@ -154,6 +154,7 @@ uv run python scripts/run_hyperbot_replay.py \
   --maker-fee-bps 1.5 \
   --probe-interval-ms 300000 \
   --probe-ttl-ms 1000 \
+  --probe-max-book-age-ms 500 \
   --probe-notional-usd 10 \
   --stress
 ```

@@ -369,6 +369,9 @@ Passerelle M3 vers M4 livrée le 17 août 2026 :
   mélange de config/code/run, une latence négative ou l'absence de L2/trades ;
 - le dataset enregistre les hashes du rapport qualité, du manifest, des segments
   et de la transformation ainsi que les métriques de cadence L2 et de latence ;
+- les événements M4 conservent séparément temps exchange et temps de réception ;
+  les probes ne sont soumises qu'au temps réellement observé et refusent par
+  défaut un carnet âgé de plus de 500 ms, afin d'éviter toute fuite future ;
 - `run_hyperbot_replay.py` accepte ces datasets et exige modèle, latences et frais
   explicites. Ses probes top-of-book espacées sont une mesure d'exécution, jamais
   une stratégie ou une preuve d'edge ; central, pessimiste et stress restent des

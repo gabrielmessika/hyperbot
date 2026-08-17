@@ -21,7 +21,7 @@ from hyperbot.replay.engine import (
 )
 from hyperbot.segmented_store import SegmentedEventStore
 
-COLLECTOR_REPLAY_DATASET_SCHEMA_VERSION = 1
+COLLECTOR_REPLAY_DATASET_SCHEMA_VERSION = 2
 _CODE_VERSION = re.compile(r"^.+\+g[0-9a-f]{40}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
@@ -62,6 +62,8 @@ class CollectorReplayDataset:
     first_exchange_ts_ms: int
     last_exchange_ts_ms: int
     maximum_receive_latency_ms: int
+    maximum_book_receive_latency_ms: int
+    maximum_trade_receive_latency_ms: int
     maximum_book_gap_ms: int
     dataset_sha256: str
 
@@ -275,6 +277,7 @@ def _decode_book(
     *,
     market: str,
     timestamp_ms: int,
+    receive_ts_ms: int,
     sequence: int,
 ) -> ReplayBook:
     levels = payload.get("levels")
@@ -301,7 +304,14 @@ def _decode_book(
     ):
         raise CollectorReplayError("L2 levels are not strictly price ordered")
     try:
-        return ReplayBook(market, timestamp_ms, sequence, bids, asks)
+        return ReplayBook(
+            market,
+            timestamp_ms,
+            sequence,
+            bids,
+            asks,
+            receive_ts_ms,
+        )
     except ValueError as exc:
         raise CollectorReplayError(f"invalid replay book: {exc}") from exc
 
@@ -311,6 +321,7 @@ def _decode_trade(
     *,
     market: str,
     timestamp_ms: int,
+    receive_ts_ms: int,
     sequence: int,
 ) -> ReplayTrade:
     if payload.get("coin") != market or payload.get("time") != timestamp_ms:
@@ -331,6 +342,7 @@ def _decode_trade(
             aggressor_side=side,
             price=_decimal(payload.get("px"), "trade.px"),
             size=_decimal(payload.get("sz"), "trade.sz"),
+            receive_ts_ms=receive_ts_ms,
         )
     except ValueError as exc:
         raise CollectorReplayError(f"invalid replay trade: {exc}") from exc
@@ -343,6 +355,7 @@ def _event_payload(event: ReplayMarketEvent) -> dict[str, object]:
             "market": event.market,
             "timestamp_ms": event.timestamp_ms,
             "source_sequence": event.source_sequence,
+            "receive_ts_ms": event.receive_ts_ms,
             "bids": [
                 {
                     "price": str(level.price),
@@ -365,6 +378,7 @@ def _event_payload(event: ReplayMarketEvent) -> dict[str, object]:
         "market": event.market,
         "timestamp_ms": event.timestamp_ms,
         "source_sequence": event.source_sequence,
+        "receive_ts_ms": event.receive_ts_ms,
         "aggressor_side": event.aggressor_side.value,
         "price": str(event.price),
         "size": str(event.size),
@@ -408,6 +422,12 @@ def _dataset_base_payload(dataset: CollectorReplayDataset) -> dict[str, object]:
             "first_exchange_ts_ms": dataset.first_exchange_ts_ms,
             "last_exchange_ts_ms": dataset.last_exchange_ts_ms,
             "maximum_receive_latency_ms": dataset.maximum_receive_latency_ms,
+            "maximum_book_receive_latency_ms": (
+                dataset.maximum_book_receive_latency_ms
+            ),
+            "maximum_trade_receive_latency_ms": (
+                dataset.maximum_trade_receive_latency_ms
+            ),
             "maximum_book_gap_ms": dataset.maximum_book_gap_ms,
         },
     }
@@ -468,8 +488,10 @@ def build_collector_replay_dataset(
         raw_payload = record.get("payload")
         if not isinstance(raw_payload, dict):
             raise CollectorReplayError("collector record payload is invalid")
+        if raw_payload.get("coin") != market:
+            continue
         event = market_event_from_payload(cast(dict[str, object], raw_payload))
-        if event.coin != market or not begin_ms <= event.receive_ts_ms < end_ms:
+        if not begin_ms <= event.receive_ts_ms < end_ms:
             continue
         if event.context.time_source is not TimeSource.EXCHANGE:
             raise CollectorReplayError("collector event time source is not exchange")
@@ -499,6 +521,7 @@ def build_collector_replay_dataset(
                     cast(dict[str, object], decoded_payload),
                     market=market,
                     timestamp_ms=event.exchange_ts_ms,
+                    receive_ts_ms=event.receive_ts_ms,
                     sequence=sequence,
                 )
             )
@@ -508,6 +531,7 @@ def build_collector_replay_dataset(
                     cast(dict[str, object], decoded_payload),
                     market=market,
                     timestamp_ms=event.exchange_ts_ms,
+                    receive_ts_ms=event.receive_ts_ms,
                     sequence=sequence,
                 )
             )
@@ -543,7 +567,12 @@ def build_collector_replay_dataset(
     ]
     if any(gap < 0 for gap in book_gaps):
         raise CollectorReplayError("L2 exchange timestamps move backwards")
+    book_latencies = [item.observed_ts_ms - item.timestamp_ms for item in books]
+    trade_latencies = [
+        cast(int, item.receive_ts_ms) - item.timestamp_ms for item in trades
+    ]
     evidence = {
+        "schema_version": COLLECTOR_REPLAY_DATASET_SCHEMA_VERSION,
         "report_date": report_date.isoformat(),
         "market": market,
         "quality_report_sha256": quality_sha256,
@@ -571,6 +600,8 @@ def build_collector_replay_dataset(
         first_exchange_ts_ms=ordered[0].timestamp_ms,
         last_exchange_ts_ms=ordered[-1].timestamp_ms,
         maximum_receive_latency_ms=maximum_latency,
+        maximum_book_receive_latency_ms=max(book_latencies),
+        maximum_trade_receive_latency_ms=max(trade_latencies),
         maximum_book_gap_ms=max(book_gaps),
         dataset_sha256="",
     )
@@ -651,6 +682,11 @@ def _dataset_event(value: object) -> ReplayMarketEvent:
                     _dataset_level(item, field=f"asks[{index}]")
                     for index, item in enumerate(raw_asks)
                 ),
+                receive_ts_ms=(
+                    int(cast(int, value["receive_ts_ms"]))
+                    if value.get("receive_ts_ms") is not None
+                    else None
+                ),
             )
         except ValueError as exc:
             raise CollectorReplayError(f"invalid dataset book: {exc}") from exc
@@ -663,6 +699,11 @@ def _dataset_event(value: object) -> ReplayMarketEvent:
                 aggressor_side=Side(str(value["aggressor_side"])),
                 price=_decimal(value.get("price"), "trade.price"),
                 size=_decimal(value.get("size"), "trade.size"),
+                receive_ts_ms=(
+                    int(cast(int, value["receive_ts_ms"]))
+                    if value.get("receive_ts_ms") is not None
+                    else None
+                ),
             )
         except (KeyError, ValueError) as exc:
             raise CollectorReplayError(f"invalid dataset trade: {exc}") from exc
@@ -742,6 +783,12 @@ def collector_replay_dataset_from_payload(value: object) -> CollectorReplayDatas
             maximum_receive_latency_ms=int(
                 cast(int, metrics["maximum_receive_latency_ms"])
             ),
+            maximum_book_receive_latency_ms=int(
+                cast(int, metrics["maximum_book_receive_latency_ms"])
+            ),
+            maximum_trade_receive_latency_ms=int(
+                cast(int, metrics["maximum_trade_receive_latency_ms"])
+            ),
             maximum_book_gap_ms=int(cast(int, metrics["maximum_book_gap_ms"])),
             dataset_sha256=str(payload["dataset_sha256"]),
         )
@@ -796,22 +843,32 @@ def generate_top_of_book_probes(
     ttl_ms: int,
     notional_usd: Decimal,
     maker_fee_bps: Decimal,
+    maximum_book_age_ms: int = 500,
     minimum_markout_horizon_ms: int = 30_000,
 ) -> tuple[ReplayQuote, ...]:
     """Generate sparse execution probes, never a profitability strategy."""
 
-    if interval_ms <= 0 or ttl_ms <= 0 or minimum_markout_horizon_ms < 0:
+    if (
+        interval_ms <= 0
+        or ttl_ms <= 0
+        or maximum_book_age_ms < 0
+        or minimum_markout_horizon_ms < 0
+    ):
         raise ValueError("probe timing values are invalid")
     if not notional_usd.is_finite() or notional_usd <= 0:
         raise ValueError("probe notional must be finite and positive")
     if not maker_fee_bps.is_finite() or maker_fee_bps < 0:
         raise ValueError("maker fee must be finite and non-negative")
     books = tuple(item for item in dataset.events if isinstance(item, ReplayBook))
-    next_probe_ts = books[0].timestamp_ms
+    next_probe_ts = books[0].observed_ts_ms
     latest_submission = dataset.last_exchange_ts_ms - minimum_markout_horizon_ms
     quotes: list[ReplayQuote] = []
     for book in books:
-        if book.timestamp_ms < next_probe_ts or book.timestamp_ms > latest_submission:
+        if (
+            book.observed_ts_ms < next_probe_ts
+            or book.observed_ts_ms > latest_submission
+            or book.observed_ts_ms - book.timestamp_ms > maximum_book_age_ms
+        ):
             continue
         for side, price in (
             (Side.BUY, book.bids[0].price),
@@ -828,12 +885,12 @@ def generate_top_of_book_probes(
                     side=side,
                     price=price,
                     size=notional_usd / price,
-                    submitted_ts_ms=book.timestamp_ms,
-                    cancel_requested_ts_ms=book.timestamp_ms + ttl_ms,
+                    submitted_ts_ms=book.observed_ts_ms,
+                    cancel_requested_ts_ms=book.observed_ts_ms + ttl_ms,
                     maker_fee_bps=maker_fee_bps,
                 )
             )
-        next_probe_ts = book.timestamp_ms + interval_ms
+        next_probe_ts = book.observed_ts_ms + interval_ms
     if not quotes:
         raise CollectorReplayError("probe plan generated no quotes")
     return tuple(quotes)

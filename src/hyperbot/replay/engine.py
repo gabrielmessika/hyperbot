@@ -37,12 +37,15 @@ class ReplayBook:
     source_sequence: int
     bids: tuple[BookLevel, ...]
     asks: tuple[BookLevel, ...]
+    receive_ts_ms: int | None = None
 
     def __post_init__(self) -> None:
         if not self.market.strip():
             raise ValueError("market must not be empty")
         if self.timestamp_ms < 0 or self.source_sequence < 0:
             raise ValueError("book timestamp and sequence must be non-negative")
+        if self.receive_ts_ms is not None and self.receive_ts_ms < self.timestamp_ms:
+            raise ValueError("book receive timestamp cannot precede exchange time")
         if self.bids and self.asks and self.bids[0].price > self.asks[0].price:
             raise ValueError("book must not be crossed")
 
@@ -51,6 +54,12 @@ class ReplayBook:
         if not self.bids or not self.asks:
             return None
         return (self.bids[0].price + self.asks[0].price) / 2
+
+    @property
+    def observed_ts_ms(self) -> int:
+        return (
+            self.receive_ts_ms if self.receive_ts_ms is not None else self.timestamp_ms
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,12 +70,15 @@ class ReplayTrade:
     aggressor_side: Side
     price: Decimal
     size: Decimal
+    receive_ts_ms: int | None = None
 
     def __post_init__(self) -> None:
         if not self.market.strip():
             raise ValueError("market must not be empty")
         if self.timestamp_ms < 0 or self.source_sequence < 0:
             raise ValueError("trade timestamp and sequence must be non-negative")
+        if self.receive_ts_ms is not None and self.receive_ts_ms < self.timestamp_ms:
+            raise ValueError("trade receive timestamp cannot precede exchange time")
         if not self.price.is_finite() or self.price <= 0:
             raise ValueError("trade price must be finite and positive")
         if not self.size.is_finite() or self.size <= 0:
@@ -214,8 +226,7 @@ def _encode(value: object) -> object:
         return {str(key): _encode(item) for key, item in value.items()}
     if is_dataclass(value) and not isinstance(value, type):
         return {
-            field.name: _encode(getattr(value, field.name))
-            for field in fields(value)
+            field.name: _encode(getattr(value, field.name)) for field in fields(value)
         }
     return value
 
@@ -432,17 +443,11 @@ class ReplayEngine:
         )
         fees = sum((fill.fee_usd for fill in fills), Decimal(0))
         gross_markout = sum(
-            (
-                fill.markout_30s
-                for fill in fills
-                if fill.markout_30s is not None
-            ),
+            (fill.markout_30s for fill in fills if fill.markout_30s is not None),
             Decimal(0),
         )
         input_hash = _hash({"events": ordered_events, "quotes": ordered_quotes})
-        filled_notional = sum(
-            (fill.price * fill.size for fill in fills), Decimal(0)
-        )
+        filled_notional = sum((fill.price * fill.size for fill in fills), Decimal(0))
         fills_missing_markout = sum(fill.markout_30s is None for fill in fills)
         without_hash = {
             "schema_version": REPLAY_SCHEMA_VERSION,
@@ -496,8 +501,7 @@ class ReplayEngine:
             quotes=quotes,
         )
         fee_quotes = tuple(
-            replace(quote, maker_fee_bps=quote.maker_fee_bps * 2)
-            for quote in quotes
+            replace(quote, maker_fee_bps=quote.maker_fee_bps * 2) for quote in quotes
         )
         fee_config = replace(config, run_id=f"{config.run_id}-fees-2x")
         double_fees = self.run(
@@ -547,9 +551,8 @@ class ReplayEngine:
         if config.model is FillModelKind.OPTIMISTIC_TOUCH:
             return
         for state in states:
-            if (
-                state.quote.market == book.market
-                and _active_at(state, book.timestamp_ms)
+            if state.quote.market == book.market and _active_at(
+                state, book.timestamp_ms
             ):
                 if state.queue_ahead is None:
                     reference = previous_book
@@ -557,8 +560,7 @@ class ReplayEngine:
                         reference = book
                     if reference is None:
                         raise ReplayDataError(
-                            "no L2 book at activation for quote "
-                            f"{state.quote.quote_id}"
+                            f"no L2 book at activation for quote {state.quote.quote_id}"
                         )
                     visible = _visible_size(reference, state.quote)
                     state.queue_ahead = (
@@ -608,9 +610,7 @@ class ReplayEngine:
 
     def _queue_priority(self, state: _QuoteState) -> tuple[str, Decimal, int, str]:
         price_priority = (
-            -state.quote.price
-            if state.quote.side is Side.BUY
-            else state.quote.price
+            -state.quote.price if state.quote.side is Side.BUY else state.quote.price
         )
         return (
             state.quote.market,
