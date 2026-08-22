@@ -1,6 +1,6 @@
 # HyperBot — plan de développement et suivi
 
-**Dernière mise à jour :** 17 août 2026
+**Dernière mise à jour :** 22 août 2026
 
 **Document stratégique :** [`HYPERBOT_FOUNDATION.md`](HYPERBOT_FOUNDATION.md)
 
@@ -397,6 +397,32 @@ Validation réelle du 16 août 2026 :
   `891381dd...c50f6` ; pessimiste : un fill, 10 USD notionnels, aucun markout 30
   s manquant, résultat `5c4bf34f...c13aa` ;
 - stress latence ×2 et frais ×2 exécutés et rapports externes checksumés.
+
+Export et construction multi-journées réalisés le 22 août 2026 :
+
+- export `fetch-20260822T070249Z-5d551f5b` des six journées M3 v3
+  qualifiées du 16 au 21 août, soit 456 fichiers publics, 8 017 611 756 octets,
+  deux manifests de store matérialisés et tous les SHA-256 d'export vérifiés ;
+- 24 datasets M4 construits sous
+  `data/replay_datasets/fetch-20260822T070249Z-5d551f5b/`, couvrant chaque
+  combinaison journée × marché `depth` pour BTC, ETH, HYPE et SOL ;
+- 386 332 événements L2, 11 978 272 BBO et 7 215 937 trades, soit
+  19 580 541 événements de marché conservés au total ;
+- un seul `run_id`, provenance A, même version source et même configuration
+  collector dans chaque dataset ; les 24 checksums externes et internes ont été
+  recalculés avec succès après écriture ;
+- gaps L2 maximaux par journée de 6 046, 5 813, 21 162, 5 648, 6 065 et
+  5 794 ms du 16 au 21 août. Le 18 août reste donc la journée la moins propre
+  pour une probe sensible à la fraîcheur ; les filtres `maximum_book_age_ms`
+  demeurent obligatoires ;
+- latences de réception maximales dominées par des trades retardés isolés :
+  152 944, 104 854, 129 238, 99 665, 43 847 et 31 666 ms par journée. Les
+  maxima L2 correspondants restent compris entre 1 649 et 2 770 ms et les
+  horloges exchange/réception restent séparées dans M4.
+
+La construction multi-journées matérialise la preuve M4 disponible ; elle ne
+lance aucune stratégie et ne transforme pas les probes d'exécution en preuve
+d'edge.
 
 Ces probes prouvent le fonctionnement causal et reproductible du pipeline, pas
 un edge : leur PnL n'est ni un backtest de stratégie ni un critère de promotion.
